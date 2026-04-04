@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
 	import { goto, invalidate } from '$app/navigation';
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
 	import { transformed_media_depends_key } from '$lib/transformed_media_cache';
@@ -11,12 +12,14 @@
 		AdjustmentsHorizontalOutline,
 		AdjustmentsVerticalOutline,
 		CameraPhotoOutline,
+		ColumnOutline,
 		ChevronLeftOutline,
 		ChevronRightOutline,
 		ClockOutline,
 		EyeOutline,
 		FilterOutline,
 		FolderOutline,
+		GridOutline,
 		ImageOutline,
 		PenOutline,
 		StarOutline,
@@ -46,6 +49,30 @@
 	let filters_panel_user_open = $state(false);
 
 	const filters_panel_open = $derived(data.gallery_filters.active || filters_panel_user_open);
+
+	const gallery_grid_meta_storage_key = 'lenslocker_gallery_grid_show_meta';
+
+	/** When true, each tile shows EXIF/caption rows under the thumbnail. */
+	let gallery_grid_show_meta = $state(true);
+
+	onMount(() => {
+		if (!browser) return;
+		const raw = localStorage.getItem(gallery_grid_meta_storage_key);
+		if (raw === '0') gallery_grid_show_meta = false;
+	});
+
+	function toggle_gallery_grid_show_meta(): void {
+		gallery_grid_show_meta = !gallery_grid_show_meta;
+		if (browser) {
+			localStorage.setItem(gallery_grid_meta_storage_key, gallery_grid_show_meta ? '1' : '0');
+		}
+	}
+
+	const gallery_grid_list_class = $derived(
+		gallery_grid_show_meta
+			? 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
+			: 'grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7'
+	);
 
 	function on_filters_toggle_click(): void {
 		if (filters_panel_open) {
@@ -560,16 +587,42 @@
 		<div class="min-w-0">
 			<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">LensLocker</h1>
 		</div>
-		<button
-			type="button"
-			class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-			aria-expanded={filters_panel_open}
-			aria-controls="gallery-filters-panel"
-			onclick={on_filters_toggle_click}
-		>
-			<FilterOutline class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-			{filters_panel_open ? 'Hide filters' : 'Filters'}
-		</button>
+		<div class="flex shrink-0 flex-wrap items-center gap-2">
+			<button
+				type="button"
+				class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+				aria-pressed={gallery_grid_show_meta}
+				aria-label={gallery_grid_show_meta
+					? 'Switch to compact grid (hide captions under photos)'
+					: 'Switch to grid with captions under photos'}
+				onclick={toggle_gallery_grid_show_meta}
+			>
+				{#if gallery_grid_show_meta}
+					<GridOutline
+						class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-300"
+						aria-hidden="true"
+					/>
+				{:else}
+					<ColumnOutline
+						class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-300"
+						aria-hidden="true"
+					/>
+				{/if}
+			</button>
+			<button
+				type="button"
+				class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+				aria-expanded={filters_panel_open}
+				aria-controls="gallery-filters-panel"
+				onclick={on_filters_toggle_click}
+			>
+				<FilterOutline
+					class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
+					aria-hidden="true"
+				/>
+				{filters_panel_open ? 'Hide filters' : 'Filters'}
+			</button>
+		</div>
 	</header>
 
 	{#if filters_panel_open}
@@ -779,7 +832,7 @@
 			{/if}
 		</p>
 	{:else}
-		<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" role="list">
+		<ul class={gallery_grid_list_class} role="list">
 			{#each data.images as item (item.relative_path)}
 				<li
 					class="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
@@ -805,7 +858,7 @@
 							</span>
 						{/if}
 					</button>
-					{#if item.meta}
+					{#if gallery_grid_show_meta && item.meta}
 						<button
 							type="button"
 							class="w-full border-t border-gray-200 bg-white/90 px-2 py-2 text-left dark:border-gray-700 dark:bg-gray-950/90"
