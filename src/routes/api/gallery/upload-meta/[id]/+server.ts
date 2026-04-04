@@ -61,6 +61,8 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 	}
 	if (record.archive === true) {
 		flag_patch.archived_at_ms = Date.now();
+	} else if (record.archive === false) {
+		flag_patch.archived_at_ms = null;
 	}
 
 	const parsed = parse_upload_meta_patch(body);

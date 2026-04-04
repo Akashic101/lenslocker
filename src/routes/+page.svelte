@@ -30,6 +30,7 @@
 		PenOutline,
 		StarOutline,
 		StarSolid,
+		ArchiveArrowDownOutline,
 		TrashBinOutline
 	} from 'flowbite-svelte-icons';
 	import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
@@ -273,6 +274,12 @@
 
 	const modal_detail_starred = $derived(modal_detail != null && Number(modal_detail.starred) === 1);
 
+	const modal_detail_archived = $derived(
+		modal_detail != null &&
+			modal_detail.archived_at_ms != null &&
+			Number(modal_detail.archived_at_ms) > 0
+	);
+
 	let preview_scale = $state(1);
 	let preview_pan_x = $state(0);
 	let preview_pan_y = $state(0);
@@ -474,7 +481,7 @@
 				modal_heading = payload.original_filename;
 			}
 			await invalidate(transformed_media_depends_key);
-			if (body.archive === true) {
+			if (body.archive === true || body.archive === false) {
 				await invalidate(gallery_active_upload_count_depends_key);
 			}
 			return true;
@@ -492,9 +499,9 @@
 		await patch_gallery_upload({ starred: next });
 	}
 
-	async function archive_current_modal_upload(): Promise<void> {
-		const ok = await patch_gallery_upload({ archive: true });
-		if (ok) gallery_modal_open = false;
+	async function toggle_modal_archive(): Promise<void> {
+		const want_archive = !modal_detail_archived;
+		await patch_gallery_upload({ archive: want_archive });
 	}
 
 	function modal_go_delta(delta: number): void {
@@ -1092,12 +1099,18 @@
 					</button>
 					<button
 						type="button"
-						class="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:pointer-events-none disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-950/40"
-						aria-label="Archive image"
-						disabled={modal_action_loading}
-						onclick={() => void archive_current_modal_upload()}
+						class="rounded-lg p-2 disabled:pointer-events-none disabled:opacity-40 {modal_detail_archived
+							? 'text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40'
+							: 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40'}"
+						aria-label={modal_detail_archived ? 'Restore to gallery' : 'Archive image'}
+						disabled={modal_detail_loading || modal_action_loading || modal_detail == null}
+						onclick={() => void toggle_modal_archive()}
 					>
-						<TrashBinOutline class="h-5 w-5 shrink-0" />
+						{#if modal_detail_archived}
+							<ArchiveArrowDownOutline class="h-5 w-5 shrink-0" />
+						{:else}
+							<TrashBinOutline class="h-5 w-5 shrink-0" />
+						{/if}
 					</button>
 				{/if}
 			</div>
