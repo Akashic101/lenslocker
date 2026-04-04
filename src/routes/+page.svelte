@@ -1099,7 +1099,7 @@
 					</label>
 				</div>
 				<div class="flex flex-wrap items-end gap-3">
-					<div class="w-full max-w-xs min-w-[8rem] sm:w-auto">
+					<div class="w-full max-w-xs min-w-32 sm:w-auto">
 						<label
 							for="gf-iso-min"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">ISO min</label
@@ -1116,7 +1116,7 @@
 							bind:value={filter_iso_min}
 						/>
 					</div>
-					<div class="w-full max-w-xs min-w-[8rem] sm:w-auto">
+					<div class="w-full max-w-xs min-w-32 sm:w-auto">
 						<label
 							for="gf-iso-max"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">ISO max</label
