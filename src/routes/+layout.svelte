@@ -140,8 +140,6 @@
 					>
 						{#if !sidebar_collapsed}
 							<a
-								// TODO: Why is this broken???
-								// eslint-disable-next-line svelte/no-navigation-without-resolve
 								href={dashboard_all_href}
 								class="min-w-0 flex-1 truncate text-lg font-semibold text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
 							>
@@ -184,7 +182,6 @@
 						<div
 							class="flex w-full items-stretch overflow-hidden rounded-sm transition duration-75 hover:bg-gray-100 dark:hover:bg-gray-700"
 						>
-							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- paraglide localizeHref(resolve('/')) -->
 							<a
 								href={dashboard_all_href}
 								aria-current={dashboard_all_active ? 'page' : undefined}

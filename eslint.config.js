@@ -40,5 +40,12 @@ export default defineConfig(
 		// Override or add rule settings here, such as:
 		// 'svelte/button-has-type': 'error'
 		rules: {}
+	},
+	{
+		// Paraglide uses `localizeHref(resolve('/'))` via $derived; the rule only accepts `resolve()` as a direct href or simple const init.
+		files: ['src/routes/+layout.svelte'],
+		rules: {
+			'svelte/no-navigation-without-resolve': ['error', { ignoreLinks: true }]
+		}
 	}
 );

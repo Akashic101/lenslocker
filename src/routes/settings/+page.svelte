@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { invalidate } from '$app/navigation';
+	import { invalidate, invalidateAll } from '$app/navigation';
 	import { dashboard_attention_settings_depends_key } from '$lib/dashboard_attention_settings_cache';
+	import { settings_backup_list_depends_key } from '$lib/settings_backup_list_cache';
 	import { dashboard_needs_attention_default_keys } from '$lib/dashboard_attention_defaults';
 	import { needs_attention_catalog } from '$lib/needs_attention_catalog';
 	import { upload_preview_pipeline_defaults } from '$lib/upload_pipeline_defaults';
@@ -41,6 +42,18 @@
 	let dash_save_loading = $state(false);
 	let dash_save_error = $state<string | null>(null);
 	let dash_save_ok = $state(false);
+
+	let backup_create_loading = $state(false);
+	let backup_create_error = $state<string | null>(null);
+	let backup_create_ok = $state(false);
+
+	let backup_import_input_el = $state<HTMLInputElement | null>(null);
+	let backup_import_loading = $state(false);
+	let backup_import_error = $state<string | null>(null);
+	let backup_import_ok = $state<string | null>(null);
+
+	let backup_delete_busy_filename = $state<string | null>(null);
+	let backup_delete_error = $state<string | null>(null);
 
 	$effect(() => {
 		const s = data.upload_pipeline_settings;
@@ -116,6 +129,143 @@
 
 	const dash_checkbox_class =
 		'mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800 dark:ring-offset-gray-900';
+
+	function format_settings_backup_bytes(n: number): string {
+		if (n < 1024) return `${n} B`;
+		if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+		return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+	}
+
+	function format_settings_backup_when(ms: number): string {
+		try {
+			return new Intl.DateTimeFormat(undefined, {
+				dateStyle: 'medium',
+				timeStyle: 'short'
+			}).format(new Date(ms));
+		} catch {
+			return new Date(ms).toISOString();
+		}
+	}
+
+	async function create_settings_backup_zip(): Promise<void> {
+		backup_create_loading = true;
+		backup_create_error = null;
+		backup_create_ok = false;
+		try {
+			const response = await fetch(resolve('/api/settings/backups'), { method: 'POST' });
+			if (!response.ok) {
+				const text = await response.text();
+				throw new Error(text || response.statusText);
+			}
+			backup_create_ok = true;
+			await invalidate(settings_backup_list_depends_key);
+		} catch (e) {
+			backup_create_error = e instanceof Error ? e.message : String(e);
+		} finally {
+			backup_create_loading = false;
+		}
+	}
+
+	function reset_settings_backup_import_input(): void {
+		if (backup_import_input_el) backup_import_input_el.value = '';
+	}
+
+	async function submit_settings_backup_import(file: File): Promise<void> {
+		if (
+			!confirm(
+				'Restore from this backup? New zips replace the entire SQLite database file (gallery metadata, settings, hardware, auth, etc.). Image files on disk are not inside the zip. Older zips without database.sqlite only replace settings and hardware rows. This cannot be undone.'
+			)
+		) {
+			reset_settings_backup_import_input();
+			return;
+		}
+		backup_import_loading = true;
+		backup_import_error = null;
+		backup_import_ok = null;
+		try {
+			const form = new FormData();
+			form.append('file', file);
+			const response = await fetch(resolve('/api/settings/backups/import'), {
+				method: 'POST',
+				body: form
+			});
+			const raw = await response.text();
+			if (!response.ok) {
+				let msg = raw || response.statusText;
+				try {
+					const j = JSON.parse(raw) as { message?: string };
+					if (typeof j.message === 'string' && j.message !== '') msg = j.message;
+				} catch {
+					/* keep msg */
+				}
+				throw new Error(msg);
+			}
+			const parsed = JSON.parse(raw) as {
+				app_settings_count?: number;
+				hardware_items_count?: number;
+				date_stamp?: string;
+				restored_full_database?: boolean;
+			};
+			const ac = parsed.app_settings_count ?? 0;
+			const hc = parsed.hardware_items_count ?? 0;
+			const stamp =
+				typeof parsed.date_stamp === 'string' && parsed.date_stamp !== ''
+					? ` (backup stamp ${parsed.date_stamp})`
+					: '';
+			const full = parsed.restored_full_database === true;
+			backup_import_ok = full
+				? `Restored full database from zip${stamp}. Reload or navigate to refresh all data.`
+				: `Imported ${ac} setting row(s) and ${hc} hardware item(s)${stamp}.`;
+			if (full) {
+				await invalidateAll();
+			} else {
+				await invalidate(upload_pipeline_settings_depends_key);
+				await invalidate(dashboard_attention_settings_depends_key);
+				await invalidate(settings_backup_list_depends_key);
+			}
+		} catch (e) {
+			backup_import_error = e instanceof Error ? e.message : String(e);
+		} finally {
+			backup_import_loading = false;
+			reset_settings_backup_import_input();
+		}
+	}
+
+	function on_settings_backup_import_change(ev: Event): void {
+		const input = ev.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+		void submit_settings_backup_import(file);
+	}
+
+	async function delete_settings_backup_row(filename: string): Promise<void> {
+		if (!confirm(`Delete backup "${filename}" from this server? This cannot be undone.`)) {
+			return;
+		}
+		backup_delete_busy_filename = filename;
+		backup_delete_error = null;
+		try {
+			const response = await fetch(resolve(`/api/settings/backups/${filename}`), {
+				method: 'DELETE'
+			});
+			const raw = await response.text();
+			if (!response.ok) {
+				let msg = raw || response.statusText;
+				try {
+					const j = JSON.parse(raw) as { message?: string };
+					if (typeof j.message === 'string' && j.message !== '') msg = j.message;
+				} catch {
+					/* keep msg */
+				}
+				throw new Error(msg);
+			}
+			await invalidate(settings_backup_list_depends_key);
+		} catch (e) {
+			backup_delete_error = e instanceof Error ? e.message : String(e);
+		} finally {
+			backup_delete_busy_filename = null;
+		}
+	}
 
 	async function save_dashboard_attention_settings(): Promise<void> {
 		dash_save_loading = true;
@@ -399,6 +549,140 @@
 					>
 						{dash_save_loading ? 'Saving…' : 'Save dashboard criteria'}
 					</button>
+				</div>
+			</TabItem>
+			<TabItem key="backup" title="Backup">
+				<div class="space-y-6 pt-4">
+					<p class="text-sm text-gray-600 dark:text-gray-400">
+						Each zip includes a full
+						<strong>SQLite database</strong> snapshot (<code
+							class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
+							>database.sqlite</code
+						>) plus JSON copies of
+						<code class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
+							>app_setting</code
+						>
+						and hardware for readability. Backups are named
+						<code class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
+							>LensLocker-backup-yyyy-mm-dd-hh-mm-&lt;n&gt;.zip</code
+						>
+						where <strong>&lt;n&gt;</strong> is a running count. Importing restores the whole
+						database file (gallery and upload records, settings, hardware, auth, etc.); originals
+						and previews on disk are not in the zip.
+					</p>
+					<div class="flex flex-wrap gap-3">
+						<button
+							type="button"
+							disabled={backup_create_loading}
+							class="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-primary-600 dark:hover:bg-primary-700"
+							onclick={() => void create_settings_backup_zip()}
+						>
+							{backup_create_loading ? 'Creating…' : 'Create backup zip'}
+						</button>
+						<div class="relative">
+							<input
+								id="settings-backup-import-input"
+								bind:this={backup_import_input_el}
+								type="file"
+								accept=".zip,application/zip"
+								disabled={backup_import_loading}
+								class="peer sr-only"
+								onchange={on_settings_backup_import_change}
+							/>
+							<label
+								for="settings-backup-import-input"
+								class="inline-flex cursor-pointer items-center rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 peer-disabled:cursor-not-allowed peer-disabled:opacity-60 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+							>
+								{backup_import_loading ? 'Importing…' : 'Import backup zip…'}
+							</label>
+						</div>
+					</div>
+					{#if backup_create_error}
+						<p
+							class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
+							role="alert"
+						>
+							{backup_create_error}
+						</p>
+					{/if}
+					{#if backup_create_ok}
+						<p
+							class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
+							role="status"
+						>
+							Backup created. It appears in the list below — use Download to save a copy locally.
+						</p>
+					{/if}
+					{#if backup_import_error}
+						<p
+							class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
+							role="alert"
+						>
+							{backup_import_error}
+						</p>
+					{/if}
+					{#if backup_import_ok}
+						<p
+							class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
+							role="status"
+						>
+							{backup_import_ok}
+						</p>
+					{/if}
+					{#if backup_delete_error}
+						<p
+							class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
+							role="alert"
+						>
+							{backup_delete_error}
+						</p>
+					{/if}
+
+					<div>
+						<h2 class="mb-2 text-sm font-semibold text-gray-900 dark:text-white">Your backups</h2>
+						{#if data.settings_backups.length === 0}
+							<p class="text-sm text-gray-500 dark:text-gray-400">No backups yet.</p>
+						{:else}
+							<ul
+								class="divide-y divide-gray-200 overflow-hidden rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700"
+								role="list"
+							>
+								{#each data.settings_backups as b (b.filename)}
+									<li
+										class="flex flex-wrap items-center justify-between gap-3 bg-white px-3 py-2.5 dark:bg-gray-900"
+									>
+										<div class="min-w-0">
+											<p class="truncate font-mono text-xs text-gray-900 dark:text-gray-100">
+												{b.filename}
+											</p>
+											<p class="text-xs text-gray-500 dark:text-gray-400">
+												{format_settings_backup_when(b.created_at_ms)} · {format_settings_backup_bytes(
+													b.size_bytes
+												)}
+											</p>
+										</div>
+										<div class="flex shrink-0 flex-wrap items-center gap-2">
+											<a
+												href={resolve(`/api/settings/backups/${b.filename}`)}
+												download={b.filename}
+												class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+											>
+												Download
+											</a>
+											<button
+												type="button"
+												disabled={backup_delete_busy_filename !== null}
+												class="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900 dark:bg-gray-800 dark:text-red-300 dark:hover:bg-red-950/40"
+												onclick={() => void delete_settings_backup_row(b.filename)}
+											>
+												{backup_delete_busy_filename === b.filename ? 'Deleting…' : 'Delete'}
+											</button>
+										</div>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					</div>
 				</div>
 			</TabItem>
 		</Tabs>
