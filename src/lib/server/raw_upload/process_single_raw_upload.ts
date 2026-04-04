@@ -1,12 +1,16 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { get_upload_preview_pipeline_settings } from '$lib/server/upload_pipeline_settings';
 import { raw_image_upload } from '$lib/server/db/raw_image_upload.schema';
 import { is_allowed_raw_upload_extension } from '$lib/raw_upload_extensions';
 import { build_metadata_fields } from '$lib/server/raw_upload/metadata_from_exifr';
-import { get_raw_upload_root } from '$lib/server/raw_upload/paths';
+import {
+	get_raw_upload_root,
+	raw_upload_year_month_from_metadata
+} from '$lib/server/raw_upload/paths';
 import { write_preview_jpeg_for_upload } from '$lib/server/raw_upload/write_preview_jpeg';
 
 export type process_raw_upload_input = {
@@ -22,6 +26,8 @@ export type process_raw_upload_ok = {
 	original_filename: string;
 	preview_ok: boolean;
 	preview_message?: string;
+	/** Same bytes as an existing row; no new file or DB row was created. */
+	duplicate?: boolean;
 };
 
 export type process_raw_upload_err = {
@@ -69,21 +75,45 @@ export async function process_single_raw_upload(
 	const buffer = input.buffer;
 	const sha256_hex = createHash('sha256').update(new Uint8Array(buffer)).digest('hex');
 
+	const existing_by_hash = await db
+		.select({ id: raw_image_upload.id })
+		.from(raw_image_upload)
+		.where(eq(raw_image_upload.sha256_hex, sha256_hex))
+		.limit(1);
+
+	const existing_row = existing_by_hash[0];
+	if (existing_row != null) {
+		return {
+			ok: true,
+			id: existing_row.id,
+			original_filename: input.original_filename,
+			preview_ok: true,
+			duplicate: true
+		};
+	}
+
 	const id = randomUUID();
 	const ext = path.extname(input.original_filename) || '.bin';
 	const stored_filename = `${id}${ext}`;
-	const root = get_raw_upload_root();
-	await mkdir(root, { recursive: true });
-	const absolute_path = path.join(root, stored_filename);
-	await writeFile(absolute_path, new Uint8Array(buffer));
-
-	const relative_storage_path = path
-		.join('data', 'uploads', 'raw', stored_filename)
-		.split(path.sep)
-		.join('/');
 	const uploaded_at_ms = Date.now();
 
 	const metadata = await build_metadata_fields(buffer);
+	const { year, month } = raw_upload_year_month_from_metadata(metadata, uploaded_at_ms);
+
+	const root = get_raw_upload_root();
+	const dest_dir = path.join(root, year, month);
+	await mkdir(dest_dir, { recursive: true });
+	const absolute_path = path.join(dest_dir, stored_filename);
+	await writeFile(absolute_path, new Uint8Array(buffer));
+
+	const relative_storage_path = path.posix.join(
+		'data',
+		'uploads',
+		'raw',
+		year,
+		month,
+		stored_filename
+	);
 
 	const row = {
 		id,

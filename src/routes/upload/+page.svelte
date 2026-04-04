@@ -166,6 +166,7 @@
 		batch_total = valid_files.length;
 		batch_phase = 'idle';
 		batch_upload_pct = 0;
+		let batch_had_new_upload = false;
 
 		for (let i = 0; i < valid_files.length; i++) {
 			const file = valid_files[i];
@@ -186,19 +187,25 @@
 				);
 
 				if (ok && body.ok === true) {
+					const is_duplicate = body.duplicate === true;
 					const preview_ok = body.preview_ok !== false;
 					batch_log_lines = [
 						...batch_log_lines,
 						{
 							name: file.name,
 							ok: true,
-							message: preview_ok
-								? undefined
-								: String(body.preview_message ?? 'JPEG preview could not be created')
+							message: is_duplicate
+								? 'Already in library'
+								: preview_ok
+									? undefined
+									: String(body.preview_message ?? 'JPEG preview could not be created')
 						}
 					];
-					void invalidate(transformed_media_depends_key);
-					void invalidate(gallery_active_upload_count_depends_key);
+					if (!is_duplicate) {
+						batch_had_new_upload = true;
+						void invalidate(transformed_media_depends_key);
+						void invalidate(gallery_active_upload_count_depends_key);
+					}
 				} else {
 					const msg =
 						typeof body.message === 'string' ? body.message : `Request failed (${status})`;
@@ -222,8 +229,10 @@
 		batch_current_name = '';
 		batch_busy = false;
 		batch_upload_pct = 0;
-		await invalidate(transformed_media_depends_key);
-		await invalidate(gallery_active_upload_count_depends_key);
+		if (batch_had_new_upload) {
+			await invalidate(transformed_media_depends_key);
+			await invalidate(gallery_active_upload_count_depends_key);
+		}
 	}
 </script>
 
