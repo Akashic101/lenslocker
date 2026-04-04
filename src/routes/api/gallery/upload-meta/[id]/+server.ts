@@ -2,7 +2,6 @@ import { error, json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { raw_image_upload, type RawImageUploadRow } from '$lib/server/db/raw_image_upload.schema';
-import { delete_upload_preview_jpegs } from '$lib/server/raw_upload/write_preview_jpeg';
 import { parse_upload_meta_patch } from '$lib/server/upload_meta_patch';
 import type { RequestHandler } from './$types';
 
@@ -76,9 +75,7 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 
 	await db.update(raw_image_upload).set(updates).where(eq(raw_image_upload.id, id));
 
-	if (record.archive === true) {
-		await delete_upload_preview_jpegs(id);
-	}
+	/** Keep upload-previews on disk so the Archived gallery can still list thumbnails. */
 
 	const [row] = await db
 		.select()

@@ -7,11 +7,19 @@
 	import { onMount } from 'svelte';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import { DarkMode, Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
 	import {
+		DarkMode,
+		Sidebar,
+		SidebarDropdownWrapper,
+		SidebarGroup,
+		SidebarItem
+	} from 'flowbite-svelte';
+	import {
+		ArchiveOutline,
 		CameraPhotoOutline,
 		ChartMixedOutline,
 		CogOutline,
+		ExclamationCircleOutline,
 		SearchOutline,
 		ChevronDoubleLeftOutline,
 		UploadOutline
@@ -30,7 +38,9 @@
 
 	const span_class = 'flex-1 ms-3 whitespace-nowrap';
 
-	const dashboard_url = $derived(localizeHref('/'));
+	const dashboard_all_href = $derived(localizeHref('/'));
+	const dashboard_needs_attention_href = $derived(localizeHref('/?gallery_focus=needs_attention'));
+	const dashboard_archived_href = $derived(localizeHref('/?gallery_focus=archived'));
 	const upload_url = $derived(localizeHref('/upload'));
 	const hardware_url = $derived(localizeHref('/hardware'));
 	const statistics_url = $derived(localizeHref('/statistics'));
@@ -59,7 +69,7 @@
 			sidebar_layout_resize_timer = setTimeout(() => {
 				window.dispatchEvent(new Event('resize'));
 				sidebar_layout_resize_timer = undefined;
-			});
+			}, 220);
 		}
 	}
 
@@ -81,6 +91,33 @@
 			? 'flex min-h-0 flex-1 flex-col !px-1 py-4 bg-gray-50 dark:bg-gray-800'
 			: 'flex min-h-0 flex-1 flex-col px-3 py-4 bg-gray-50 dark:bg-gray-800'
 	);
+
+	const gallery_focus_param = $derived.by(() => {
+		if (active_url !== '/') return '';
+		const v = page.url.searchParams.get('gallery_focus')?.trim() ?? '';
+		if (v === 'needs_attention' || v === 'archived') return v;
+		return '';
+	});
+
+	let dashboard_menu_open = $state(false);
+
+	$effect(() => {
+		if (gallery_focus_param === 'needs_attention' || gallery_focus_param === 'archived') {
+			dashboard_menu_open = true;
+		}
+	});
+
+	const dashboard_all_active = $derived(active_url === '/' && gallery_focus_param === '');
+	const dashboard_attention_active = $derived(gallery_focus_param === 'needs_attention');
+	const dashboard_archived_active = $derived(gallery_focus_param === 'archived');
+
+	const dashboard_collapsed_href = $derived(
+		gallery_focus_param === 'needs_attention'
+			? dashboard_needs_attention_href
+			: gallery_focus_param === 'archived'
+				? dashboard_archived_href
+				: dashboard_all_href
+	);
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -92,6 +129,7 @@
 		alwaysOpen={true}
 		backdrop={false}
 		isOpen={true}
+		isSingle={false}
 		activateClickOutside={false}
 		closeSidebar={() => {}}
 		position="static"
@@ -128,30 +166,81 @@
 						</button>
 					</div>
 				</li>
-				<SidebarItem
-					label="Dashboard"
-					spanClass={sidebar_item_label_class}
-					aClass={sidebar_item_anchor_class}
-					href={dashboard_url}
-					title={sidebar_collapsed
-						? `Dashboard — ${data.gallery_active_upload_count} photos`
-						: undefined}
-				>
-					{#snippet icon()}
-						<SearchOutline
-							class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
-						/>
-					{/snippet}
-					{#snippet subtext()}
-						{#if !sidebar_collapsed}
-							<span
-								class="ms-3 inline-flex min-w-8 items-center justify-center rounded-full bg-primary-200 px-2 py-1 text-sm font-medium text-primary-900"
-							>
-								{data.gallery_active_upload_count}
-							</span>
-						{/if}
-					{/snippet}
-				</SidebarItem>
+				{#if sidebar_collapsed}
+					<SidebarItem
+						label="Dashboard"
+						spanClass={sidebar_item_label_class}
+						aClass={sidebar_item_anchor_class}
+						href={dashboard_collapsed_href}
+						title="Dashboard — expand sidebar for All photos, Needs attention, and Archived"
+					>
+						{#snippet icon()}
+							<SearchOutline
+								class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+							/>
+						{/snippet}
+					</SidebarItem>
+				{:else}
+					<SidebarDropdownWrapper
+						label="Dashboard"
+						bind:isOpen={dashboard_menu_open}
+						classes={{ btn: 'p-2' }}
+						spanClass={span_class}
+					>
+						{#snippet icon()}
+							<SearchOutline
+								class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+							/>
+						{/snippet}
+						<SidebarItem
+							label="All photos"
+							spanClass={span_class}
+							aClass={sidebar_item_anchor_class}
+							href={dashboard_all_href}
+							active={dashboard_all_active}
+						>
+							{#snippet icon()}
+								<SearchOutline
+									class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+								/>
+							{/snippet}
+							{#snippet subtext()}
+								<span
+									class="ms-3 inline-flex min-w-8 items-center justify-center rounded-full bg-primary-200 px-2 py-1 text-sm font-medium text-primary-900"
+								>
+									{data.gallery_active_upload_count}
+								</span>
+							{/snippet}
+						</SidebarItem>
+						<SidebarItem
+							label="Needs attention"
+							spanClass={span_class}
+							aClass={sidebar_item_anchor_class}
+							href={dashboard_needs_attention_href}
+							active={dashboard_attention_active}
+							title="Missing GPS, camera or lens metadata, or shot date"
+						>
+							{#snippet icon()}
+								<ExclamationCircleOutline
+									class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+								/>
+							{/snippet}
+						</SidebarItem>
+						<SidebarItem
+							label="Archived only"
+							spanClass={span_class}
+							aClass={sidebar_item_anchor_class}
+							href={dashboard_archived_href}
+							active={dashboard_archived_active}
+						>
+							{#snippet icon()}
+								<ArchiveOutline
+									class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+								/>
+							{/snippet}
+						</SidebarItem>
+					</SidebarDropdownWrapper>
+				{/if}
 				<SidebarItem
 					label="Upload"
 					spanClass={sidebar_item_label_class}

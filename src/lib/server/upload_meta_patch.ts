@@ -23,7 +23,9 @@ const int_columns = new Set<upload_meta_patchable_key>([
 const real_columns = new Set<upload_meta_patchable_key>([
 	'exposure_time_seconds',
 	'f_number',
-	'focal_length'
+	'focal_length',
+	'gps_latitude',
+	'gps_longitude'
 ]);
 
 function coerce_text(v: unknown): string | null {

@@ -91,6 +91,30 @@ export async function resolve_upload_preview_full_relative_path(
 	return null;
 }
 
+/** Picks an existing grid thumb on disk (any supported format), preferring the current setting. */
+export async function resolve_upload_preview_thumb_relative_path(
+	upload_id: string,
+	preferred_format: upload_preview_format
+): Promise<string | null> {
+	const root = path.resolve(get_transformed_root_absolute_path());
+	const order: upload_preview_format[] = [
+		preferred_format,
+		...upload_preview_formats.filter((f) => f !== preferred_format)
+	];
+	for (const fmt of order) {
+		const rel = preview_thumb_relative_path(upload_id, fmt);
+		const abs = path.resolve(root, ...rel.split(path.posix.sep));
+		if (!abs.startsWith(root + path.sep) && abs !== root) continue;
+		try {
+			await access(abs);
+			return rel;
+		} catch {
+			continue;
+		}
+	}
+	return null;
+}
+
 /** Removes grid + modal previews for an upload (all supported extensions; ignores missing files). */
 export async function delete_upload_preview_jpegs(upload_id: string): Promise<void> {
 	const root = path.resolve(get_transformed_root_absolute_path());

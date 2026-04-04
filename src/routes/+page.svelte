@@ -16,6 +16,7 @@
 		ChevronLeftOutline,
 		ChevronRightOutline,
 		ClockOutline,
+		ExclamationCircleOutline,
 		EyeOutline,
 		FilterOutline,
 		FilterSolid,
@@ -50,6 +51,28 @@
 	let filters_panel_user_open = $state(false);
 
 	const filters_panel_open = $derived(data.gallery_filters.active || filters_panel_user_open);
+
+	const gallery_view_blurb = $derived.by((): string | null => {
+		const f = data.gallery_filters.gallery_focus;
+		if (f === 'needs_attention') {
+			return 'Non-archived photos missing GPS coordinates, camera or lens metadata, or a parseable shot date.';
+		}
+		if (f === 'archived') {
+			return 'Photos you moved out of the main gallery (archived).';
+		}
+		return null;
+	});
+
+	/** Reset EXIF filters but stay on the same dashboard view (needs attention / archived). */
+	const dashboard_clear_href = $derived(
+		data.gallery_filters.gallery_focus != null
+			? localizeHref(`/?gallery_focus=${data.gallery_filters.gallery_focus}`)
+			: localizeHref('/')
+	);
+
+	const modal_needs_attention_ui = $derived(
+		data.gallery_filters.gallery_focus === 'needs_attention'
+	);
 
 	const gallery_grid_meta_storage_key = 'lenslocker_gallery_grid_show_meta';
 
@@ -247,7 +270,9 @@
 	const real_numeric_field_keys = new Set<string>([
 		'f_number',
 		'exposure_time_seconds',
-		'focal_length'
+		'focal_length',
+		'gps_latitude',
+		'gps_longitude'
 	]);
 
 	function reset_preview_zoom_pan(): void {
@@ -334,6 +359,18 @@
 			next[f.key] = detail_value_as_edit_string(modal_detail[f.key]);
 		}
 		meta_edit_values = next;
+	}
+
+	/** Live merge for attention ordering while the user edits (string values match form state). */
+	function merge_detail_with_meta_edits(
+		detail: Record<string, unknown>,
+		edits: Record<string, string>
+	): Record<string, unknown> {
+		const out: Record<string, unknown> = { ...detail };
+		for (const f of upload_meta_editable_field_list) {
+			if (edits[f.key] !== undefined) out[f.key] = edits[f.key];
+		}
+		return out;
 	}
 
 	function build_meta_patch_body(): Record<string, unknown> {
@@ -511,14 +548,93 @@
 		upload_meta_editable_field_list.map((field) => field.key)
 	);
 
-	/** Same field order as the edit form; then remaining columns A–Z. */
+	type modal_detail_view_row = {
+		key: string;
+		label: string;
+		value: unknown;
+		attention_issue: boolean;
+	};
+
+	function trim_meta_str(value: unknown): string {
+		if (value == null) return '';
+		return String(value).trim();
+	}
+
+	/** Aligns with server `sql_shot_calendar_date` / needs_attention date rule. */
+	function shot_calendar_date_from_exif(value: unknown): string | null {
+		if (value == null) return null;
+		const raw = String(value).trim();
+		if (raw === '') return null;
+		if (/^[0-9]{4}:[0-9]{2}:[0-9]{2}/.test(raw)) {
+			return `${raw.slice(0, 4)}-${raw.slice(5, 7)}-${raw.slice(8, 10)}`;
+		}
+		if (raw.length >= 10 && raw[4] === '-') return raw.slice(0, 10);
+		return null;
+	}
+
+	function gps_component_missing(value: unknown): boolean {
+		if (value == null) return true;
+		if (typeof value === 'number') return !Number.isFinite(value);
+		if (typeof value === 'string' && value.trim() === '') return true;
+		const n = Number(value);
+		return !Number.isFinite(n);
+	}
+
+	function attention_sort_rank(key: string): number {
+		switch (key) {
+			case 'gps_latitude':
+				return 10;
+			case 'gps_longitude':
+				return 11;
+			case 'make':
+				return 20;
+			case 'model':
+				return 21;
+			case 'lens_make':
+				return 30;
+			case 'lens_model':
+				return 31;
+			case 'datetime_original':
+				return 40;
+			default:
+				return 500;
+		}
+	}
+
+	function modal_detail_key_is_attention_issue(row: Record<string, unknown>, key: string): boolean {
+		if (key === 'gps_latitude') return gps_component_missing(row.gps_latitude);
+		if (key === 'gps_longitude') return gps_component_missing(row.gps_longitude);
+
+		const make = trim_meta_str(row.make);
+		const model = trim_meta_str(row.model);
+		const camera_missing = make === '' && model === '';
+		if (key === 'make' || key === 'model') return camera_missing;
+
+		const lens_make = trim_meta_str(row.lens_make);
+		const lens_model = trim_meta_str(row.lens_model);
+		const lens_missing = lens_make === '' && lens_model === '';
+		if (key === 'lens_make' || key === 'lens_model') return lens_missing;
+
+		if (key === 'datetime_original')
+			return shot_calendar_date_from_exif(row.datetime_original) == null;
+
+		return false;
+	}
+
+	/**
+	 * Same field order as the edit form; then remaining columns A–Z.
+	 * On the Needs attention dashboard, missing GPS / camera / lens / date rows are first and flagged.
+	 */
 	function modal_detail_view_rows(
-		row: Record<string, unknown>
-	): { key: string; label: string; value: unknown }[] {
+		row: Record<string, unknown>,
+		needs_attention_modal_ui: boolean
+	): modal_detail_view_row[] {
 		const ordered = upload_meta_editable_field_list.map((field) => ({
 			key: field.key,
 			label: field.label,
-			value: row[field.key]
+			value: row[field.key],
+			attention_issue:
+				needs_attention_modal_ui && modal_detail_key_is_attention_issue(row, field.key)
 		}));
 		const rest = Object.entries(row)
 			.filter(
@@ -530,9 +646,53 @@
 					!editable_meta_keys.has(key)
 			)
 			.sort(([a], [b]) => a.localeCompare(b))
-			.map(([key, value]) => ({ key, label: key, value }));
-		return [...ordered, ...rest];
+			.map(([key, value]) => ({
+				key,
+				label: key,
+				value,
+				attention_issue: needs_attention_modal_ui && modal_detail_key_is_attention_issue(row, key)
+			}));
+
+		const combined = [...ordered, ...rest];
+		if (!needs_attention_modal_ui) return combined;
+
+		combined.sort((a, b) => {
+			if (a.attention_issue !== b.attention_issue) return a.attention_issue ? -1 : 1;
+			if (a.attention_issue && b.attention_issue) {
+				return attention_sort_rank(a.key) - attention_sort_rank(b.key);
+			}
+			return 0;
+		});
+		return combined;
 	}
+
+	type upload_meta_editable_field = (typeof upload_meta_editable_field_list)[number];
+
+	const meta_edit_row_for_attention = $derived.by((): Record<string, unknown> | null => {
+		if (modal_detail == null) return null;
+		if (modal_meta_editing) return merge_detail_with_meta_edits(modal_detail, meta_edit_values);
+		return modal_detail;
+	});
+
+	const meta_edit_fields_display_order = $derived.by((): upload_meta_editable_field[] => {
+		if (!modal_needs_attention_ui || meta_edit_row_for_attention == null) {
+			return [...upload_meta_editable_field_list];
+		}
+		const row = meta_edit_row_for_attention;
+		const fields = upload_meta_editable_field_list;
+		const indexed = fields.map((field, index) => ({
+			field,
+			index,
+			issue: modal_detail_key_is_attention_issue(row, field.key),
+			rank: attention_sort_rank(field.key)
+		}));
+		indexed.sort((a, b) => {
+			if (a.issue !== b.issue) return a.issue ? -1 : 1;
+			if (a.issue && b.issue) return a.rank - b.rank;
+			return a.index - b.index;
+		});
+		return indexed.map((x) => x.field);
+	});
 
 	function modal_image_on_error() {
 		if (modal_image_display_src === modal_image_object_url) {
@@ -620,6 +780,9 @@
 	>
 		<div class="min-w-0 flex-1">
 			<h1 class="truncate text-2xl font-semibold text-gray-900 dark:text-white">LensLocker</h1>
+			{#if gallery_view_blurb != null}
+				<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{gallery_view_blurb}</p>
+			{/if}
 		</div>
 		<div class="flex shrink-0 items-center gap-2">
 			<button
@@ -671,6 +834,9 @@
 				Filters
 			</h2>
 			<form method="GET" action={localizeHref('/')} class="mt-4 space-y-4">
+				{#if data.gallery_filters.gallery_focus != null}
+					<input type="hidden" name="gallery_focus" value={data.gallery_filters.gallery_focus} />
+				{/if}
 				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 					<div>
 						<label
@@ -835,7 +1001,7 @@
 							Apply filters
 						</button>
 						<a
-							href={localizeHref('/')}
+							href={dashboard_clear_href}
 							class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
 						>
 							Clear
@@ -850,8 +1016,12 @@
 		<p
 			class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500 dark:border-gray-600 dark:text-gray-400"
 		>
-			{#if data.gallery_filters.active}
+			{#if data.gallery_filters.starred_only || data.gallery_filters.exif_filters_active}
 				No photos match these filters. Try clearing filters or broadening ISO / dates.
+			{:else if data.gallery_filters.gallery_focus === 'needs_attention'}
+				No photos need attention by these rules (GPS, camera/lens text, or shot date).
+			{:else if data.gallery_filters.gallery_focus === 'archived'}
+				No archived photos.
 			{:else}
 				No media yet. You can add them from <a
 					href={localizeHref('/upload')}
@@ -1132,12 +1302,21 @@
 									void save_meta_edits();
 								}}
 							>
-								{#each upload_meta_editable_field_list as field (field.key)}
+								{#each meta_edit_fields_display_order as field (field.key)}
 									<div>
 										<label
-											class="mb-0.5 block text-[10px] font-medium text-gray-500 dark:text-gray-400"
-											for="meta-edit-{field.key}">{field.label}</label
+											class="mb-0.5 flex items-start gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400"
+											for="meta-edit-{field.key}"
 										>
+											{#if modal_needs_attention_ui && meta_edit_row_for_attention != null && modal_detail_key_is_attention_issue(meta_edit_row_for_attention, field.key)}
+												<ExclamationCircleOutline
+													class="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400"
+													aria-hidden="true"
+												/>
+												<span class="sr-only">Missing data:</span>
+											{/if}
+											<span class="min-w-0">{field.label}</span>
+										</label>
 										{#if field.kind === 'textarea'}
 											<textarea
 												id="meta-edit-{field.key}"
@@ -1159,16 +1338,27 @@
 							</form>
 						{:else}
 							<dl class="space-y-2">
-								{#each modal_detail_view_rows(modal_detail) as view_row (view_row.key)}
+								{#each modal_detail_view_rows(modal_detail, modal_needs_attention_ui) as view_row (view_row.key)}
 									<div class="border-b border-gray-100 pb-2 last:border-0 dark:border-gray-800">
 										<dt
-											class="text-[10px] font-medium text-gray-500 dark:text-gray-400"
+											class="flex items-start gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400"
 											class:font-mono={view_row.label === view_row.key}
 											title={view_row.key}
 										>
-											{view_row.label}
+											{#if view_row.attention_issue}
+												<ExclamationCircleOutline
+													class="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400"
+													aria-hidden="true"
+												/>
+												<span class="sr-only">Missing data:</span>
+											{/if}
+											<span class="min-w-0">{view_row.label}</span>
 										</dt>
-										<dd class="mt-0.5 font-mono text-[11px] wrap-break-word">
+										<dd
+											class="mt-0.5 font-mono text-[11px] wrap-break-word"
+											class:text-red-700={view_row.attention_issue}
+											class:dark:text-red-300={view_row.attention_issue}
+										>
 											{format_detail_value(view_row.value)}
 										</dd>
 									</div>

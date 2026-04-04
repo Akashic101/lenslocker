@@ -5,6 +5,8 @@ export const upload_meta_editable_field_list = [
 	{ key: 'model', label: 'Camera model', kind: 'text' },
 	{ key: 'lens_make', label: 'Lens make', kind: 'text' },
 	{ key: 'lens_model', label: 'Lens model', kind: 'text' },
+	{ key: 'gps_latitude', label: 'GPS latitude', kind: 'number' },
+	{ key: 'gps_longitude', label: 'GPS longitude', kind: 'number' },
 	{ key: 'datetime_original', label: 'Date / time (original)', kind: 'text' },
 	{ key: 'datetime_digitized', label: 'Date / time (digitized)', kind: 'text' },
 	{ key: 'exposure_time', label: 'Exposure time (text)', kind: 'text' },

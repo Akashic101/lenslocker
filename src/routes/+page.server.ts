@@ -22,7 +22,10 @@ import {
 	build_gallery_meta_rows,
 	upload_id_from_gallery_preview_path
 } from '$lib/server/gallery_upload_meta';
-import { resolve_upload_preview_full_relative_path } from '$lib/server/raw_upload/write_preview_jpeg';
+import {
+	resolve_upload_preview_full_relative_path,
+	resolve_upload_preview_thumb_relative_path
+} from '$lib/server/raw_upload/write_preview_jpeg';
 import {
 	get_transformed_source_description,
 	list_transformed_media_paths
@@ -30,10 +33,18 @@ import {
 import { get_upload_preview_pipeline_settings } from '$lib/server/upload_pipeline_settings';
 import type { PageServerLoad } from './$types';
 
+type gallery_focus_mode = 'needs_attention' | 'archived';
+
 const images_per_page = 50;
 
 function trim_param(sp: URLSearchParams, key: string): string {
 	return (sp.get(key) ?? '').trim();
+}
+
+function parse_gallery_focus(sp: URLSearchParams): gallery_focus_mode | null {
+	const v = (sp.get('gallery_focus') ?? '').trim();
+	if (v === 'needs_attention' || v === 'archived') return v;
+	return null;
 }
 
 function build_gallery_filter_query(sp: URLSearchParams): string {
@@ -53,6 +64,8 @@ function build_gallery_filter_query(sp: URLSearchParams): string {
 		const v = (sp.get(k) ?? '').trim();
 		if (v !== '') out.set(k, v);
 	}
+	const focus = parse_gallery_focus(sp);
+	if (focus != null) out.set('gallery_focus', focus);
 	return out.toString();
 }
 
@@ -68,6 +81,8 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 	const iso_min_raw = trim_param(url.searchParams, 'iso_min');
 	const iso_max_raw = trim_param(url.searchParams, 'iso_max');
 	const starred_only = url.searchParams.get('starred_only') === '1';
+	const gallery_focus = parse_gallery_focus(url.searchParams);
+	const gallery_focus_active = gallery_focus != null;
 
 	const iso_min_parsed = iso_min_raw === '' ? null : Number.parseInt(iso_min_raw, 10);
 	const iso_max_parsed = iso_max_raw === '' ? null : Number.parseInt(iso_max_raw, 10);
@@ -84,8 +99,8 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 		iso_min_raw !== '' ||
 		iso_max_raw !== '';
 
-	const gallery_filters_active = exif_filters_active || starred_only;
-	const needs_db_id_filter = exif_filters_active || starred_only;
+	const gallery_filters_active = exif_filters_active || starred_only || gallery_focus_active;
+	const needs_db_id_filter = exif_filters_active || starred_only || gallery_focus_active;
 
 	const shot_date = sql_shot_calendar_date();
 
@@ -174,18 +189,62 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 		max: date_stats_row[0]?.date_max_db ?? null
 	};
 
-	const working_paths = all_paths.filter((p) => {
-		const upload_id = upload_id_from_gallery_preview_path(p);
-		if (upload_id == null) return true;
-		const f = upload_flags.get(upload_id);
-		if (f == null) return true;
-		return f.archived_at_ms == null;
-	});
+	/**
+	 * Main gallery walks the filesystem. Archiving used to delete thumbs, so archived rows often
+	 * have no paths in `all_paths`. Build archived grid paths from DB ids + on-disk thumb resolution.
+	 */
+	let scope_paths: string[];
+	if (gallery_focus === 'archived') {
+		const archived_rows = await db
+			.select({ id: raw_image_upload.id })
+			.from(raw_image_upload)
+			.where(isNotNull(raw_image_upload.archived_at_ms));
+		const preferred_format = upload_pipeline_settings.upload_preview_format;
+		const resolved = await Promise.all(
+			archived_rows.map((r) => resolve_upload_preview_thumb_relative_path(r.id, preferred_format))
+		);
+		scope_paths = resolved.filter((rel): rel is string => rel != null);
+		scope_paths.sort((a, b) => a.localeCompare(b));
+	} else {
+		scope_paths = all_paths.filter((p) => {
+			const upload_id = upload_id_from_gallery_preview_path(p);
+			if (upload_id == null) return gallery_focus == null;
+
+			const f = upload_flags.get(upload_id);
+			if (f == null) return gallery_focus == null;
+			return f.archived_at_ms == null;
+		});
+	}
 
 	let filtered_paths: string[];
 
 	if (needs_db_id_filter) {
-		const parts: SQL[] = [isNull(raw_image_upload.archived_at_ms)];
+		const parts: SQL[] = [];
+
+		if (gallery_focus === 'archived') {
+			parts.push(isNotNull(raw_image_upload.archived_at_ms));
+		} else {
+			parts.push(isNull(raw_image_upload.archived_at_ms));
+		}
+
+		if (gallery_focus === 'needs_attention') {
+			parts.push(
+				or(
+					isNull(raw_image_upload.gps_latitude),
+					isNull(raw_image_upload.gps_longitude),
+					and(
+						sql`trim(coalesce(${raw_image_upload.make}, '')) = ''`,
+						sql`trim(coalesce(${raw_image_upload.model}, '')) = ''`
+					),
+					and(
+						sql`trim(coalesce(${raw_image_upload.lens_make}, '')) = ''`,
+						sql`trim(coalesce(${raw_image_upload.lens_model}, '')) = ''`
+					),
+					sql`${shot_date} IS NULL`
+				)!
+			);
+		}
+
 		if (starred_only) parts.push(eq(raw_image_upload.starred, 1));
 
 		const before_exif = parts.length;
@@ -222,13 +281,13 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 			.where(and(...parts));
 
 		const id_set = new Set(matching_rows.map((r) => r.id));
-		filtered_paths = working_paths.filter((p) => {
+		filtered_paths = scope_paths.filter((p) => {
 			const upload_id = upload_id_from_gallery_preview_path(p);
 			if (upload_id == null) return false;
 			return id_set.has(upload_id);
 		});
 	} else {
-		filtered_paths = working_paths;
+		filtered_paths = scope_paths;
 	}
 
 	const total_count = filtered_paths.length;
@@ -319,6 +378,8 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 		},
 		gallery_filters: {
 			active: gallery_filters_active,
+			exif_filters_active,
+			gallery_focus,
 			starred_only,
 			camera_make,
 			camera_model,
