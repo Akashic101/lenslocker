@@ -6,6 +6,10 @@
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
 	import { transformed_media_depends_key } from '$lib/transformed_media_cache';
+	import {
+		needs_attention_issue_for_detail_key,
+		needs_attention_label_for_key
+	} from '$lib/needs_attention_catalog';
 	import { upload_meta_editable_field_list } from '$lib/upload_meta_editable_fields';
 	import { CloseButton, Modal } from 'flowbite-svelte';
 	import {
@@ -52,10 +56,19 @@
 
 	const filters_panel_open = $derived(data.gallery_filters.active || filters_panel_user_open);
 
+	const needs_attention_required_key_set = $derived(
+		new SvelteSet(data.needs_attention_settings.required_field_keys)
+	);
+
 	const gallery_view_blurb = $derived.by((): string | null => {
 		const f = data.gallery_filters.gallery_focus;
 		if (f === 'needs_attention') {
-			return 'Non-archived photos missing GPS coordinates, camera or lens metadata, or a parseable shot date.';
+			const keys = data.needs_attention_settings.required_field_keys;
+			if (keys.length === 0) {
+				return 'No “needs attention” rules are selected. Choose at least one metadata field or shortcut in Settings → Dashboard.';
+			}
+			const labels = keys.map((key) => needs_attention_label_for_key(key));
+			return `Non-archived photos missing any of: ${labels.join('; ')}. Configure in Settings → Dashboard.`;
 		}
 		if (f === 'archived') {
 			return 'Photos you moved out of the main gallery (archived).';
@@ -555,86 +568,30 @@
 		attention_issue: boolean;
 	};
 
-	function trim_meta_str(value: unknown): string {
-		if (value == null) return '';
-		return String(value).trim();
-	}
-
-	/** Aligns with server `sql_shot_calendar_date` / needs_attention date rule. */
-	function shot_calendar_date_from_exif(value: unknown): string | null {
-		if (value == null) return null;
-		const raw = String(value).trim();
-		if (raw === '') return null;
-		if (/^[0-9]{4}:[0-9]{2}:[0-9]{2}/.test(raw)) {
-			return `${raw.slice(0, 4)}-${raw.slice(5, 7)}-${raw.slice(8, 10)}`;
-		}
-		if (raw.length >= 10 && raw[4] === '-') return raw.slice(0, 10);
-		return null;
-	}
-
-	function gps_component_missing(value: unknown): boolean {
-		if (value == null) return true;
-		if (typeof value === 'number') return !Number.isFinite(value);
-		if (typeof value === 'string' && value.trim() === '') return true;
-		const n = Number(value);
-		return !Number.isFinite(n);
-	}
-
-	function attention_sort_rank(key: string): number {
-		switch (key) {
-			case 'gps_latitude':
-				return 10;
-			case 'gps_longitude':
-				return 11;
-			case 'make':
-				return 20;
-			case 'model':
-				return 21;
-			case 'lens_make':
-				return 30;
-			case 'lens_model':
-				return 31;
-			case 'datetime_original':
-				return 40;
-			default:
-				return 500;
-		}
-	}
-
-	function modal_detail_key_is_attention_issue(row: Record<string, unknown>, key: string): boolean {
-		if (key === 'gps_latitude') return gps_component_missing(row.gps_latitude);
-		if (key === 'gps_longitude') return gps_component_missing(row.gps_longitude);
-
-		const make = trim_meta_str(row.make);
-		const model = trim_meta_str(row.model);
-		const camera_missing = make === '' && model === '';
-		if (key === 'make' || key === 'model') return camera_missing;
-
-		const lens_make = trim_meta_str(row.lens_make);
-		const lens_model = trim_meta_str(row.lens_model);
-		const lens_missing = lens_make === '' && lens_model === '';
-		if (key === 'lens_make' || key === 'lens_model') return lens_missing;
-
-		if (key === 'datetime_original')
-			return shot_calendar_date_from_exif(row.datetime_original) == null;
-
-		return false;
+	function modal_detail_key_is_attention_issue(
+		row: Record<string, unknown>,
+		key: string,
+		required_keys: ReadonlySet<string>
+	): boolean {
+		return needs_attention_issue_for_detail_key(row, key, required_keys);
 	}
 
 	/**
 	 * Same field order as the edit form; then remaining columns A–Z.
-	 * On the Needs attention dashboard, missing GPS / camera / lens / date rows are first and flagged.
+	 * On the Needs attention dashboard, rows that violate a selected rule are flagged (order unchanged).
 	 */
 	function modal_detail_view_rows(
 		row: Record<string, unknown>,
-		needs_attention_modal_ui: boolean
+		needs_attention_modal_ui: boolean,
+		required_keys: ReadonlySet<string>
 	): modal_detail_view_row[] {
 		const ordered = upload_meta_editable_field_list.map((field) => ({
 			key: field.key,
 			label: field.label,
 			value: row[field.key],
 			attention_issue:
-				needs_attention_modal_ui && modal_detail_key_is_attention_issue(row, field.key)
+				needs_attention_modal_ui &&
+				modal_detail_key_is_attention_issue(row, field.key, required_keys)
 		}));
 		const rest = Object.entries(row)
 			.filter(
@@ -650,23 +607,12 @@
 				key,
 				label: key,
 				value,
-				attention_issue: needs_attention_modal_ui && modal_detail_key_is_attention_issue(row, key)
+				attention_issue:
+					needs_attention_modal_ui && modal_detail_key_is_attention_issue(row, key, required_keys)
 			}));
 
-		const combined = [...ordered, ...rest];
-		if (!needs_attention_modal_ui) return combined;
-
-		combined.sort((a, b) => {
-			if (a.attention_issue !== b.attention_issue) return a.attention_issue ? -1 : 1;
-			if (a.attention_issue && b.attention_issue) {
-				return attention_sort_rank(a.key) - attention_sort_rank(b.key);
-			}
-			return 0;
-		});
-		return combined;
+		return [...ordered, ...rest];
 	}
-
-	type upload_meta_editable_field = (typeof upload_meta_editable_field_list)[number];
 
 	const meta_edit_row_for_attention = $derived.by((): Record<string, unknown> | null => {
 		if (modal_detail == null) return null;
@@ -674,25 +620,7 @@
 		return modal_detail;
 	});
 
-	const meta_edit_fields_display_order = $derived.by((): upload_meta_editable_field[] => {
-		if (!modal_needs_attention_ui || meta_edit_row_for_attention == null) {
-			return [...upload_meta_editable_field_list];
-		}
-		const row = meta_edit_row_for_attention;
-		const fields = upload_meta_editable_field_list;
-		const indexed = fields.map((field, index) => ({
-			field,
-			index,
-			issue: modal_detail_key_is_attention_issue(row, field.key),
-			rank: attention_sort_rank(field.key)
-		}));
-		indexed.sort((a, b) => {
-			if (a.issue !== b.issue) return a.issue ? -1 : 1;
-			if (a.issue && b.issue) return a.rank - b.rank;
-			return a.index - b.index;
-		});
-		return indexed.map((x) => x.field);
-	});
+	const meta_edit_fields_display_order = $derived([...upload_meta_editable_field_list]);
 
 	function modal_image_on_error() {
 		if (modal_image_display_src === modal_image_object_url) {
@@ -1019,7 +947,7 @@
 			{#if data.gallery_filters.starred_only || data.gallery_filters.exif_filters_active}
 				No photos match these filters. Try clearing filters or broadening ISO / dates.
 			{:else if data.gallery_filters.gallery_focus === 'needs_attention'}
-				No photos need attention by these rules (GPS, camera/lens text, or shot date).
+				No photos need attention with your current criteria (Settings → Dashboard).
 			{:else if data.gallery_filters.gallery_focus === 'archived'}
 				No archived photos.
 			{:else}
@@ -1308,7 +1236,7 @@
 											class="mb-0.5 flex items-start gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400"
 											for="meta-edit-{field.key}"
 										>
-											{#if modal_needs_attention_ui && meta_edit_row_for_attention != null && modal_detail_key_is_attention_issue(meta_edit_row_for_attention, field.key)}
+											{#if modal_needs_attention_ui && meta_edit_row_for_attention != null && modal_detail_key_is_attention_issue(meta_edit_row_for_attention, field.key, needs_attention_required_key_set)}
 												<ExclamationCircleOutline
 													class="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400"
 													aria-hidden="true"
@@ -1338,7 +1266,7 @@
 							</form>
 						{:else}
 							<dl class="space-y-2">
-								{#each modal_detail_view_rows(modal_detail, modal_needs_attention_ui) as view_row (view_row.key)}
+								{#each modal_detail_view_rows(modal_detail, modal_needs_attention_ui, needs_attention_required_key_set) as view_row (view_row.key)}
 									<div class="border-b border-gray-100 pb-2 last:border-0 dark:border-gray-800">
 										<dt
 											class="flex items-start gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400"

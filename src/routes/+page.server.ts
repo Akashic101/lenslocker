@@ -13,6 +13,7 @@ import {
 	sql,
 	type SQL
 } from 'drizzle-orm';
+import { dashboard_attention_settings_depends_key } from '$lib/dashboard_attention_settings_cache';
 import { transformed_media_depends_key } from '$lib/transformed_media_cache';
 import { transformed_media_url } from '$lib/transformed_urls';
 import { db } from '$lib/server/db';
@@ -30,6 +31,8 @@ import {
 	get_transformed_source_description,
 	list_transformed_media_paths
 } from '$lib/server/transformed';
+import { get_dashboard_needs_attention_settings } from '$lib/server/dashboard_attention_settings';
+import { build_needs_attention_where_sql } from '$lib/server/needs_attention_sql';
 import { get_upload_preview_pipeline_settings } from '$lib/server/upload_pipeline_settings';
 import type { PageServerLoad } from './$types';
 
@@ -71,6 +74,7 @@ function build_gallery_filter_query(sp: URLSearchParams): string {
 
 export const load: PageServerLoad = async ({ url, depends }) => {
 	depends(transformed_media_depends_key);
+	depends(dashboard_attention_settings_depends_key);
 
 	const camera_make = trim_param(url.searchParams, 'camera_make');
 	const camera_model = trim_param(url.searchParams, 'camera_model');
@@ -111,7 +115,8 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 		date_stats_row,
 		camera_pair_rows,
 		lens_pair_rows,
-		upload_pipeline_settings
+		upload_pipeline_settings,
+		needs_attention_settings
 	] = await Promise.all([
 		list_transformed_media_paths(),
 		db
@@ -159,7 +164,8 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 				)
 			)
 			.orderBy(asc(raw_image_upload.lens_make), asc(raw_image_upload.lens_model)),
-		get_upload_preview_pipeline_settings()
+		get_upload_preview_pipeline_settings(),
+		get_dashboard_needs_attention_settings()
 	]);
 
 	const upload_flags = new Map(
@@ -229,19 +235,7 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 
 		if (gallery_focus === 'needs_attention') {
 			parts.push(
-				or(
-					isNull(raw_image_upload.gps_latitude),
-					isNull(raw_image_upload.gps_longitude),
-					and(
-						sql`trim(coalesce(${raw_image_upload.make}, '')) = ''`,
-						sql`trim(coalesce(${raw_image_upload.model}, '')) = ''`
-					),
-					and(
-						sql`trim(coalesce(${raw_image_upload.lens_make}, '')) = ''`,
-						sql`trim(coalesce(${raw_image_upload.lens_model}, '')) = ''`
-					),
-					sql`${shot_date} IS NULL`
-				)!
+				build_needs_attention_where_sql(needs_attention_settings.required_field_keys, shot_date)
 			);
 		}
 
@@ -366,6 +360,7 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 	const gallery_filter_query = build_gallery_filter_query(url.searchParams);
 
 	return {
+		needs_attention_settings,
 		transformed_source: get_transformed_source_description(),
 		images,
 		pagination: {
