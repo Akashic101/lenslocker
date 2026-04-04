@@ -235,6 +235,10 @@
 	let preview_scale = $state(1);
 	let preview_pan_x = $state(0);
 	let preview_pan_y = $state(0);
+
+	/** Wheel zoom clamps to >= 1; use epsilon so float noise does not count as zoomed. */
+	const preview_zoom_epsilon = 0.001;
+	const modal_preview_at_default_zoom = $derived(preview_scale <= 1 + preview_zoom_epsilon);
 	let modal_meta_editing = $state(false);
 	let meta_edit_values = $state<Record<string, string>>({});
 	let meta_save_loading = $state(false);
@@ -444,6 +448,28 @@
 		const next_item = data.images[i + delta];
 		if (next_item == null) return;
 		void open_gallery_modal(next_item);
+	}
+
+	function on_gallery_modal_window_keydown(e: KeyboardEvent): void {
+		if (!gallery_modal_open) return;
+		if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+		const t = e.target;
+		if (t instanceof HTMLElement) {
+			const tag = t.tagName;
+			if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable) {
+				return;
+			}
+		}
+		if (!modal_preview_at_default_zoom) return;
+		if (e.key === 'ArrowLeft') {
+			if (!modal_has_prev || modal_action_loading) return;
+			e.preventDefault();
+			modal_go_delta(-1);
+			return;
+		}
+		if (!modal_has_next || modal_action_loading) return;
+		e.preventDefault();
+		modal_go_delta(1);
 	}
 
 	function pagination_href(target_page: number): string {
@@ -1155,3 +1181,5 @@
 		</div>
 	</div>
 </Modal>
+
+<svelte:window onkeydown={on_gallery_modal_window_keydown} />
