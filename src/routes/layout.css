@@ -33,6 +33,7 @@
 
 @source '../../node_modules/flowbite-svelte/dist';
 @source '../../node_modules/flowbite-svelte-icons/dist';
+@source '../../node_modules/@flowbite-svelte-plugins/chart/dist';
 
 @layer base {
 	input[type='search']::-webkit-search-cancel-button {
