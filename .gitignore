@@ -29,3 +29,6 @@ project.inlang/cache/
 
 # Local uploads (set RAW_UPLOAD_ROOT in production)
 /data/
+
+# Generated gallery media + previews (default when TRANSFORMED_MEDIA_ROOT is unset)
+/static/transformed/
