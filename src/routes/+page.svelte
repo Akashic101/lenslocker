@@ -18,6 +18,7 @@
 		CameraPhotoOutline,
 		ColumnOutline,
 		ChevronLeftOutline,
+		CheckOutline,
 		ChevronRightOutline,
 		ClockOutline,
 		ExclamationCircleOutline,
@@ -130,6 +131,9 @@
 		'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700';
 
 	const gallery_header_icon_glyph_class = 'h-5 w-5 shrink-0 text-gray-600 dark:text-gray-300';
+
+	const bulk_bar_button_class =
+		'rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700';
 
 	const filter_field_class =
 		'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100';
@@ -261,6 +265,99 @@
 	let modal_current_relative_path = $state('');
 	let modal_action_loading = $state(false);
 	let modal_action_error = $state<string | null>(null);
+
+	let gallery_selection_mode = $state(false);
+	let gallery_selected_upload_ids = $state<string[]>([]);
+	let bulk_action_loading = $state(false);
+	let bulk_action_error = $state<string | null>(null);
+
+	/** Plain `let`: must not be `$state` or assigning inside `$effect` retriggers the effect forever. */
+	let gallery_list_track_prev: { page: number; q: string } | null = null;
+
+	const gallery_selected_count = $derived(gallery_selected_upload_ids.length);
+
+	const bulk_bar_can_archive = $derived(data.gallery_filters.gallery_focus !== 'archived');
+	const bulk_bar_can_restore = $derived(data.gallery_filters.gallery_focus === 'archived');
+
+	$effect(() => {
+		const page = data.pagination.current_page;
+		const q = data.gallery_filter_query;
+		const prev = gallery_list_track_prev;
+		if (prev != null && (prev.page !== page || prev.q !== q)) {
+			gallery_selected_upload_ids = [];
+		}
+		gallery_list_track_prev = { page, q };
+	});
+
+	function set_gallery_selection_mode(next: boolean): void {
+		gallery_selection_mode = next;
+		if (!next) {
+			gallery_selected_upload_ids = [];
+			bulk_action_error = null;
+		}
+	}
+
+	function gallery_upload_is_selected(upload_id: string): boolean {
+		return gallery_selected_upload_ids.includes(upload_id);
+	}
+
+	function toggle_gallery_upload_selected(upload_id: string): void {
+		if (gallery_selected_upload_ids.includes(upload_id)) {
+			gallery_selected_upload_ids = gallery_selected_upload_ids.filter((id) => id !== upload_id);
+		} else {
+			gallery_selected_upload_ids = [...gallery_selected_upload_ids, upload_id];
+		}
+	}
+
+	function on_gallery_tile_activate(item: gallery_grid_item): void {
+		if (gallery_selection_mode && item.upload_id != null) {
+			toggle_gallery_upload_selected(item.upload_id);
+			return;
+		}
+		void open_gallery_modal(item);
+	}
+
+	function select_all_gallery_uploads_on_page(): void {
+		gallery_selected_upload_ids = data.images
+			.map((i) => i.upload_id)
+			.filter((id): id is string => id != null);
+	}
+
+	async function apply_bulk_gallery_flags(payload: {
+		upload_ids: string[];
+		starred?: boolean;
+		archive?: boolean;
+	}): Promise<void> {
+		if (payload.upload_ids.length === 0) return;
+		bulk_action_loading = true;
+		bulk_action_error = null;
+		try {
+			const response = await fetch(resolve('/api/gallery/bulk-flags'), {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			if (!response.ok) {
+				const text = await response.text();
+				throw new Error(text || response.statusText);
+			}
+			gallery_selected_upload_ids = [];
+			await invalidate(transformed_media_depends_key);
+			await invalidate(gallery_active_upload_count_depends_key);
+		} catch (e) {
+			bulk_action_error = e instanceof Error ? e.message : String(e);
+		} finally {
+			bulk_action_loading = false;
+		}
+	}
+
+	async function bulk_star_selected(starred: boolean): Promise<void> {
+		await apply_bulk_gallery_flags({ upload_ids: [...gallery_selected_upload_ids], starred });
+	}
+
+	async function bulk_archive_selected(archive: boolean): Promise<void> {
+		await apply_bulk_gallery_flags({ upload_ids: [...gallery_selected_upload_ids], archive });
+	}
 
 	const modal_list_index = $derived.by(() => {
 		if (modal_current_relative_path === '') return -1;
@@ -742,6 +839,17 @@
 			</button>
 			<button
 				type="button"
+				class="{gallery_header_icon_button_class} {gallery_selection_mode
+					? 'border-primary-500 ring-2 ring-primary-200 dark:border-primary-500 dark:ring-primary-900'
+					: ''}"
+				aria-pressed={gallery_selection_mode}
+				aria-label={gallery_selection_mode ? 'Exit multi-select' : 'Select multiple photos'}
+				onclick={() => set_gallery_selection_mode(!gallery_selection_mode)}
+			>
+				<CheckOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+			</button>
+			<button
+				type="button"
 				class={gallery_header_icon_button_class}
 				aria-expanded={filters_panel_open}
 				aria-controls="gallery-filters-panel"
@@ -756,6 +864,98 @@
 			</button>
 		</div>
 	</header>
+
+	{#if gallery_selection_mode && data.images.length > 0}
+		<div
+			class="dark:bg-primary-950/40 mb-4 rounded-lg border border-primary-200 bg-primary-50/90 px-3 py-2.5 dark:border-primary-900"
+			role="region"
+			aria-label="Bulk photo actions"
+		>
+			{#if bulk_action_error}
+				<p class="mb-2 text-xs text-red-700 dark:text-red-300" role="alert">{bulk_action_error}</p>
+			{/if}
+			<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+				<span class="text-sm font-medium text-gray-800 dark:text-gray-200">
+					{gallery_selected_count} selected
+				</span>
+				<div class="flex flex-wrap gap-2">
+					<button
+						type="button"
+						class={bulk_bar_button_class}
+						disabled={bulk_action_loading}
+						onclick={select_all_gallery_uploads_on_page}
+					>
+						All on page
+					</button>
+					<button
+						type="button"
+						class={bulk_bar_button_class}
+						disabled={bulk_action_loading || gallery_selected_count === 0}
+						onclick={() => {
+							gallery_selected_upload_ids = [];
+						}}
+					>
+						Clear selection
+					</button>
+					<button
+						type="button"
+						class={bulk_bar_button_class}
+						disabled={bulk_action_loading}
+						onclick={() => set_gallery_selection_mode(false)}
+					>
+						Done
+					</button>
+				</div>
+				<span class="hidden h-4 w-px bg-gray-300 sm:block dark:bg-gray-600" aria-hidden="true"
+				></span>
+				<div class="flex flex-wrap gap-2">
+					<button
+						type="button"
+						class="{bulk_bar_button_class} inline-flex items-center gap-1"
+						disabled={bulk_action_loading || gallery_selected_count === 0}
+						onclick={() => void bulk_star_selected(true)}
+					>
+						<StarSolid class="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
+						Star
+					</button>
+					<button
+						type="button"
+						class="{bulk_bar_button_class} inline-flex items-center gap-1"
+						disabled={bulk_action_loading || gallery_selected_count === 0}
+						onclick={() => void bulk_star_selected(false)}
+					>
+						<StarOutline class="h-3.5 w-3.5" aria-hidden="true" />
+						Unstar
+					</button>
+					{#if bulk_bar_can_archive}
+						<button
+							type="button"
+							class="{bulk_bar_button_class} inline-flex items-center gap-1 text-red-700 dark:text-red-300"
+							disabled={bulk_action_loading || gallery_selected_count === 0}
+							onclick={() => void bulk_archive_selected(true)}
+						>
+							<TrashBinOutline class="h-3.5 w-3.5" aria-hidden="true" />
+							Archive
+						</button>
+					{/if}
+					{#if bulk_bar_can_restore}
+						<button
+							type="button"
+							class="{bulk_bar_button_class} inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300"
+							disabled={bulk_action_loading || gallery_selected_count === 0}
+							onclick={() => void bulk_archive_selected(false)}
+						>
+							<ArchiveArrowDownOutline class="h-3.5 w-3.5" aria-hidden="true" />
+							Restore
+						</button>
+					{/if}
+				</div>
+			</div>
+			<p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
+				Tap photos to select or deselect. Open the lightbox again by turning off multi-select.
+			</p>
+		</div>
+	{/if}
 
 	{#if filters_panel_open}
 		<section
@@ -973,12 +1173,26 @@
 		<ul class={gallery_grid_list_class} role="list">
 			{#each data.images as item (item.relative_path)}
 				<li
-					class="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
+					class="relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 {gallery_selection_mode &&
+					item.upload_id != null &&
+					gallery_upload_is_selected(item.upload_id)
+						? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-gray-50 dark:ring-offset-gray-900'
+						: ''}"
 				>
+					{#if gallery_selection_mode && item.upload_id != null}
+						<span
+							class="pointer-events-none absolute top-1.5 left-1.5 z-10 flex h-6 w-6 items-center justify-center rounded border-2 border-white bg-black/50 shadow dark:border-gray-800"
+							aria-hidden="true"
+						>
+							{#if gallery_upload_is_selected(item.upload_id)}
+								<CheckOutline class="h-4 w-4 text-white" />
+							{/if}
+						</span>
+					{/if}
 					<button
 						type="button"
 						class="relative block w-full shrink-0 cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none"
-						onclick={() => open_gallery_modal(item)}
+						onclick={() => on_gallery_tile_activate(item)}
 					>
 						<img
 							src={item.src}
@@ -1000,7 +1214,7 @@
 						<button
 							type="button"
 							class="w-full border-t border-gray-200 bg-white/90 px-2 py-2 text-left dark:border-gray-700 dark:bg-gray-950/90"
-							onclick={() => open_gallery_modal(item)}
+							onclick={() => on_gallery_tile_activate(item)}
 						>
 							<div class="space-y-1" role="group" aria-label="Photo details">
 								{#each item.meta.rows as row, row_i (`${item.relative_path}-${row.key}-${row_i}`)}
