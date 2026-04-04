@@ -40,15 +40,26 @@
 
 	let sidebar_collapsed = $state(false);
 
+	/** After sidebar width transition (~200ms), nudge ApexCharts / layout that depends on `resize`. */
+	let sidebar_layout_resize_timer: ReturnType<typeof setTimeout> | undefined;
+
 	onMount(() => {
 		if (!browser) return;
 		if (localStorage.getItem(sidebar_collapsed_storage_key) === '1') sidebar_collapsed = true;
+		return () => {
+			if (sidebar_layout_resize_timer != null) clearTimeout(sidebar_layout_resize_timer);
+		};
 	});
 
 	function toggle_sidebar_collapsed(): void {
 		sidebar_collapsed = !sidebar_collapsed;
 		if (browser) {
 			localStorage.setItem(sidebar_collapsed_storage_key, sidebar_collapsed ? '1' : '0');
+			if (sidebar_layout_resize_timer != null) clearTimeout(sidebar_layout_resize_timer);
+			sidebar_layout_resize_timer = setTimeout(() => {
+				window.dispatchEvent(new Event('resize'));
+				sidebar_layout_resize_timer = undefined;
+			});
 		}
 	}
 

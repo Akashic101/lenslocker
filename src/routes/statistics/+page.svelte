@@ -26,7 +26,15 @@
 
 	function build_gallery_archived_starred_chart_options(s: gallery_stats): ApexOptions {
 		return {
-			chart: { type: 'donut', height: 300, fontFamily: 'inherit', toolbar: { show: false } },
+			chart: {
+				type: 'donut',
+				width: '100%',
+				height: 300,
+				fontFamily: 'inherit',
+				toolbar: { show: false },
+				redrawOnWindowResize: true,
+				redrawOnParentResize: true
+			},
 			labels: s.gallery_archived_starred.labels,
 			series: s.gallery_archived_starred.series,
 			legend: { position: 'bottom' },
@@ -56,7 +64,15 @@
 
 	function build_gps_chart_options(s: gallery_stats): ApexOptions {
 		return {
-			chart: { type: 'donut', height: 300, fontFamily: 'inherit', toolbar: { show: false } },
+			chart: {
+				type: 'donut',
+				width: '100%',
+				height: 300,
+				fontFamily: 'inherit',
+				toolbar: { show: false },
+				redrawOnWindowResize: true,
+				redrawOnParentResize: true
+			},
 			labels: s.gps.labels,
 			series: s.gps.series,
 			legend: { position: 'bottom' },
@@ -84,7 +100,15 @@
 
 	function build_uploads_by_month_chart_options(s: gallery_stats): ApexOptions {
 		return {
-			chart: { type: 'bar', height: 320, fontFamily: 'inherit', toolbar: { show: false } },
+			chart: {
+				type: 'bar',
+				width: '100%',
+				height: 320,
+				fontFamily: 'inherit',
+				toolbar: { show: false },
+				redrawOnWindowResize: true,
+				redrawOnParentResize: true
+			},
 			plotOptions: { bar: { borderRadius: 4, columnWidth: '72%' } },
 			series: [{ name: 'Uploads', data: s.uploads_by_month.series }],
 			xaxis: {
@@ -104,9 +128,12 @@
 		return {
 			chart: {
 				type: 'bar',
+				width: '100%',
 				height: Math.min(520, 80 + n * 40),
 				fontFamily: 'inherit',
-				toolbar: { show: false }
+				toolbar: { show: false },
+				redrawOnWindowResize: true,
+				redrawOnParentResize: true
 			},
 			plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '78%' } },
 			series: [{ name: 'Photos', data: s.top_cameras.series }],
@@ -124,7 +151,15 @@
 
 	function build_iso_chart_options(s: gallery_stats): ApexOptions {
 		return {
-			chart: { type: 'bar', height: 320, fontFamily: 'inherit', toolbar: { show: false } },
+			chart: {
+				type: 'bar',
+				width: '100%',
+				height: 320,
+				fontFamily: 'inherit',
+				toolbar: { show: false },
+				redrawOnWindowResize: true,
+				redrawOnParentResize: true
+			},
 			plotOptions: { bar: { borderRadius: 4, columnWidth: '72%' } },
 			series: [{ name: 'Photos', data: s.iso_buckets.series }],
 			xaxis: {
@@ -158,7 +193,8 @@
 	const kpi_card_class =
 		'rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800';
 	const chart_card_class =
-		'rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800';
+		'min-w-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800';
+	const chart_host_class = 'min-w-0 max-w-full';
 	const chart_title_class = 'mb-1 text-lg font-semibold text-gray-900 dark:text-white';
 	const chart_subtitle_class = 'mb-4 text-sm text-gray-500 dark:text-gray-400';
 </script>
@@ -232,16 +268,23 @@
 			</div>
 		</div>
 
-		<div class="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
+		<div class="mt-10 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">
 			<div class={chart_card_class}>
 				<h2 class={chart_title_class}>Gallery vs archived vs starred</h2>
-				<Chart options={gallery_archived_starred_chart_options} class="min-h-[300px] w-full" />
+				<div class={chart_host_class}>
+					<Chart
+						options={gallery_archived_starred_chart_options}
+						class="min-h-[300px] w-full max-w-full"
+					/>
+				</div>
 			</div>
 
 			<div class={chart_card_class}>
 				<h2 class={chart_title_class}>Geotagging</h2>
 				<p class={chart_subtitle_class}>Photos with both latitude and longitude in metadata.</p>
-				<Chart options={gps_chart_options} class="min-h-[300px] w-full" />
+				<div class={chart_host_class}>
+					<Chart options={gps_chart_options} class="min-h-[300px] w-full max-w-full" />
+				</div>
 			</div>
 
 			<div class={chart_card_class + ' lg:col-span-2'}>
@@ -251,7 +294,12 @@
 					UTC.
 				</p>
 				{#if show_month_chart}
-					<Chart options={uploads_by_month_chart_options} class="min-h-[320px] w-full" />
+					<div class={chart_host_class}>
+						<Chart
+							options={uploads_by_month_chart_options}
+							class="min-h-[320px] w-full max-w-full"
+						/>
+					</div>
 				{:else}
 					<p class="text-sm text-gray-500 dark:text-gray-400">No monthly upload data to plot.</p>
 				{/if}
@@ -261,7 +309,9 @@
 				<h2 class={chart_title_class}>Top camera bodies</h2>
 				<p class={chart_subtitle_class}>Most common make + model from EXIF (top 10).</p>
 				{#if show_camera_chart}
-					<Chart options={top_cameras_chart_options} class="w-full" />
+					<div class={chart_host_class}>
+						<Chart options={top_cameras_chart_options} class="w-full max-w-full" />
+					</div>
 				{:else}
 					<p class="text-sm text-gray-500 dark:text-gray-400">No camera make/model metadata yet.</p>
 				{/if}
@@ -270,7 +320,9 @@
 			<div class={chart_card_class + ' lg:col-span-2'}>
 				<h2 class={chart_title_class}>ISO speed</h2>
 				<p class={chart_subtitle_class}>Distribution of ISO values (or unknown when missing).</p>
-				<Chart options={iso_chart_options} class="min-h-[320px] w-full" />
+				<div class={chart_host_class}>
+					<Chart options={iso_chart_options} class="min-h-[320px] w-full max-w-full" />
+				</div>
 			</div>
 		</div>
 	{/if}
