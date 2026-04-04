@@ -824,11 +824,10 @@
 			{#if data.gallery_filters.active}
 				No photos match these filters. Try clearing filters or broadening ISO / dates.
 			{:else}
-				No media yet. Upload from <a
+				No media yet. You can add them from <a
 					href={localizeHref('/upload')}
 					class="text-primary-600 underline dark:text-primary-400">Upload</a
-				>, set <code class="text-xs">TRANSFORMED_MEDIA_ROOT</code>, or add files under
-				<code class="text-xs">static/transformed/</code>.
+				>
 			{/if}
 		</p>
 	{:else}

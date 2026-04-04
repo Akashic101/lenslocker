@@ -179,6 +179,8 @@
 								: String(body.preview_message ?? 'JPEG preview could not be created')
 						}
 					];
+					void invalidate(transformed_media_depends_key);
+					void invalidate(gallery_active_upload_count_depends_key);
 				} else {
 					const msg =
 						typeof body.message === 'string' ? body.message : `Request failed (${status})`;

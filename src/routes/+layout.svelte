@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { afterNavigate, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
+	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
@@ -7,6 +9,13 @@
 	import { CameraPhotoOutline, ChartOutline, UploadOutline } from 'flowbite-svelte-icons';
 
 	let { children, data } = $props();
+
+	/** Refetch sidebar count on client navigations so it matches DB after uploads/archives on other routes. */
+	afterNavigate(({ from }) => {
+		if (from != null) {
+			void invalidate(gallery_active_upload_count_depends_key);
+		}
+	});
 
 	let active_url = $derived(page.url.pathname);
 
