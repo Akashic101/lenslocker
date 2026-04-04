@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
 	import { beforeNavigate, invalidate } from '$app/navigation';
+	import { tick } from 'svelte';
 	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
 	import { transformed_media_depends_key } from '$lib/transformed_media_cache';
 	import {
@@ -28,6 +29,19 @@
 	type batch_line = { name: string; ok: boolean; message?: string };
 	let batch_log_lines = $state<batch_line[]>([]);
 	let batch_last_error = $state<string | null>(null);
+
+	let batch_log_list_el: HTMLUListElement | undefined = $state();
+
+	$effect(() => {
+		void batch_log_lines;
+		if (batch_log_list_el == null || batch_log_lines.length === 0) return;
+		void tick().then(() => {
+			const el = batch_log_list_el;
+			if (el != null) {
+				el.scrollTop = el.scrollHeight;
+			}
+		});
+	});
 
 	const upload_in_progress_leave_confirm_message =
 		'Uploads are still in progress. Leaving now may interrupt them. Leave anyway?';
@@ -277,7 +291,10 @@
 					{batch_status_text}
 				</p>
 				{#if batch_log_lines.length > 0}
-					<ul class="max-h-40 space-y-1 overflow-y-auto text-xs text-gray-700 dark:text-gray-300">
+					<ul
+						bind:this={batch_log_list_el}
+						class="max-h-40 space-y-1 overflow-y-auto text-xs text-gray-700 dark:text-gray-300"
+					>
 						{#each batch_log_lines as line, line_i (line_i)}
 							<li
 								class="flex flex-wrap gap-x-2 border-t border-gray-100 pt-1 first:border-0 first:pt-0 dark:border-gray-700"
