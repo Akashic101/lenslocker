@@ -61,7 +61,10 @@ export function preview_full_relative_path(upload_id: string): string {
 /** Removes grid + modal JPEGs under the transformed root (no error if already absent). */
 export async function delete_upload_preview_jpegs(upload_id: string): Promise<void> {
 	const root = path.resolve(get_transformed_root_absolute_path());
-	for (const rel of [preview_thumb_relative_path(upload_id), preview_full_relative_path(upload_id)]) {
+	for (const rel of [
+		preview_thumb_relative_path(upload_id),
+		preview_full_relative_path(upload_id)
+	]) {
 		const abs = path.resolve(root, ...rel.split(path.posix.sep));
 		if (!abs.startsWith(root + path.sep) && abs !== root) continue;
 		try {

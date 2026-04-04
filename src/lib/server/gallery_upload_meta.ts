@@ -49,7 +49,9 @@ function format_bytes_human(byte_size: number): string {
 function shutter_label_from_seconds(seconds: number): string | null {
 	if (!Number.isFinite(seconds) || seconds <= 0) return null;
 	if (seconds >= 1) {
-		const rounded = Number.isInteger(seconds) ? String(seconds) : seconds.toFixed(1).replace(/\.0$/, '');
+		const rounded = Number.isInteger(seconds)
+			? String(seconds)
+			: seconds.toFixed(1).replace(/\.0$/, '');
 		return `${rounded} s`;
 	}
 	const denominator = Math.max(1, Math.round(1 / seconds));
@@ -90,13 +92,22 @@ function format_resolution_line(
 	y_resolution: string | null,
 	resolution_unit: number | null
 ): string | null {
-	if ((x_resolution == null || x_resolution === '') && (y_resolution == null || y_resolution === '')) {
+	if (
+		(x_resolution == null || x_resolution === '') &&
+		(y_resolution == null || y_resolution === '')
+	) {
 		return null;
 	}
 	const x = x_resolution && x_resolution !== '' ? x_resolution : '?';
 	const y = y_resolution && y_resolution !== '' ? y_resolution : '?';
 	const unit_label =
-		resolution_unit === 2 ? 'dpi' : resolution_unit === 3 ? 'px/cm' : resolution_unit === 1 ? '' : '';
+		resolution_unit === 2
+			? 'dpi'
+			: resolution_unit === 3
+				? 'px/cm'
+				: resolution_unit === 1
+					? ''
+					: '';
 	const suffix = unit_label ? ` ${unit_label}` : '';
 	return `${x} × ${y}${suffix}`.trim();
 }
@@ -115,7 +126,9 @@ function format_shot_at_line(iso_datetime: string | null): string | null {
 export function build_gallery_meta_rows(row: gallery_upload_meta_input): gallery_meta_row[] {
 	const rows: gallery_meta_row[] = [];
 
-	const camera = [row.make, row.model].filter((s) => s != null && String(s).trim() !== '').join(' ');
+	const camera = [row.make, row.model]
+		.filter((s) => s != null && String(s).trim() !== '')
+		.join(' ');
 	if (camera !== '') rows.push({ key: 'camera', text: camera });
 
 	const lens = [row.lens_make, row.lens_model]
@@ -132,7 +145,11 @@ export function build_gallery_meta_rows(row: gallery_upload_meta_input): gallery
 	const shot = format_shot_at_line(row.datetime_original);
 	if (shot != null) rows.push({ key: 'datetime', text: shot });
 
-	const resolution = format_resolution_line(row.x_resolution, row.y_resolution, row.resolution_unit);
+	const resolution = format_resolution_line(
+		row.x_resolution,
+		row.y_resolution,
+		row.resolution_unit
+	);
 	if (resolution != null) rows.push({ key: 'resolution', text: resolution });
 
 	if (row.byte_size != null && Number.isFinite(row.byte_size) && row.byte_size > 0) {
@@ -142,7 +159,9 @@ export function build_gallery_meta_rows(row: gallery_upload_meta_input): gallery
 	const shutter = format_shutter_fragment(row.exposure_time, row.exposure_time_seconds);
 	const aperture = format_aperture_fragment(row.f_number);
 	const iso =
-		row.iso_speed != null && Number.isFinite(row.iso_speed) ? `ISO ${Math.round(row.iso_speed)}` : null;
+		row.iso_speed != null && Number.isFinite(row.iso_speed)
+			? `ISO ${Math.round(row.iso_speed)}`
+			: null;
 	const exposure_parts = [shutter, aperture, iso].filter((p): p is string => p != null && p !== '');
 	if (exposure_parts.length > 0) {
 		rows.push({ key: 'exposure', text: exposure_parts.join(' · ') });

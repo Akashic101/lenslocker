@@ -124,8 +124,8 @@
 	<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
 		Track cameras, lenses, and other gear. Stored in SQLite (<code class="text-xs"
 			>hardware_item</code
-		>). For camera and lens, make and model are dropdowns built from EXIF on your uploaded photos (text
-		fields if there is no data yet).
+		>). For camera and lens, make and model are dropdowns built from EXIF on your uploaded photos
+		(text fields if there is no data yet).
 	</p>
 
 	{#if form?.message}

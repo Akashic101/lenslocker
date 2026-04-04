@@ -1,10 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import {
-	raw_image_upload,
-	type RawImageUploadRow
-} from '$lib/server/db/raw_image_upload.schema';
+import { raw_image_upload, type RawImageUploadRow } from '$lib/server/db/raw_image_upload.schema';
 import { delete_upload_preview_jpegs } from '$lib/server/raw_upload/write_preview_jpeg';
 import { parse_upload_meta_patch } from '$lib/server/upload_meta_patch';
 import type { RequestHandler } from './$types';

@@ -4,11 +4,7 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
-	import {
-		CameraPhotoOutline,
-		ChartOutline,
-		UploadOutline,
-	} from 'flowbite-svelte-icons';
+	import { CameraPhotoOutline, ChartOutline, UploadOutline } from 'flowbite-svelte-icons';
 
 	let { children, data } = $props();
 

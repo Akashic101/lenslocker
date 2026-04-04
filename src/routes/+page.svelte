@@ -558,18 +558,7 @@
 <div class="mx-auto max-w-7xl">
 	<header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 		<div class="min-w-0">
-			<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Transformed</h1>
-			<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-				Media root: <code class="rounded bg-gray-100 px-1 py-0.5 text-xs dark:bg-gray-800"
-					>{data.transformed_source}</code
-				>
-				— up to {data.pagination.images_per_page} files per page ({data.pagination.total_count} total),
-				newest first. Click an image for a large view and full metadata (uploads only). New uploads get
-				<code class="text-xs">_thumb.jpg</code> (grid) and <code class="text-xs">_full.jpg</code>
-				(modal) under
-				<code class="text-xs">upload-previews/</code>. Open the Filters button to narrow by EXIF;
-				with the panel closed and no filter query, every file in the media root is listed.
-			</p>
+			<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">LensLocker</h1>
 		</div>
 		<button
 			type="button"
