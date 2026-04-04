@@ -56,6 +56,11 @@ export function get_transformed_source_description(): string {
 	return override ? 'TRANSFORMED_MEDIA_ROOT' : 'static/transformed (default)';
 }
 
+/** Modal-only full-size JPEG; grid uses `*_thumb.jpg`. */
+function is_upload_preview_full_sidecar(relative_path: string): boolean {
+	return /(^|\/)upload-previews\/[^/]+_full\.jpe?g$/i.test(relative_path.replace(/\\/g, '/'));
+}
+
 type media_file_entry = { relative_path: string; mtime_ms: number };
 
 async function walk_media_files(
@@ -81,8 +86,9 @@ async function walk_media_files(
 		if (entry.isDirectory()) {
 			await walk_media_files(full_path, root, [...relative_segments, entry.name], out);
 		} else if (media_extensions.has(path.extname(entry.name).toLowerCase())) {
-			const st = await fs.stat(full_path);
 			const relative_path = [...relative_segments, entry.name].join('/');
+			if (is_upload_preview_full_sidecar(relative_path)) continue;
+			const st = await fs.stat(full_path);
 			out.push({ relative_path, mtime_ms: st.mtimeMs });
 		}
 	}

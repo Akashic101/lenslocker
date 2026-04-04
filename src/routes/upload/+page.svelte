@@ -1,48 +1,23 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidate } from '$app/navigation';
+	import { transformed_media_depends_key } from '$lib/transformed_media_cache';
 
 	let { form, data } = $props();
-
-	const exifr_full_json_column = 'exifr_full_json';
-
-	function prettify_exifr_dump(raw: unknown): string {
-		if (raw == null || raw === '') return '(empty)';
-		if (typeof raw !== 'string') return String(raw);
-		try {
-			return JSON.stringify(JSON.parse(raw), null, 2);
-		} catch {
-			return raw;
-		}
-	}
-
-	function display_value(value: unknown): string {
-		if (value === null || value === undefined) return '—';
-		return String(value);
-	}
-
-	const sorted_columns = $derived.by(() => {
-		const row = data.latest_upload;
-		if (!row) return [];
-		return Object.keys(row)
-			.filter((k) => k !== exifr_full_json_column)
-			.sort((a, b) => a.localeCompare(b));
-	});
-
-	const latest_row_record = $derived(
-		data.latest_upload ? (data.latest_upload as Record<string, unknown>) : null
-	);
 </script>
 
 <svelte:head>
 	<title>Upload RAW</title>
 </svelte:head>
 
-<div class="mx-auto max-w-5xl">
+<div class="mx-auto max-w-xl">
 	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Upload RAW</h1>
 	<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-		Files are stored under <code class="text-xs">RAW_UPLOAD_ROOT</code> (default
-		<code class="text-xs">data/uploads/raw</code>). Metadata is parsed with exifr and stored in SQLite (table
-		<code class="text-xs">raw_image_upload</code>), including a full JSON dump.
+		Original files are stored under <code class="text-xs">RAW_UPLOAD_ROOT</code> (default
+		<code class="text-xs">data/uploads/raw</code>). Metadata is parsed with exifr and saved to SQLite. 		Two JPEG previews — a grid thumbnail (~480px) and a larger modal image (up to ~4096px) — are written under your
+		transformed media root (
+		<code class="text-xs">TRANSFORMED_MEDIA_ROOT</code> or <code class="text-xs">static/transformed</code>) in
+		<code class="text-xs">upload-previews/</code> and appears on the home page grid (newest first).
 	</p>
 
 	{#if data.just_uploaded}
@@ -50,40 +25,8 @@
 			class="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
 			role="status"
 		>
-			Upload saved successfully.
+			Upload saved successfully. Open the home page to see the JPEG preview if conversion succeeded.
 		</p>
-	{/if}
-
-	{#if data.latest_upload}
-		<section class="mt-8" aria-labelledby="upload-debug-heading">
-			<h2 id="upload-debug-heading" class="text-lg font-semibold text-gray-900 dark:text-white">
-				Latest upload (all DB columns)
-			</h2>
-			{#if data.total_uploads > 1}
-				<p class="mt-1 text-sm text-amber-800 dark:text-amber-200">
-					There are {data.total_uploads} rows in <code class="text-xs">raw_image_upload</code>; this is the
-					most recent by <code class="text-xs">uploaded_at_ms</code>.
-				</p>
-			{/if}
-			<dl
-				class="mt-4 divide-y divide-gray-200 overflow-hidden rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700"
-			>
-				{#each sorted_columns as column (column)}
-					<div class="grid gap-1 bg-white px-3 py-2 sm:grid-cols-[minmax(0,14rem)_1fr] dark:bg-gray-900">
-						<dt class="break-all text-xs font-medium text-gray-500 dark:text-gray-400">{column}</dt>
-						<dd class="break-all font-mono text-xs text-gray-900 dark:text-gray-100">
-							{display_value(latest_row_record?.[column])}
-						</dd>
-					</div>
-				{/each}
-			</dl>
-			<h3 class="mt-6 text-base font-semibold text-gray-900 dark:text-white">
-				<code class="text-sm">{exifr_full_json_column}</code> (pretty-printed)
-			</h3>
-			<pre
-				class="mt-2 max-h-[min(70vh,40rem)] overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-			><code>{prettify_exifr_dump(latest_row_record?.[exifr_full_json_column])}</code></pre>
-		</section>
 	{/if}
 
 	{#if form?.message}
@@ -99,8 +42,11 @@
 		method="POST"
 		enctype="multipart/form-data"
 		use:enhance={() => {
-			return async ({ update }) => {
+			return async ({ result, update }) => {
 				await update({ reset: false });
+				if (result.type === 'redirect' || result.type === 'success') {
+					await invalidate(transformed_media_depends_key);
+				}
 			};
 		}}
 		class="mt-6 space-y-4"

@@ -51,7 +51,10 @@ export const actions: Actions = {
 		const absolute_path = path.join(root, stored_filename);
 		await writeFile(absolute_path, new Uint8Array(buffer));
 
-		const relative_storage_path = path.join('data', 'uploads', 'raw', stored_filename).split(path.sep).join('/');
+		const relative_storage_path = path
+			.join('data', 'uploads', 'raw', stored_filename)
+			.split(path.sep)
+			.join('/');
 		const uploaded_at_ms = Date.now();
 		const mime_type = entry.type || null;
 
@@ -76,12 +79,27 @@ export const actions: Actions = {
 			await db.insert(raw_image_upload).values(cleaned);
 		} catch (e) {
 			console.error(e);
-			return fail(500, { message: 'Could not save metadata. Is the database migrated? Run: bun run db:push' });
+			return fail(500, {
+				message: 'Could not save metadata. Is the database migrated? Run: bun run db:push'
+			});
 		}
 
-		const preview = await write_preview_jpeg_for_upload(id, new Uint8Array(buffer));
+		const preview = await write_preview_jpeg_for_upload(id, new Uint8Array(buffer), entry.name, {
+			source_absolute_path: absolute_path,
+			exif_orientation: metadata.orientation ?? null
+		});
 		if (!preview.ok) {
-			console.warn('JPEG preview not created for upload', id, preview.message);
+			console.error(
+				'[upload] JPEG preview not created:',
+				'upload_id=',
+				id,
+				'file=',
+				entry.name,
+				'size=',
+				entry.size,
+				'reason=',
+				preview.message
+			);
 		}
 
 		throw redirect(303, '/upload?uploaded=1');

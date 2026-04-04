@@ -3,12 +3,9 @@
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import { Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
 	import {
-		Sidebar,
-		SidebarGroup,
-		SidebarItem
-	} from 'flowbite-svelte';
-	import {
+		CameraPhotoOutline,
 		ChartOutline,
 		GridSolid,
 		MailBoxSolid,
@@ -27,6 +24,7 @@
 	const demo_auth_url = $derived(localizeHref('/demo/better-auth'));
 	const demo_login_url = $derived(localizeHref('/demo/better-auth/login'));
 	const upload_url = $derived(localizeHref('/upload'));
+	const hardware_url = $derived(localizeHref('/hardware'));
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -59,6 +57,13 @@
 					/>
 				{/snippet}
 			</SidebarItem>
+			<SidebarItem label="Hardware" href={hardware_url}>
+				{#snippet icon()}
+					<CameraPhotoOutline
+						class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+					/>
+				{/snippet}
+			</SidebarItem>
 			<SidebarItem label="Kanban" spanClass={span_class} href={demo_overview_url}>
 				{#snippet icon()}
 					<GridSolid
@@ -81,7 +86,7 @@
 				{/snippet}
 				{#snippet subtext()}
 					<span
-						class="bg-primary-200 text-primary-600 dark:bg-primary-900 dark:text-primary-200 ms-3 inline-flex h-3 w-3 items-center justify-center rounded-full p-3 text-sm font-medium"
+						class="ms-3 inline-flex h-3 w-3 items-center justify-center rounded-full bg-primary-200 p-3 text-sm font-medium text-primary-600 dark:bg-primary-900 dark:text-primary-200"
 					>
 						3
 					</span>

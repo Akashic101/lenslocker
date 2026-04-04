@@ -1,6 +1,9 @@
 import { getTableColumns } from 'drizzle-orm';
 import exifr from 'exifr';
-import { raw_image_upload, type RawImageUploadInsert } from '$lib/server/db/raw_image_upload.schema';
+import {
+	raw_image_upload,
+	type RawImageUploadInsert
+} from '$lib/server/db/raw_image_upload.schema';
 
 const file_field_keys = new Set([
 	'id',
@@ -130,8 +133,78 @@ function apply_image_dimension_aliases(flat: Record<string, unknown>) {
 	if (flat.pixel_y_dimension == null && exif_h != null) flat.pixel_y_dimension = exif_h;
 }
 
+/**
+ * IFD0 / nested merge can leave orientation under another key; `orientation` is our DB column.
+ */
+function apply_orientation_aliases(flat: Record<string, unknown>) {
+	if (flat.orientation != null) return;
+	const fallbacks = [
+		flat.exif_orientation,
+		flat.ifd0_orientation,
+		flat.tiff_orientation,
+		flat.image_orientation
+	];
+	for (const v of fallbacks) {
+		if (v != null) {
+			flat.orientation = v;
+			return;
+		}
+	}
+}
+
+/**
+ * With `reviveValues: true`, exifr turns tag 274 into strings like "Horizontal (normal)".
+ * `parseInt` then fails and we stored null. Map common labels back to EXIF 1–8.
+ */
+function normalize_orientation_label(s: string): string {
+	return s.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+const orientation_value_by_label: Record<string, number> = {
+	'horizontal (normal)': 1,
+	'horizontal(normal)': 1,
+	horizontal: 1,
+	'top-left': 1,
+	'mirror horizontal': 2,
+	mirrorhorizontal: 2,
+	'top-right': 2,
+	'rotate 180': 3,
+	'bottom-right': 3,
+	'mirror vertical': 4,
+	mirrorvertical: 4,
+	'bottom-left': 4,
+	'mirror horizontal and rotate 270 cw': 5,
+	'left-top': 5,
+	'rotate 90 cw': 6,
+	'right-top': 6,
+	'mirror horizontal and rotate 90 cw': 7,
+	'right-bottom': 7,
+	'rotate 270 cw': 8,
+	'left-bottom': 8
+};
+
+function parse_exif_orientation_value(value: unknown): number | null {
+	if (value === null || value === undefined) return null;
+	if (typeof value === 'boolean') return value ? 1 : null;
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		const n = Math.round(value);
+		return n >= 1 && n <= 8 ? n : null;
+	}
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		const as_int = Number.parseInt(trimmed, 10);
+		if (Number.isFinite(as_int) && as_int >= 1 && as_int <= 8) return as_int;
+		const by_label = orientation_value_by_label[normalize_orientation_label(trimmed)];
+		return by_label ?? null;
+	}
+	return null;
+}
+
 function coerce_value(column: string, value: unknown): string | number | null {
 	if (value === null || value === undefined) return null;
+	if (column === 'orientation') {
+		return parse_exif_orientation_value(value);
+	}
 	if (integer_metadata_keys.has(column)) {
 		if (typeof value === 'boolean') return value ? 1 : 0;
 		if (typeof value === 'number' && Number.isFinite(value)) return Math.round(value);
@@ -160,7 +233,11 @@ function coerce_value(column: string, value: unknown): string | number | null {
 
 const table_columns = Object.keys(getTableColumns(raw_image_upload));
 
-export async function build_metadata_fields(buffer: ArrayBuffer): Promise<Partial<RawImageUploadInsert>> {
+export async function build_metadata_fields(
+	buffer: ArrayBuffer
+): Promise<Partial<RawImageUploadInsert>> {
+	const raw_orientation_promise = exifr.orientation(buffer).catch(() => undefined);
+
 	let tags: Record<string, unknown> | undefined;
 	try {
 		tags = (await exifr.parse(buffer, {
@@ -179,6 +256,7 @@ export async function build_metadata_fields(buffer: ArrayBuffer): Promise<Partia
 	const flat = normalize_metadata_keys(flatten_deep(full));
 	apply_gps_aliases(flat);
 	apply_image_dimension_aliases(flat);
+	apply_orientation_aliases(flat);
 
 	const row: Partial<RawImageUploadInsert> = {
 		exifr_full_json: json_safe_stringify(full)
@@ -200,6 +278,11 @@ export async function build_metadata_fields(buffer: ArrayBuffer): Promise<Partia
 	if (typeof flat.exposure_time === 'number' && Number.isFinite(flat.exposure_time)) {
 		if (row.exposure_time_seconds == null) row.exposure_time_seconds = flat.exposure_time;
 		if (row.exposure_time == null) row.exposure_time = String(flat.exposure_time);
+	}
+
+	const raw_orientation = await raw_orientation_promise;
+	if (typeof raw_orientation === 'number' && raw_orientation >= 1 && raw_orientation <= 8) {
+		row.orientation = Math.round(raw_orientation);
 	}
 
 	return row;

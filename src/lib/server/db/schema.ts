@@ -9,4 +9,5 @@ export const task = sqliteTable('task', {
 });
 
 export * from './auth.schema';
+export * from './hardware.schema';
 export * from './raw_image_upload.schema';
