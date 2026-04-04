@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
-	import { invalidate } from '$app/navigation';
+	import { beforeNavigate, invalidate } from '$app/navigation';
 	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
 	import { transformed_media_depends_key } from '$lib/transformed_media_cache';
 	import {
@@ -27,6 +28,24 @@
 	type batch_line = { name: string; ok: boolean; message?: string };
 	let batch_log_lines = $state<batch_line[]>([]);
 	let batch_last_error = $state<string | null>(null);
+
+	const upload_in_progress_leave_confirm_message =
+		'Uploads are still in progress. Leaving now may interrupt them. Leave anyway?';
+
+	beforeNavigate(({ cancel }) => {
+		if (!batch_busy) return;
+		if (!confirm(upload_in_progress_leave_confirm_message)) cancel();
+	});
+
+	$effect(() => {
+		if (!browser || !batch_busy) return;
+		const on_beforeunload = (ev: BeforeUnloadEvent) => {
+			ev.preventDefault();
+			ev.returnValue = '';
+		};
+		window.addEventListener('beforeunload', on_beforeunload);
+		return () => window.removeEventListener('beforeunload', on_beforeunload);
+	});
 
 	const overall_batch_percent = $derived.by(() => {
 		if (batch_total <= 0) return 0;
