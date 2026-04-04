@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
-	import { goto, invalidate } from '$app/navigation';
+	import { invalidate } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
@@ -51,17 +51,26 @@
 	let { data } = $props();
 
 	/**
-	 * Panel is shown when EXIF/starred filters are in the URL or the user opened it.
-	 * `gallery_focus` (all / needs attention / archived) does not auto-open the panel.
-	 * Closing clears EXIF/starred query params, keeps `gallery_focus` when set, and resets the user flag.
+	 * Panel visibility is only toggled by the filters button. EXIF/starred params in the URL stay
+	 * applied when the panel is hidden. `gallery_focus` does not affect the panel.
 	 */
 	let filters_panel_user_open = $state(false);
 
-	const filters_panel_open = $derived(
-		data.gallery_filters.exif_filters_active ||
-			data.gallery_filters.starred_only ||
-			filters_panel_user_open
-	);
+	/** EXIF fields + starred-only; excludes `gallery_focus` (view mode). */
+	const gallery_exif_star_filter_count = $derived.by((): number => {
+		const g = data.gallery_filters;
+		let n = 0;
+		if (g.camera_make.trim() !== '') n++;
+		if (g.camera_model.trim() !== '') n++;
+		if (g.lens_make.trim() !== '') n++;
+		if (g.lens_model.trim() !== '') n++;
+		if (g.date_from.trim() !== '') n++;
+		if (g.date_to.trim() !== '') n++;
+		if (g.iso_min.trim() !== '') n++;
+		if (g.iso_max.trim() !== '') n++;
+		if (g.starred_only) n++;
+		return n;
+	});
 
 	const needs_attention_required_key_set = $derived(
 		new SvelteSet(data.needs_attention_settings.required_field_keys)
@@ -91,12 +100,7 @@
 	);
 
 	function on_filters_toggle_click(): void {
-		if (filters_panel_open) {
-			filters_panel_user_open = false;
-			void goto(dashboard_clear_href, { noScroll: true });
-		} else {
-			filters_panel_user_open = true;
-		}
+		filters_panel_user_open = !filters_panel_user_open;
 	}
 
 	const modal_needs_attention_ui = $derived(
@@ -850,16 +854,26 @@
 			</button>
 			<button
 				type="button"
-				class={gallery_header_icon_button_class}
-				aria-expanded={filters_panel_open}
+				class="{gallery_header_icon_button_class} relative"
+				aria-expanded={filters_panel_user_open}
 				aria-controls="gallery-filters-panel"
-				aria-label={filters_panel_open ? 'Hide filters' : 'Show filters'}
+				aria-label={filters_panel_user_open
+					? `Hide filters${gallery_exif_star_filter_count > 0 ? `, ${gallery_exif_star_filter_count} active` : ''}`
+					: `Show filters${gallery_exif_star_filter_count > 0 ? `, ${gallery_exif_star_filter_count} active` : ''}`}
 				onclick={on_filters_toggle_click}
 			>
-				{#if filters_panel_open}
+				{#if filters_panel_user_open || gallery_exif_star_filter_count > 0}
 					<FilterSolid class={gallery_header_icon_glyph_class} aria-hidden="true" />
 				{:else}
 					<FilterOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+				{/if}
+				{#if gallery_exif_star_filter_count > 0}
+					<span
+						class="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-600 px-1 text-[10px] leading-none font-semibold text-white tabular-nums dark:bg-primary-500"
+						aria-hidden="true"
+					>
+						{gallery_exif_star_filter_count > 99 ? '99+' : String(gallery_exif_star_filter_count)}
+					</span>
 				{/if}
 			</button>
 		</div>
@@ -957,7 +971,7 @@
 		</div>
 	{/if}
 
-	{#if filters_panel_open}
+	{#if filters_panel_user_open}
 		<section
 			id="gallery-filters-panel"
 			class="mb-8 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"

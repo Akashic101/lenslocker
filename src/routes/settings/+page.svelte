@@ -566,9 +566,9 @@
 						<code class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
 							>LensLocker-backup-yyyy-mm-dd-hh-mm-&lt;n&gt;.zip</code
 						>
-						where <strong>&lt;n&gt;</strong> is a running count. Importing restores the whole
-						database file (gallery and upload records, settings, hardware, auth, etc.); originals
-						and previews on disk are not in the zip.
+						where <strong>&lt;n&gt;</strong> is a running count. Importing restores the whole database
+						file (gallery and upload records, settings, hardware, auth, etc.); originals and previews
+						on disk are not in the zip.
 					</p>
 					<div class="flex flex-wrap gap-3">
 						<button
