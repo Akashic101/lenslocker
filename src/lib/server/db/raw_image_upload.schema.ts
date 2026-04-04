@@ -18,6 +18,11 @@ export const raw_image_upload = sqliteTable('raw_image_upload', {
 	sha256_hex: text('sha256_hex').notNull(),
 	uploaded_at_ms: integer('uploaded_at_ms', { mode: 'number' }).notNull(),
 
+	/** 0 = not starred, 1 = starred (app UI). */
+	starred: integer('starred', { mode: 'number' }).notNull().default(0),
+	/** When set, image is hidden from the main gallery (soft delete / archive). */
+	archived_at_ms: integer('archived_at_ms', { mode: 'number' }),
+
 	// --- image geometry & photometry ---
 	pixel_x_dimension: integer('pixel_x_dimension', { mode: 'number' }),
 	pixel_y_dimension: integer('pixel_y_dimension', { mode: 'number' }),

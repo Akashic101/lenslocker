@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import exifr from 'exifr';
 
@@ -56,6 +56,24 @@ export function preview_thumb_relative_path(upload_id: string): string {
 
 export function preview_full_relative_path(upload_id: string): string {
 	return path.posix.join(preview_subdir, `${upload_id}_full.jpg`);
+}
+
+/** Removes grid + modal JPEGs under the transformed root (no error if already absent). */
+export async function delete_upload_preview_jpegs(upload_id: string): Promise<void> {
+	const root = path.resolve(get_transformed_root_absolute_path());
+	for (const rel of [preview_thumb_relative_path(upload_id), preview_full_relative_path(upload_id)]) {
+		const abs = path.resolve(root, ...rel.split(path.posix.sep));
+		if (!abs.startsWith(root + path.sep) && abs !== root) continue;
+		try {
+			await unlink(abs);
+		} catch (e) {
+			const code =
+				e && typeof e === 'object' && 'code' in e ? (e as NodeJS.ErrnoException).code : undefined;
+			if (code !== 'ENOENT') {
+				console.error(`${log_prefix} unlink failed (${rel}):`, e);
+			}
+		}
+	}
 }
 
 function to_buffer(input: ArrayBuffer | Uint8Array): Buffer {

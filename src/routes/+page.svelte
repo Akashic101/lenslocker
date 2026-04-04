@@ -5,17 +5,22 @@
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { transformed_media_depends_key } from '$lib/transformed_media_cache';
 	import { upload_meta_editable_field_list } from '$lib/upload_meta_editable_fields';
-	import { Modal } from 'flowbite-svelte';
+	import { CloseButton, Modal } from 'flowbite-svelte';
 	import {
 		AdjustmentsHorizontalOutline,
 		AdjustmentsVerticalOutline,
 		CameraPhotoOutline,
+		ChevronLeftOutline,
+		ChevronRightOutline,
 		ClockOutline,
 		EyeOutline,
 		FilterOutline,
 		FolderOutline,
 		ImageOutline,
-		PenOutline
+		PenOutline,
+		StarOutline,
+		StarSolid,
+		TrashBinOutline
 	} from 'flowbite-svelte-icons';
 	import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
 
@@ -26,6 +31,7 @@
 		src: string;
 		full_src: string | null;
 		upload_id: string | null;
+		starred: boolean;
 		alt: string;
 		meta: { rows: { key: string; text: string }[] } | null;
 	};
@@ -60,6 +66,7 @@
 	let filter_date_to = $state('');
 	let filter_iso_min = $state('');
 	let filter_iso_max = $state('');
+	let filter_starred_only = $state(false);
 
 	$effect(() => {
 		filter_camera_make = data.gallery_filters.camera_make;
@@ -70,6 +77,7 @@
 		filter_date_to = data.gallery_filters.date_to;
 		filter_iso_min = data.gallery_filters.iso_min;
 		filter_iso_max = data.gallery_filters.iso_max;
+		filter_starred_only = data.gallery_filters.starred_only;
 	});
 
 	const gallery_camera_makes = $derived.by(() => {
@@ -173,6 +181,22 @@
 	let modal_image_object_url = $state<string | null>(null);
 	/** Invalidates in-flight full-image fetches when the modal is reopened or closed. */
 	let modal_image_session = 0;
+
+	let modal_current_relative_path = $state('');
+	let modal_action_loading = $state(false);
+	let modal_action_error = $state<string | null>(null);
+
+	const modal_list_index = $derived.by(() => {
+		if (modal_current_relative_path === '') return -1;
+		return data.images.findIndex((i) => i.relative_path === modal_current_relative_path);
+	});
+
+	const modal_has_prev = $derived(modal_list_index > 0);
+	const modal_has_next = $derived(
+		modal_list_index >= 0 && modal_list_index < data.images.length - 1
+	);
+
+	const modal_detail_starred = $derived(modal_detail != null && Number(modal_detail.starred) === 1);
 
 	let preview_scale = $state(1);
 	let preview_pan_x = $state(0);
@@ -330,9 +354,60 @@
 
 	$effect(() => {
 		if (!gallery_modal_open) {
-			untrack(() => revoke_modal_object_url());
+			untrack(() => {
+				revoke_modal_object_url();
+				modal_current_relative_path = '';
+			});
 		}
 	});
+
+	async function patch_gallery_upload(body: Record<string, unknown>): Promise<boolean> {
+		if (modal_upload_id == null) return false;
+		modal_action_loading = true;
+		modal_action_error = null;
+		try {
+			const response = await fetch(resolve(`/api/gallery/upload-meta/${modal_upload_id}`), {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body)
+			});
+			if (!response.ok) {
+				const text = await response.text();
+				throw new Error(text || response.statusText);
+			}
+			const payload = (await response.json()) as Record<string, unknown>;
+			modal_detail = payload;
+			if (typeof payload.original_filename === 'string') {
+				modal_heading = payload.original_filename;
+			}
+			await invalidate(transformed_media_depends_key);
+			return true;
+		} catch (e) {
+			modal_action_error = e instanceof Error ? e.message : String(e);
+			return false;
+		} finally {
+			modal_action_loading = false;
+		}
+	}
+
+	async function toggle_modal_star(): Promise<void> {
+		if (modal_detail == null || modal_upload_id == null) return;
+		const next = !(Number(modal_detail.starred) === 1);
+		await patch_gallery_upload({ starred: next });
+	}
+
+	async function archive_current_modal_upload(): Promise<void> {
+		const ok = await patch_gallery_upload({ archive: true });
+		if (ok) gallery_modal_open = false;
+	}
+
+	function modal_go_delta(delta: number): void {
+		const i = modal_list_index;
+		if (i < 0) return;
+		const next_item = data.images[i + delta];
+		if (next_item == null) return;
+		void open_gallery_modal(next_item);
+	}
 
 	function pagination_href(target_page: number): string {
 		const q = new SvelteURLSearchParams(data.gallery_filter_query);
@@ -387,6 +462,8 @@
 				([key]) =>
 					key !== 'exifr_full_json' &&
 					key !== 'exifr_full_json_parsed' &&
+					key !== 'starred' &&
+					key !== 'archived_at_ms' &&
 					!editable_meta_keys.has(key)
 			)
 			.sort(([a], [b]) => a.localeCompare(b))
@@ -405,6 +482,8 @@
 	}
 
 	async function open_gallery_modal(item: gallery_grid_item) {
+		modal_current_relative_path = item.relative_path;
+		modal_action_error = null;
 		revoke_modal_object_url();
 		modal_image_session += 1;
 		const fetch_session = modal_image_session;
@@ -624,6 +703,20 @@
 						/>
 					</div>
 				</div>
+				<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+					<label
+						class="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200"
+					>
+						<input
+							type="checkbox"
+							name="starred_only"
+							value="1"
+							class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
+							bind:checked={filter_starred_only}
+						/>
+						Starred only
+					</label>
+				</div>
 				<div class="flex flex-wrap items-end gap-3">
 					<div class="w-full max-w-xs min-w-[8rem] sm:w-auto">
 						<label
@@ -700,7 +793,7 @@
 				>
 					<button
 						type="button"
-						class="block w-full shrink-0 cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none"
+						class="relative block w-full shrink-0 cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none"
 						onclick={() => open_gallery_modal(item)}
 					>
 						<img
@@ -710,6 +803,14 @@
 							loading="lazy"
 							decoding="async"
 						/>
+						{#if item.starred}
+							<span
+								class="pointer-events-none absolute top-1 right-1 rounded bg-black/55 p-0.5 text-amber-300"
+								aria-hidden="true"
+							>
+								<StarSolid class="h-3.5 w-3.5" />
+							</span>
+						{/if}
 					</button>
 					{#if item.meta}
 						<button
@@ -764,173 +865,245 @@
 
 <Modal
 	bind:open={gallery_modal_open}
-	title={modal_heading}
 	size="xl"
-	dismissable
+	dismissable={false}
 	classes={{
+		header: '!py-2 !px-2 !border-b !border-gray-200 dark:!border-gray-700',
 		body: 'max-h-[min(92vh,920px)] overflow-hidden !p-3 sm:!p-4'
 	}}
 >
-	<div
-		class="flex h-[min(90dvh,880px)] w-full max-w-[100vw] flex-col overflow-hidden lg:h-[min(86vh,840px)] lg:flex-row lg:items-stretch"
-	>
-		<div
-			class="relative flex h-[min(38dvh,400px)] w-full shrink-0 overflow-hidden rounded-lg bg-gray-100 px-2 py-2 lg:h-full lg:min-h-0 lg:flex-1 lg:self-stretch dark:bg-gray-950"
-		>
-			{#if modal_image_display_src}
-				<div
-					class="relative h-full w-full touch-none"
-					use:attach_zoom_pan
-					role="application"
-					aria-label="Preview: scroll to zoom, drag to pan, double-click image to reset"
+	{#snippet header()}
+		<div class="flex w-full min-w-0 items-center gap-1">
+			<p
+				class="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-white"
+				title={modal_heading}
+			>
+				{modal_heading}
+			</p>
+			<div class="flex shrink-0 items-center gap-0.5">
+				<button
+					type="button"
+					class="rounded-lg p-2 text-gray-600 hover:bg-gray-100 disabled:pointer-events-none disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-800"
+					aria-label="Previous image"
+					disabled={!modal_has_prev || modal_action_loading}
+					onclick={() => modal_go_delta(-1)}
 				>
-					<div
-						class="flex h-full w-full cursor-grab items-center justify-center active:cursor-grabbing"
-						style="transform: translate({preview_pan_x}px, {preview_pan_y}px) scale({preview_scale}); transform-origin: center center; will-change: transform;"
-					>
-						{#key modal_image_key}
-							<img
-								src={modal_image_display_src}
-								alt=""
-								loading="eager"
-								decoding="async"
-								fetchpriority="high"
-								draggable="false"
-								class="max-h-full max-w-full object-contain select-none"
-								onerror={modal_image_on_error}
-								ondblclick={(e) => {
-									e.stopPropagation();
-									reset_preview_zoom_pan();
-								}}
-							/>
-						{/key}
-					</div>
-					<p
-						class="pointer-events-none absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded bg-black/50 px-2 py-0.5 text-[10px] text-white"
-					>
-						Scroll to zoom · drag to pan · double-click to reset
-					</p>
-				</div>
-			{:else}
-				<p class="m-auto text-sm text-gray-500 dark:text-gray-400">No image URL</p>
-			{/if}
-		</div>
-		<div
-			class="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden border-t border-gray-200 text-xs text-gray-800 sm:px-1 lg:w-[min(26rem,42vw)] lg:shrink-0 lg:border-t-0 lg:border-l dark:border-gray-700 dark:text-gray-200"
-		>
-			{#if modal_upload_id == null}
-				<div class="overflow-y-auto px-1 py-3 sm:px-2">
-					<p class="text-gray-500 dark:text-gray-400">
-						No database record for this file — only the preview image is shown.
-					</p>
-				</div>
-			{:else if modal_detail_loading}
-				<div class="px-1 py-3 sm:px-2">
-					<p class="text-gray-500 dark:text-gray-400">Loading metadata…</p>
-				</div>
-			{:else if modal_detail_error}
-				<div class="px-1 py-3 sm:px-2">
-					<p class="text-red-600 dark:text-red-400">{modal_detail_error}</p>
-				</div>
-			{:else if modal_detail}
-				<div
-					class="flex shrink-0 flex-wrap items-center justify-end gap-2 border-b border-gray-200 px-1 py-2 sm:px-2 dark:border-gray-800"
+					<ChevronLeftOutline class="h-5 w-5 shrink-0" />
+				</button>
+				<button
+					type="button"
+					class="rounded-lg p-2 text-gray-600 hover:bg-gray-100 disabled:pointer-events-none disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-800"
+					aria-label="Next image"
+					disabled={!modal_has_next || modal_action_loading}
+					onclick={() => modal_go_delta(1)}
 				>
-					{#if !modal_meta_editing}
-						<button
-							type="button"
-							class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-							onclick={() => {
-								fill_meta_edit_from_detail();
-								modal_meta_editing = true;
-							}}
-						>
-							<PenOutline class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-							Edit metadata
-						</button>
-					{:else}
-						<button
-							type="button"
-							class="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-							disabled={meta_save_loading}
-							onclick={() => {
-								modal_meta_editing = false;
-								meta_save_error = null;
-							}}
-						>
-							Cancel
-						</button>
-						<button
-							type="button"
-							class="rounded-lg bg-primary-600 px-2.5 py-1.5 text-[11px] font-medium text-white hover:bg-primary-700 disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
-							disabled={meta_save_loading}
-							onclick={() => void save_meta_edits()}
-						>
-							{meta_save_loading ? 'Saving…' : 'Save'}
-						</button>
-					{/if}
-				</div>
-				{#if meta_save_error != null && modal_meta_editing}
-					<p class="shrink-0 px-1 py-1 text-[11px] text-red-600 sm:px-2 dark:text-red-400">
-						{meta_save_error}
-					</p>
+					<ChevronRightOutline class="h-5 w-5 shrink-0" />
+				</button>
+				{#if modal_upload_id != null}
+					<button
+						type="button"
+						class="rounded-lg p-2 text-amber-600 hover:bg-amber-50 disabled:pointer-events-none disabled:opacity-40 dark:text-amber-400 dark:hover:bg-amber-950/40"
+						aria-label={modal_detail_starred ? 'Remove star' : 'Star image'}
+						disabled={modal_detail_loading || modal_action_loading || modal_detail == null}
+						onclick={() => void toggle_modal_star()}
+					>
+						{#if modal_detail_starred}
+							<StarSolid class="h-5 w-5 shrink-0" />
+						{:else}
+							<StarOutline class="h-5 w-5 shrink-0" />
+						{/if}
+					</button>
+					<button
+						type="button"
+						class="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:pointer-events-none disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-950/40"
+						aria-label="Archive image"
+						disabled={modal_action_loading}
+						onclick={() => void archive_current_modal_upload()}
+					>
+						<TrashBinOutline class="h-5 w-5 shrink-0" />
+					</button>
 				{/if}
-				<div
-					class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-1 py-3 sm:px-2"
-				>
-					{#if modal_meta_editing}
-						<form
-							class="space-y-3"
-							onsubmit={(e) => {
-								e.preventDefault();
-								void save_meta_edits();
-							}}
+			</div>
+			<CloseButton
+				class="shrink-0"
+				name=""
+				ariaLabel="Close"
+				onclick={() => {
+					gallery_modal_open = false;
+				}}
+			/>
+		</div>
+	{/snippet}
+	<div
+		class="flex h-[min(90dvh,880px)] w-full max-w-[100vw] flex-col overflow-hidden lg:h-[min(86vh,840px)]"
+	>
+		{#if modal_action_error}
+			<p
+				class="shrink-0 border-b border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
+				role="alert"
+			>
+				{modal_action_error}
+			</p>
+		{/if}
+		<div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row lg:items-stretch">
+			<div
+				class="relative flex h-[min(38dvh,400px)] w-full shrink-0 overflow-hidden rounded-lg bg-gray-100 px-2 py-2 lg:h-full lg:min-h-0 lg:flex-1 lg:self-stretch dark:bg-gray-950"
+			>
+				{#if modal_image_display_src}
+					<div
+						class="relative h-full w-full touch-none"
+						use:attach_zoom_pan
+						role="application"
+						aria-label="Preview: scroll to zoom, drag to pan, double-click image to reset"
+					>
+						<div
+							class="flex h-full w-full cursor-grab items-center justify-center active:cursor-grabbing"
+							style="transform: translate({preview_pan_x}px, {preview_pan_y}px) scale({preview_scale}); transform-origin: center center; will-change: transform;"
 						>
-							{#each upload_meta_editable_field_list as field (field.key)}
-								<div>
-									<label
-										class="mb-0.5 block text-[10px] font-medium text-gray-500 dark:text-gray-400"
-										for="meta-edit-{field.key}">{field.label}</label
-									>
-									{#if field.kind === 'textarea'}
-										<textarea
-											id="meta-edit-{field.key}"
-											rows="2"
-											class="w-full min-w-0 rounded-md border border-gray-300 bg-white px-2 py-1 font-mono text-[11px] text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-											bind:value={meta_edit_values[field.key]}
-										></textarea>
-									{:else}
-										<input
-											id="meta-edit-{field.key}"
-											type="text"
-											inputmode={field.kind === 'number' ? 'decimal' : undefined}
-											class="w-full min-w-0 rounded-md border border-gray-300 bg-white px-2 py-1 font-mono text-[11px] text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-											bind:value={meta_edit_values[field.key]}
-										/>
-									{/if}
-								</div>
-							{/each}
-						</form>
-					{:else}
-						<dl class="space-y-2">
-							{#each modal_detail_view_rows(modal_detail) as view_row (view_row.key)}
-								<div class="border-b border-gray-100 pb-2 last:border-0 dark:border-gray-800">
-									<dt
-										class="text-[10px] font-medium text-gray-500 dark:text-gray-400"
-										class:font-mono={view_row.label === view_row.key}
-										title={view_row.key}
-									>
-										{view_row.label}
-									</dt>
-									<dd class="mt-0.5 font-mono text-[11px] wrap-break-word">
-										{format_detail_value(view_row.value)}
-									</dd>
-								</div>
-							{/each}
-						</dl>
+							{#key modal_image_key}
+								<img
+									src={modal_image_display_src}
+									alt=""
+									loading="eager"
+									decoding="async"
+									fetchpriority="high"
+									draggable="false"
+									class="max-h-full max-w-full object-contain select-none"
+									onerror={modal_image_on_error}
+									ondblclick={(e) => {
+										e.stopPropagation();
+										reset_preview_zoom_pan();
+									}}
+								/>
+							{/key}
+						</div>
+						<p
+							class="pointer-events-none absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded bg-black/50 px-2 py-0.5 text-[10px] text-white"
+						>
+							Scroll to zoom · drag to pan · double-click to reset
+						</p>
+					</div>
+				{:else}
+					<p class="m-auto text-sm text-gray-500 dark:text-gray-400">No image URL</p>
+				{/if}
+			</div>
+			<div
+				class="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden border-t border-gray-200 text-xs text-gray-800 sm:px-1 lg:w-[min(26rem,42vw)] lg:shrink-0 lg:border-t-0 lg:border-l dark:border-gray-700 dark:text-gray-200"
+			>
+				{#if modal_upload_id == null}
+					<div class="overflow-y-auto px-1 py-3 sm:px-2">
+						<p class="text-gray-500 dark:text-gray-400">
+							No database record for this file — only the preview image is shown.
+						</p>
+					</div>
+				{:else if modal_detail_loading}
+					<div class="px-1 py-3 sm:px-2">
+						<p class="text-gray-500 dark:text-gray-400">Loading metadata…</p>
+					</div>
+				{:else if modal_detail_error}
+					<div class="px-1 py-3 sm:px-2">
+						<p class="text-red-600 dark:text-red-400">{modal_detail_error}</p>
+					</div>
+				{:else if modal_detail}
+					<div
+						class="flex shrink-0 flex-wrap items-center justify-end gap-2 border-b border-gray-200 px-1 py-2 sm:px-2 dark:border-gray-800"
+					>
+						{#if !modal_meta_editing}
+							<button
+								type="button"
+								class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+								onclick={() => {
+									fill_meta_edit_from_detail();
+									modal_meta_editing = true;
+								}}
+							>
+								<PenOutline class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+								Edit metadata
+							</button>
+						{:else}
+							<button
+								type="button"
+								class="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+								disabled={meta_save_loading}
+								onclick={() => {
+									modal_meta_editing = false;
+									meta_save_error = null;
+								}}
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								class="rounded-lg bg-primary-600 px-2.5 py-1.5 text-[11px] font-medium text-white hover:bg-primary-700 disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
+								disabled={meta_save_loading}
+								onclick={() => void save_meta_edits()}
+							>
+								{meta_save_loading ? 'Saving…' : 'Save'}
+							</button>
+						{/if}
+					</div>
+					{#if meta_save_error != null && modal_meta_editing}
+						<p class="shrink-0 px-1 py-1 text-[11px] text-red-600 sm:px-2 dark:text-red-400">
+							{meta_save_error}
+						</p>
 					{/if}
-				</div>
-			{/if}
+					<div
+						class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-1 py-3 sm:px-2"
+					>
+						{#if modal_meta_editing}
+							<form
+								class="space-y-3"
+								onsubmit={(e) => {
+									e.preventDefault();
+									void save_meta_edits();
+								}}
+							>
+								{#each upload_meta_editable_field_list as field (field.key)}
+									<div>
+										<label
+											class="mb-0.5 block text-[10px] font-medium text-gray-500 dark:text-gray-400"
+											for="meta-edit-{field.key}">{field.label}</label
+										>
+										{#if field.kind === 'textarea'}
+											<textarea
+												id="meta-edit-{field.key}"
+												rows="2"
+												class="w-full min-w-0 rounded-md border border-gray-300 bg-white px-2 py-1 font-mono text-[11px] text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+												bind:value={meta_edit_values[field.key]}
+											></textarea>
+										{:else}
+											<input
+												id="meta-edit-{field.key}"
+												type="text"
+												inputmode={field.kind === 'number' ? 'decimal' : undefined}
+												class="w-full min-w-0 rounded-md border border-gray-300 bg-white px-2 py-1 font-mono text-[11px] text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+												bind:value={meta_edit_values[field.key]}
+											/>
+										{/if}
+									</div>
+								{/each}
+							</form>
+						{:else}
+							<dl class="space-y-2">
+								{#each modal_detail_view_rows(modal_detail) as view_row (view_row.key)}
+									<div class="border-b border-gray-100 pb-2 last:border-0 dark:border-gray-800">
+										<dt
+											class="text-[10px] font-medium text-gray-500 dark:text-gray-400"
+											class:font-mono={view_row.label === view_row.key}
+											title={view_row.key}
+										>
+											{view_row.label}
+										</dt>
+										<dd class="mt-0.5 font-mono text-[11px] wrap-break-word">
+											{format_detail_value(view_row.value)}
+										</dd>
+									</div>
+								{/each}
+							</dl>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
 </Modal>

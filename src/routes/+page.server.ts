@@ -5,6 +5,7 @@ import {
 	gte,
 	inArray,
 	isNotNull,
+	isNull,
 	lte,
 	max,
 	min,
@@ -43,7 +44,8 @@ function build_gallery_filter_query(sp: URLSearchParams): string {
 		'date_from',
 		'date_to',
 		'iso_min',
-		'iso_max'
+		'iso_max',
+		'starred_only'
 	] as const;
 	const out = new URLSearchParams();
 	for (const k of keys) {
@@ -64,13 +66,14 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 	const date_to = trim_param(url.searchParams, 'date_to');
 	const iso_min_raw = trim_param(url.searchParams, 'iso_min');
 	const iso_max_raw = trim_param(url.searchParams, 'iso_max');
+	const starred_only = url.searchParams.get('starred_only') === '1';
 
 	const iso_min_parsed = iso_min_raw === '' ? null : Number.parseInt(iso_min_raw, 10);
 	const iso_max_parsed = iso_max_raw === '' ? null : Number.parseInt(iso_max_raw, 10);
 	const iso_min = iso_min_parsed != null && Number.isFinite(iso_min_parsed) ? iso_min_parsed : null;
 	const iso_max = iso_max_parsed != null && Number.isFinite(iso_max_parsed) ? iso_max_parsed : null;
 
-	const gallery_filters_active =
+	const exif_filters_active =
 		camera_make !== '' ||
 		camera_model !== '' ||
 		lens_make !== '' ||
@@ -80,50 +83,73 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 		iso_min_raw !== '' ||
 		iso_max_raw !== '';
 
+	const gallery_filters_active = exif_filters_active || starred_only;
+	const needs_db_id_filter = exif_filters_active || starred_only;
+
 	const shot_date = sql_shot_calendar_date();
 
-	const [all_paths, iso_stats_row, date_stats_row, camera_pair_rows, lens_pair_rows] =
-		await Promise.all([
-			list_transformed_media_paths(),
-			db
-				.select({
-					iso_min_db: min(raw_image_upload.iso_speed),
-					iso_max_db: max(raw_image_upload.iso_speed)
-				})
-				.from(raw_image_upload),
-			db
-				.select({
-					date_min_db: sql<string | null>`min(${shot_date})`.mapWith(String),
-					date_max_db: sql<string | null>`max(${shot_date})`.mapWith(String)
-				})
-				.from(raw_image_upload),
-			db
-				.selectDistinct({
-					make: raw_image_upload.make,
-					model: raw_image_upload.model
-				})
-				.from(raw_image_upload)
-				.where(
-					or(
-						sql`trim(coalesce(${raw_image_upload.make}, '')) != ''`,
-						sql`trim(coalesce(${raw_image_upload.model}, '')) != ''`
-					)
+	const [
+		all_paths,
+		upload_flag_rows,
+		iso_stats_row,
+		date_stats_row,
+		camera_pair_rows,
+		lens_pair_rows
+	] = await Promise.all([
+		list_transformed_media_paths(),
+		db
+			.select({
+				id: raw_image_upload.id,
+				starred: raw_image_upload.starred,
+				archived_at_ms: raw_image_upload.archived_at_ms
+			})
+			.from(raw_image_upload),
+		db
+			.select({
+				iso_min_db: min(raw_image_upload.iso_speed),
+				iso_max_db: max(raw_image_upload.iso_speed)
+			})
+			.from(raw_image_upload),
+		db
+			.select({
+				date_min_db: sql<string | null>`min(${shot_date})`.mapWith(String),
+				date_max_db: sql<string | null>`max(${shot_date})`.mapWith(String)
+			})
+			.from(raw_image_upload),
+		db
+			.selectDistinct({
+				make: raw_image_upload.make,
+				model: raw_image_upload.model
+			})
+			.from(raw_image_upload)
+			.where(
+				or(
+					sql`trim(coalesce(${raw_image_upload.make}, '')) != ''`,
+					sql`trim(coalesce(${raw_image_upload.model}, '')) != ''`
 				)
-				.orderBy(asc(raw_image_upload.make), asc(raw_image_upload.model)),
-			db
-				.selectDistinct({
-					lens_make: raw_image_upload.lens_make,
-					lens_model: raw_image_upload.lens_model
-				})
-				.from(raw_image_upload)
-				.where(
-					or(
-						sql`trim(coalesce(${raw_image_upload.lens_make}, '')) != ''`,
-						sql`trim(coalesce(${raw_image_upload.lens_model}, '')) != ''`
-					)
+			)
+			.orderBy(asc(raw_image_upload.make), asc(raw_image_upload.model)),
+		db
+			.selectDistinct({
+				lens_make: raw_image_upload.lens_make,
+				lens_model: raw_image_upload.lens_model
+			})
+			.from(raw_image_upload)
+			.where(
+				or(
+					sql`trim(coalesce(${raw_image_upload.lens_make}, '')) != ''`,
+					sql`trim(coalesce(${raw_image_upload.lens_model}, '')) != ''`
 				)
-				.orderBy(asc(raw_image_upload.lens_make), asc(raw_image_upload.lens_model))
-		]);
+			)
+			.orderBy(asc(raw_image_upload.lens_make), asc(raw_image_upload.lens_model))
+	]);
+
+	const upload_flags = new Map(
+		upload_flag_rows.map((r) => [
+			r.id,
+			{ starred: r.starred ?? 0, archived_at_ms: r.archived_at_ms ?? null }
+		])
+	);
 
 	const camera_pairs = camera_pair_rows.map((r) => ({
 		make: r.make ?? '',
@@ -145,34 +171,46 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 		max: date_stats_row[0]?.date_max_db ?? null
 	};
 
-	let filtered_paths = all_paths;
+	const working_paths = all_paths.filter((p) => {
+		const upload_id = upload_id_from_gallery_preview_path(p);
+		if (upload_id == null) return true;
+		const f = upload_flags.get(upload_id);
+		if (f == null) return true;
+		return f.archived_at_ms == null;
+	});
 
-	if (gallery_filters_active) {
-		const parts: SQL[] = [];
+	let filtered_paths: string[];
 
-		if (camera_make !== '') parts.push(eq(raw_image_upload.make, camera_make));
-		if (camera_model !== '') parts.push(eq(raw_image_upload.model, camera_model));
-		if (lens_make !== '') parts.push(eq(raw_image_upload.lens_make, lens_make));
-		if (lens_model !== '') parts.push(eq(raw_image_upload.lens_model, lens_model));
+	if (needs_db_id_filter) {
+		const parts: SQL[] = [isNull(raw_image_upload.archived_at_ms)];
+		if (starred_only) parts.push(eq(raw_image_upload.starred, 1));
 
-		if (date_from !== '') {
-			parts.push(isNotNull(shot_date));
-			parts.push(sql`${shot_date} >= ${date_from}`);
-		}
-		if (date_to !== '') {
-			parts.push(isNotNull(shot_date));
-			parts.push(sql`${shot_date} <= ${date_to}`);
-		}
+		const before_exif = parts.length;
+		if (exif_filters_active) {
+			if (camera_make !== '') parts.push(eq(raw_image_upload.make, camera_make));
+			if (camera_model !== '') parts.push(eq(raw_image_upload.model, camera_model));
+			if (lens_make !== '') parts.push(eq(raw_image_upload.lens_make, lens_make));
+			if (lens_model !== '') parts.push(eq(raw_image_upload.lens_model, lens_model));
 
-		const iso_filter_requested = iso_min_raw !== '' || iso_max_raw !== '';
-		if (iso_filter_requested) {
-			parts.push(isNotNull(raw_image_upload.iso_speed));
-			if (iso_min != null) parts.push(gte(raw_image_upload.iso_speed, iso_min));
-			if (iso_max != null) parts.push(lte(raw_image_upload.iso_speed, iso_max));
-		}
+			if (date_from !== '') {
+				parts.push(isNotNull(shot_date));
+				parts.push(sql`${shot_date} >= ${date_from}`);
+			}
+			if (date_to !== '') {
+				parts.push(isNotNull(shot_date));
+				parts.push(sql`${shot_date} <= ${date_to}`);
+			}
 
-		if (parts.length === 0) {
-			parts.push(sql`1 = 0`);
+			const iso_filter_requested = iso_min_raw !== '' || iso_max_raw !== '';
+			if (iso_filter_requested) {
+				parts.push(isNotNull(raw_image_upload.iso_speed));
+				if (iso_min != null) parts.push(gte(raw_image_upload.iso_speed, iso_min));
+				if (iso_max != null) parts.push(lte(raw_image_upload.iso_speed, iso_max));
+			}
+
+			if (parts.length === before_exif) {
+				parts.push(sql`1 = 0`);
+			}
 		}
 
 		const matching_rows = await db
@@ -181,11 +219,13 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 			.where(and(...parts));
 
 		const id_set = new Set(matching_rows.map((r) => r.id));
-		filtered_paths = all_paths.filter((p) => {
+		filtered_paths = working_paths.filter((p) => {
 			const upload_id = upload_id_from_gallery_preview_path(p);
 			if (upload_id == null) return false;
 			return id_set.has(upload_id);
 		});
+	} else {
+		filtered_paths = working_paths;
 	}
 
 	const total_count = filtered_paths.length;
@@ -237,11 +277,14 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 		const upload_id = upload_id_from_gallery_preview_path(relative_path);
 		const caption_rows = upload_id ? meta_by_upload_id.get(upload_id) : undefined;
 		const full_relative = upload_id ? preview_full_relative_path(upload_id) : null;
+		const flags = upload_id ? upload_flags.get(upload_id) : undefined;
+		const starred = flags != null && flags.starred === 1;
 		return {
 			relative_path,
 			src: transformed_media_url(relative_path),
 			full_src: full_relative ? transformed_media_url(full_relative) : null,
 			upload_id,
+			starred,
 			alt: relative_path,
 			meta: caption_rows && caption_rows.length > 0 ? { rows: caption_rows } : null
 		};
@@ -262,6 +305,7 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 		},
 		gallery_filters: {
 			active: gallery_filters_active,
+			starred_only,
 			camera_make,
 			camera_model,
 			lens_make,

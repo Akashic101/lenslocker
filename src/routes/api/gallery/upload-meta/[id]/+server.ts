@@ -1,7 +1,11 @@
 import { error, json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { raw_image_upload } from '$lib/server/db/raw_image_upload.schema';
+import {
+	raw_image_upload,
+	type RawImageUploadRow
+} from '$lib/server/db/raw_image_upload.schema';
+import { delete_upload_preview_jpegs } from '$lib/server/raw_upload/write_preview_jpeg';
 import { parse_upload_meta_patch } from '$lib/server/upload_meta_patch';
 import type { RequestHandler } from './$types';
 
@@ -54,10 +58,30 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 		error(400, 'Invalid JSON');
 	}
 
-	const parsed = parse_upload_meta_patch(body);
-	if (!parsed.ok) error(400, parsed.error);
+	const record = body as Record<string, unknown>;
+	const flag_patch: Partial<Pick<RawImageUploadRow, 'starred' | 'archived_at_ms'>> = {};
+	if (typeof record.starred === 'boolean') {
+		flag_patch.starred = record.starred ? 1 : 0;
+	}
+	if (record.archive === true) {
+		flag_patch.archived_at_ms = Date.now();
+	}
 
-	await db.update(raw_image_upload).set(parsed.patch).where(eq(raw_image_upload.id, id));
+	const parsed = parse_upload_meta_patch(body);
+	const updates: Partial<RawImageUploadRow> = { ...flag_patch };
+	if (parsed.ok && Object.keys(parsed.patch).length > 0) {
+		Object.assign(updates, parsed.patch);
+	}
+
+	if (Object.keys(updates).length === 0) {
+		error(400, parsed.ok === false ? parsed.error : 'Nothing to update');
+	}
+
+	await db.update(raw_image_upload).set(updates).where(eq(raw_image_upload.id, id));
+
+	if (record.archive === true) {
+		await delete_upload_preview_jpegs(id);
+	}
 
 	const [row] = await db
 		.select()
