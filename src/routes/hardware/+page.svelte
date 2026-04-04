@@ -376,7 +376,7 @@
 									{item.serial_number ?? '—'}
 								</td>
 								<td class="px-3 py-2 text-right">
-									<div class="flex justify-end gap-2">
+									<div class="flex items-center justify-end gap-2">
 										<button
 											type="button"
 											class="text-xs font-medium text-primary-600 hover:underline dark:text-primary-400"
@@ -384,11 +384,16 @@
 										>
 											Edit
 										</button>
-										<form method="POST" action="?/delete" use:enhance class="inline">
+										<form
+											method="POST"
+											action="?/delete"
+											use:enhance
+											class="m-0 inline-flex items-center p-0"
+										>
 											<input type="hidden" name="id" value={item.id} />
 											<button
 												type="submit"
-												class="text-xs font-medium text-red-600 hover:underline dark:text-red-400"
+												class="text-xs font-medium text-primary-600 hover:underline dark:text-primary-400"
 											>
 												Delete
 											</button>
