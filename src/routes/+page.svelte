@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { goto, invalidate } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
@@ -298,7 +298,7 @@
 		meta_save_loading = true;
 		meta_save_error = null;
 		try {
-			const response = await fetch(`${base}/api/gallery/upload-meta/${modal_upload_id}`, {
+			const response = await fetch(resolve(`/api/gallery/upload-meta/${modal_upload_id}`), {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(build_meta_patch_body())
@@ -450,7 +450,7 @@
 
 		modal_detail_loading = true;
 		try {
-			const response = await fetch(`${base}/api/gallery/upload-meta/${item.upload_id}`);
+			const response = await fetch(resolve(`/api/gallery/upload-meta/${item.upload_id}`));
 			if (!response.ok) {
 				const text = await response.text();
 				throw new Error(text || response.statusText);

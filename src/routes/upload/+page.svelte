@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { invalidate } from '$app/navigation';
 	import { transformed_media_depends_key } from '$lib/transformed_media_cache';
 	import {
@@ -11,7 +11,7 @@
 	let { data } = $props();
 
 	const file_accept = [...raw_upload_extensions].join(',');
-	const upload_api_url = `${base}/api/upload/raw`;
+	const upload_api_url = resolve('/api/upload/raw');
 
 	let file_input_el: HTMLInputElement | undefined = $state();
 
