@@ -1,12 +1,19 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { afterNavigate, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
+	import { onMount } from 'svelte';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
-	import { CameraPhotoOutline, ChartOutline, UploadOutline } from 'flowbite-svelte-icons';
+	import {
+		CameraPhotoOutline,
+		SearchOutline,
+		ChevronDoubleLeftOutline,
+		UploadOutline
+	} from 'flowbite-svelte-icons';
 
 	let { children, data } = $props();
 
@@ -24,12 +31,47 @@
 	const dashboard_url = $derived(localizeHref('/'));
 	const upload_url = $derived(localizeHref('/upload'));
 	const hardware_url = $derived(localizeHref('/hardware'));
+
+	const sidebar_collapsed_storage_key = 'lenslocker_sidebar_collapsed';
+
+	let sidebar_collapsed = $state(false);
+
+	onMount(() => {
+		if (!browser) return;
+		if (localStorage.getItem(sidebar_collapsed_storage_key) === '1') sidebar_collapsed = true;
+	});
+
+	function toggle_sidebar_collapsed(): void {
+		sidebar_collapsed = !sidebar_collapsed;
+		if (browser) {
+			localStorage.setItem(sidebar_collapsed_storage_key, sidebar_collapsed ? '1' : '0');
+		}
+	}
+
+	const sidebar_item_label_class = $derived(sidebar_collapsed ? 'sr-only' : span_class);
+
+	const sidebar_item_anchor_class = $derived(
+		sidebar_collapsed ? '!min-h-10 !justify-center' : '!min-h-10'
+	);
+
+	const sidebar_shell_class = $derived(
+		sidebar_collapsed
+			? 'h-svh !w-[3.5rem] min-w-[3.5rem] shrink-0 border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700'
+			: 'h-svh !w-64 shrink-0 border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700'
+	);
+
+	const sidebar_inner_div_class = $derived(
+		sidebar_collapsed
+			? 'overflow-y-auto !px-1 py-4 bg-gray-50 dark:bg-gray-800'
+			: 'overflow-y-auto px-3 py-4 bg-gray-50 dark:bg-gray-800'
+	);
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
 <div class="flex min-h-svh w-full bg-gray-50 dark:bg-gray-900">
 	<Sidebar
+		id="app-sidebar"
 		activeUrl={active_url}
 		alwaysOpen={true}
 		backdrop={false}
@@ -38,32 +80,81 @@
 		closeSidebar={() => {}}
 		position="static"
 		params={{ x: -50, duration: 50 }}
-		class="h-svh w-64 shrink-0 border-e border-gray-200 pt-6 dark:border-gray-700"
-		classes={{ nonactive: 'p-2', active: 'p-2' }}
+		class={sidebar_shell_class}
+		classes={{
+			nonactive: 'p-2',
+			active: 'p-2',
+			div: sidebar_inner_div_class
+		}}
 	>
 		<SidebarGroup>
-			<SidebarItem label="Dashboard" spanClass={span_class} href={dashboard_url}>
+			<li class="mb-2 list-none">
+				<div
+					class="flex min-h-10 items-center px-0.5"
+					class:justify-center={sidebar_collapsed}
+					class:justify-end={!sidebar_collapsed}
+				>
+					<button
+						type="button"
+						class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-primary-300 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:ring-primary-800"
+						aria-expanded={!sidebar_collapsed}
+						aria-controls="app-sidebar"
+						aria-label={sidebar_collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+						onclick={toggle_sidebar_collapsed}
+					>
+						<ChevronDoubleLeftOutline
+							class="h-5 w-5 transition-transform duration-200 {sidebar_collapsed
+								? 'rotate-180'
+								: ''}"
+							aria-hidden="true"
+						/>
+					</button>
+				</div>
+			</li>
+			<SidebarItem
+				label="Dashboard"
+				spanClass={sidebar_item_label_class}
+				aClass={sidebar_item_anchor_class}
+				href={dashboard_url}
+				title={sidebar_collapsed
+					? `Dashboard — ${data.gallery_active_upload_count} photos`
+					: undefined}
+			>
 				{#snippet icon()}
-					<ChartOutline
+					<SearchOutline
 						class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 					/>
 				{/snippet}
 				{#snippet subtext()}
-					<span
-						class="ms-3 inline-flex min-w-8 items-center justify-center rounded-full bg-primary-200 px-2 py-1 text-sm font-medium text-primary-900"
-					>
-						{data.gallery_active_upload_count}
-					</span>
+					{#if !sidebar_collapsed}
+						<span
+							class="ms-3 inline-flex min-w-8 items-center justify-center rounded-full bg-primary-200 px-2 py-1 text-sm font-medium text-primary-900"
+						>
+							{data.gallery_active_upload_count}
+						</span>
+					{/if}
 				{/snippet}
 			</SidebarItem>
-			<SidebarItem label="Upload" href={upload_url}>
+			<SidebarItem
+				label="Upload"
+				spanClass={sidebar_item_label_class}
+				aClass={sidebar_item_anchor_class}
+				href={upload_url}
+				title={sidebar_collapsed ? 'Upload' : undefined}
+			>
 				{#snippet icon()}
 					<UploadOutline
 						class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 					/>
 				{/snippet}
 			</SidebarItem>
-			<SidebarItem label="Hardware" href={hardware_url}>
+			<SidebarItem
+				label="Hardware"
+				spanClass={sidebar_item_label_class}
+				aClass={sidebar_item_anchor_class}
+				href={hardware_url}
+				title={sidebar_collapsed ? 'Hardware' : undefined}
+			>
 				{#snippet icon()}
 					<CameraPhotoOutline
 						class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
