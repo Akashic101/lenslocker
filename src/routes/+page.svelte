@@ -49,12 +49,17 @@
 	let { data } = $props();
 
 	/**
-	 * Panel is shown when the URL has filter params or the user opened it. Hiding clears the query and
-	 * resets this flag so the full gallery is listed again.
+	 * Panel is shown when EXIF/starred filters are in the URL or the user opened it.
+	 * `gallery_focus` (all / needs attention / archived) does not auto-open the panel.
+	 * Closing clears EXIF/starred query params, keeps `gallery_focus` when set, and resets the user flag.
 	 */
 	let filters_panel_user_open = $state(false);
 
-	const filters_panel_open = $derived(data.gallery_filters.active || filters_panel_user_open);
+	const filters_panel_open = $derived(
+		data.gallery_filters.exif_filters_active ||
+			data.gallery_filters.starred_only ||
+			filters_panel_user_open
+	);
 
 	const needs_attention_required_key_set = $derived(
 		new SvelteSet(data.needs_attention_settings.required_field_keys)
@@ -82,6 +87,15 @@
 			? localizeHref(`/?gallery_focus=${data.gallery_filters.gallery_focus}`)
 			: localizeHref('/')
 	);
+
+	function on_filters_toggle_click(): void {
+		if (filters_panel_open) {
+			filters_panel_user_open = false;
+			void goto(dashboard_clear_href, { noScroll: true });
+		} else {
+			filters_panel_user_open = true;
+		}
+	}
 
 	const modal_needs_attention_ui = $derived(
 		data.gallery_filters.gallery_focus === 'needs_attention'
@@ -115,15 +129,6 @@
 		'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700';
 
 	const gallery_header_icon_glyph_class = 'h-5 w-5 shrink-0 text-gray-600 dark:text-gray-300';
-
-	function on_filters_toggle_click(): void {
-		if (filters_panel_open) {
-			filters_panel_user_open = false;
-			void goto(localizeHref('/'), { noScroll: true });
-		} else {
-			filters_panel_user_open = true;
-		}
-	}
 
 	const filter_field_class =
 		'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100';
