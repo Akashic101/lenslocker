@@ -58,10 +58,11 @@
 		sidebar_collapsed ? '!min-h-10 !justify-center' : '!min-h-10'
 	);
 
+	/** `min-h-svh` + stretch (not fixed `h-svh`) so the rail grows with tall main content while scrolling. */
 	const sidebar_shell_class = $derived(
 		sidebar_collapsed
-			? 'flex h-svh min-h-0 !w-[3.5rem] min-w-[3.5rem] shrink-0 flex-col border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700'
-			: 'flex h-svh min-h-0 !w-64 shrink-0 flex-col border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700'
+			? 'flex min-h-svh min-h-0 !w-[3.5rem] min-w-[3.5rem] shrink-0 grow-0 flex-col self-stretch border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700'
+			: 'flex min-h-svh min-h-0 !w-64 shrink-0 grow-0 flex-col self-stretch border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700'
 	);
 
 	const sidebar_inner_div_class = $derived(
@@ -73,7 +74,7 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
-<div class="flex min-h-svh w-full bg-gray-50 dark:bg-gray-900">
+<div class="flex min-h-svh w-full items-stretch bg-gray-50 dark:bg-gray-900">
 	<Sidebar
 		id="app-sidebar"
 		activeUrl={active_url}
@@ -209,7 +210,7 @@
 		</div>
 	</Sidebar>
 
-	<main class="min-h-svh min-w-0 flex-1 overflow-auto p-6 md:p-8">
+	<main class="min-h-0 min-w-0 flex-1 overflow-auto p-6 md:p-8">
 		{@render children()}
 	</main>
 </div>
