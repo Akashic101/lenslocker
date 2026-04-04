@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { invalidate } from '$app/navigation';
+	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
 	import { transformed_media_depends_key } from '$lib/transformed_media_cache';
 	import {
 		raw_upload_extensions,
@@ -183,6 +184,7 @@
 		batch_busy = false;
 		batch_upload_pct = 0;
 		await invalidate(transformed_media_depends_key);
+		await invalidate(gallery_active_upload_count_depends_key);
 	}
 </script>
 

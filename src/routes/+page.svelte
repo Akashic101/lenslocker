@@ -3,6 +3,7 @@
 	import { goto, invalidate } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
+	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
 	import { transformed_media_depends_key } from '$lib/transformed_media_cache';
 	import { upload_meta_editable_field_list } from '$lib/upload_meta_editable_fields';
 	import { CloseButton, Modal } from 'flowbite-svelte';
@@ -381,6 +382,9 @@
 				modal_heading = payload.original_filename;
 			}
 			await invalidate(transformed_media_depends_key);
+			if (body.archive === true) {
+				await invalidate(gallery_active_upload_count_depends_key);
+			}
 			return true;
 		} catch (e) {
 			modal_action_error = e instanceof Error ? e.message : String(e);
