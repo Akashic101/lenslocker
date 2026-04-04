@@ -22,11 +22,12 @@ import {
 	build_gallery_meta_rows,
 	upload_id_from_gallery_preview_path
 } from '$lib/server/gallery_upload_meta';
-import { preview_full_relative_path } from '$lib/server/raw_upload/write_preview_jpeg';
+import { resolve_upload_preview_full_relative_path } from '$lib/server/raw_upload/write_preview_jpeg';
 import {
 	get_transformed_source_description,
 	list_transformed_media_paths
 } from '$lib/server/transformed';
+import { get_upload_preview_pipeline_settings } from '$lib/server/upload_pipeline_settings';
 import type { PageServerLoad } from './$types';
 
 const images_per_page = 50;
@@ -94,7 +95,8 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 		iso_stats_row,
 		date_stats_row,
 		camera_pair_rows,
-		lens_pair_rows
+		lens_pair_rows,
+		upload_pipeline_settings
 	] = await Promise.all([
 		list_transformed_media_paths(),
 		db
@@ -141,7 +143,8 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 					sql`trim(coalesce(${raw_image_upload.lens_model}, '')) != ''`
 				)
 			)
-			.orderBy(asc(raw_image_upload.lens_make), asc(raw_image_upload.lens_model))
+			.orderBy(asc(raw_image_upload.lens_make), asc(raw_image_upload.lens_model)),
+		get_upload_preview_pipeline_settings()
 	]);
 
 	const upload_flags = new Map(
@@ -273,10 +276,21 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 		}
 	}
 
+	const full_preview_relative_by_upload_id = new Map<string, string>();
+	if (preview_upload_ids.length > 0) {
+		const preferred_format = upload_pipeline_settings.upload_preview_format;
+		for (const uid of new Set(preview_upload_ids)) {
+			const rel = await resolve_upload_preview_full_relative_path(uid, preferred_format);
+			if (rel != null) full_preview_relative_by_upload_id.set(uid, rel);
+		}
+	}
+
 	const images = slice.map((relative_path) => {
 		const upload_id = upload_id_from_gallery_preview_path(relative_path);
 		const caption_rows = upload_id ? meta_by_upload_id.get(upload_id) : undefined;
-		const full_relative = upload_id ? preview_full_relative_path(upload_id) : null;
+		const full_relative = upload_id
+			? (full_preview_relative_by_upload_id.get(upload_id) ?? null)
+			: null;
 		const flags = upload_id ? upload_flags.get(upload_id) : undefined;
 		const starred = flags != null && flags.starred === 1;
 		return {

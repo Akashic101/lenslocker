@@ -1,4 +1,4 @@
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import exifr from 'exifr';
 
@@ -8,8 +8,14 @@ const exifr_rotations = exifr.rotations as Record<
 	{ deg: number; scaleX: number; scaleY: number; rad?: number; dimensionSwapped?: boolean }
 >;
 import { exiftool } from 'exiftool-vendored';
-import sharp from 'sharp';
+import sharp, { type Sharp } from 'sharp';
 import { get_transformed_root_absolute_path } from '$lib/server/transformed';
+import {
+	get_upload_preview_pipeline_settings,
+	type upload_preview_pipeline_settings
+} from '$lib/server/upload_pipeline_settings';
+import type { upload_preview_format } from '$lib/upload_preview_format';
+import { upload_preview_formats, upload_preview_format_file_ext } from '$lib/upload_preview_format';
 
 /** RAW-like: extract large embedded JPEGs via ExifTool; Sharp may also decode some via libraw. */
 const raw_like_extensions = new Set([
@@ -38,11 +44,6 @@ const raw_like_extensions = new Set([
 ]);
 
 const preview_subdir = 'upload-previews';
-/** Max long edge for the modal “full” JPEG (memory / file size bound). */
-const max_full_edge_px = 8192;
-const thumb_max_edge_px = 480;
-const jpeg_q_thumb = 82;
-const jpeg_q_full = 93;
 
 /**
  * Order matters: prefer tags that usually hold the largest usable embedded JPEG.
@@ -50,30 +51,64 @@ const jpeg_q_full = 93;
  */
 const exiftool_raw_preview_tags = ['JpgFromRaw', 'PreviewImage', 'OtherImage', 'ThumbnailImage'];
 
-export function preview_thumb_relative_path(upload_id: string): string {
-	return path.posix.join(preview_subdir, `${upload_id}_thumb.jpg`);
+export function preview_thumb_relative_path(
+	upload_id: string,
+	format: upload_preview_format
+): string {
+	const ext = upload_preview_format_file_ext(format);
+	return path.posix.join(preview_subdir, `${upload_id}_thumb${ext}`);
 }
 
-export function preview_full_relative_path(upload_id: string): string {
-	return path.posix.join(preview_subdir, `${upload_id}_full.jpg`);
+export function preview_full_relative_path(
+	upload_id: string,
+	format: upload_preview_format
+): string {
+	const ext = upload_preview_format_file_ext(format);
+	return path.posix.join(preview_subdir, `${upload_id}_full${ext}`);
 }
 
-/** Removes grid + modal JPEGs under the transformed root (no error if already absent). */
-export async function delete_upload_preview_jpegs(upload_id: string): Promise<void> {
+/** Picks an existing modal preview on disk (any supported format), preferring the current setting. */
+export async function resolve_upload_preview_full_relative_path(
+	upload_id: string,
+	preferred_format: upload_preview_format
+): Promise<string | null> {
 	const root = path.resolve(get_transformed_root_absolute_path());
-	for (const rel of [
-		preview_thumb_relative_path(upload_id),
-		preview_full_relative_path(upload_id)
-	]) {
+	const order: upload_preview_format[] = [
+		preferred_format,
+		...upload_preview_formats.filter((f) => f !== preferred_format)
+	];
+	for (const fmt of order) {
+		const rel = preview_full_relative_path(upload_id, fmt);
 		const abs = path.resolve(root, ...rel.split(path.posix.sep));
 		if (!abs.startsWith(root + path.sep) && abs !== root) continue;
 		try {
-			await unlink(abs);
-		} catch (e) {
-			const code =
-				e && typeof e === 'object' && 'code' in e ? (e as NodeJS.ErrnoException).code : undefined;
-			if (code !== 'ENOENT') {
-				console.error(`${log_prefix} unlink failed (${rel}):`, e);
+			await access(abs);
+			return rel;
+		} catch {
+			continue;
+		}
+	}
+	return null;
+}
+
+/** Removes grid + modal previews for an upload (all supported extensions; ignores missing files). */
+export async function delete_upload_preview_jpegs(upload_id: string): Promise<void> {
+	const root = path.resolve(get_transformed_root_absolute_path());
+	for (const fmt of upload_preview_formats) {
+		for (const rel of [
+			preview_thumb_relative_path(upload_id, fmt),
+			preview_full_relative_path(upload_id, fmt)
+		]) {
+			const abs = path.resolve(root, ...rel.split(path.posix.sep));
+			if (!abs.startsWith(root + path.sep) && abs !== root) continue;
+			try {
+				await unlink(abs);
+			} catch (e) {
+				const code =
+					e && typeof e === 'object' && 'code' in e ? (e as NodeJS.ErrnoException).code : undefined;
+				if (code !== 'ENOENT') {
+					console.error(`${log_prefix} unlink failed (${rel}):`, e);
+				}
 			}
 		}
 	}
@@ -155,37 +190,38 @@ function log_preview_error(context: string, err: unknown): void {
 async function try_encode_master_jpeg(
 	buf: Buffer,
 	upload_id: string,
-	original_filename: string
+	original_filename: string,
+	pipeline: upload_preview_pipeline_settings
 ): Promise<Buffer | null> {
+	const max_edge = pipeline.max_full_edge_px;
+	const q_full = pipeline.jpeg_q_full;
 	const attempts: Array<{ name: string; run: () => Promise<Buffer> }> = [
 		{
 			name: 'rotate_resize_jpeg',
 			run: () =>
 				sharp(buf, { failOn: 'none', limitInputPixels: false })
-					.resize(max_full_edge_px, max_full_edge_px, {
+					.resize(max_edge, max_edge, {
 						fit: 'inside',
 						withoutEnlargement: true
 					})
-					.jpeg({ quality: jpeg_q_full })
+					.jpeg({ quality: q_full })
 					.toBuffer()
 		},
 		{
 			name: 'resize_jpeg',
 			run: () =>
 				sharp(buf, { failOn: 'none', limitInputPixels: false })
-					.resize(max_full_edge_px, max_full_edge_px, {
+					.resize(max_edge, max_edge, {
 						fit: 'inside',
 						withoutEnlargement: true
 					})
-					.jpeg({ quality: jpeg_q_full })
+					.jpeg({ quality: q_full })
 					.toBuffer()
 		},
 		{
 			name: 'jpeg_only',
 			run: () =>
-				sharp(buf, { failOn: 'none', limitInputPixels: false })
-					.jpeg({ quality: jpeg_q_full })
-					.toBuffer()
+				sharp(buf, { failOn: 'none', limitInputPixels: false }).jpeg({ quality: q_full }).toBuffer()
 		}
 	];
 
@@ -227,7 +263,8 @@ async function pick_largest_master_jpeg(candidates: Buffer[]): Promise<Buffer | 
 async function collect_exiftool_raw_jpeg_candidates(
 	source_absolute_path: string,
 	upload_id: string,
-	original_filename: string
+	original_filename: string,
+	pipeline: upload_preview_pipeline_settings
 ): Promise<Buffer[]> {
 	const candidates: Buffer[] = [];
 	for (const tag of exiftool_raw_preview_tags) {
@@ -235,7 +272,7 @@ async function collect_exiftool_raw_jpeg_candidates(
 			const raw_chunk = await exiftool.extractBinaryTagToBuffer(tag, source_absolute_path);
 			if (raw_chunk.length === 0 || !looks_like_jpeg(raw_chunk)) continue;
 			const label = `${original_filename}#exiftool:${tag}`;
-			const encoded = await try_encode_master_jpeg(raw_chunk, upload_id, label);
+			const encoded = await try_encode_master_jpeg(raw_chunk, upload_id, label, pipeline);
 			const chosen = encoded ?? raw_chunk;
 			candidates.push(chosen);
 			console.warn(
@@ -275,37 +312,65 @@ async function try_exifr_embedded_preview(
 	}
 }
 
+async function sharp_to_preview_buffer(
+	pipeline_sharp: Sharp,
+	format: upload_preview_format,
+	quality: number
+): Promise<Buffer> {
+	switch (format) {
+		case 'jpeg':
+			return pipeline_sharp.jpeg({ quality, mozjpeg: true }).toBuffer();
+		case 'webp':
+			return pipeline_sharp.webp({ quality }).toBuffer();
+		case 'avif':
+			return pipeline_sharp.avif({ quality }).toBuffer();
+		case 'png': {
+			const compressionLevel = Math.min(9, Math.max(0, Math.round(9 - (quality / 100) * 9)));
+			return pipeline_sharp.png({ compressionLevel }).toBuffer();
+		}
+		default: {
+			const _exhaustive: never = format;
+			return _exhaustive;
+		}
+	}
+}
+
 async function write_thumb_and_full_jpegs(
 	dir: string,
 	upload_id: string,
 	master_jpeg: Buffer,
-	rotation_hints: exifr_rotation_hints | undefined
+	rotation_hints: exifr_rotation_hints | undefined,
+	pipeline: upload_preview_pipeline_settings
 ): Promise<void> {
-	const thumb_abs = path.join(dir, `${upload_id}_thumb.jpg`);
-	const full_abs = path.join(dir, `${upload_id}_full.jpg`);
+	const fmt = pipeline.upload_preview_format;
+	const thumb_abs = path.join(dir, `${upload_id}_thumb${upload_preview_format_file_ext(fmt)}`);
+	const full_abs = path.join(dir, `${upload_id}_full${upload_preview_format_file_ext(fmt)}`);
 
-	const thumb_buf = await apply_source_orientation(
-		sharp(master_jpeg, { failOn: 'none' }),
-		rotation_hints
-	)
-		.resize(thumb_max_edge_px, thumb_max_edge_px, {
-			fit: 'inside',
-			withoutEnlargement: true
-		})
-		.jpeg({ quality: jpeg_q_thumb })
-		.toBuffer();
+	const thumb_buf = await sharp_to_preview_buffer(
+		apply_source_orientation(sharp(master_jpeg, { failOn: 'none' }), rotation_hints).resize(
+			pipeline.thumb_max_edge_px,
+			pipeline.thumb_max_edge_px,
+			{
+				fit: 'inside',
+				withoutEnlargement: true
+			}
+		),
+		fmt,
+		pipeline.jpeg_q_thumb
+	);
 
-	/** Modal image: as large as the best source allows, capped for safety, high JPEG quality. */
-	const full_buf = await apply_source_orientation(
-		sharp(master_jpeg, { failOn: 'none' }),
-		rotation_hints
-	)
-		.resize(max_full_edge_px, max_full_edge_px, {
-			fit: 'inside',
-			withoutEnlargement: true
-		})
-		.jpeg({ quality: jpeg_q_full })
-		.toBuffer();
+	const full_buf = await sharp_to_preview_buffer(
+		apply_source_orientation(sharp(master_jpeg, { failOn: 'none' }), rotation_hints).resize(
+			pipeline.max_full_edge_px,
+			pipeline.max_full_edge_px,
+			{
+				fit: 'inside',
+				withoutEnlargement: true
+			}
+		),
+		fmt,
+		pipeline.jpeg_q_full
+	);
 
 	await writeFile(thumb_abs, thumb_buf);
 	await writeFile(full_abs, full_buf);
@@ -316,10 +381,12 @@ export type write_preview_jpeg_options = {
 	source_absolute_path?: string | null;
 	/** EXIF orientation 1–8 from metadata when `exifr.rotation` on the buffer is inconclusive. */
 	exif_orientation?: number | null;
+	/** When omitted, settings are read from the database (or defaults). */
+	pipeline?: upload_preview_pipeline_settings;
 };
 
 /**
- * Decode upload, write `upload-previews/<id>_thumb.jpg` (grid) and `<id>_full.jpg` (modal).
+ * Decode upload, write `upload-previews/<id>_thumb.*` (grid) and `<id>_full.*` (modal).
  */
 export async function write_preview_jpeg_for_upload(
 	upload_id: string,
@@ -331,6 +398,8 @@ export async function write_preview_jpeg_for_upload(
 	| { ok: false; message: string }
 > {
 	try {
+		const pipeline = opts?.pipeline ?? (await get_upload_preview_pipeline_settings());
+
 		const root = get_transformed_root_absolute_path();
 		const dir = path.join(root, preview_subdir);
 		await mkdir(dir, { recursive: true });
@@ -345,7 +414,7 @@ export async function write_preview_jpeg_for_upload(
 			 * (b) ExifTool JpgFromRaw / PreviewImage / …, (c) legacy exifr IFD1 thumb if no path.
 			 */
 			const candidates: Buffer[] = [];
-			const from_sharp = await try_encode_master_jpeg(buf, upload_id, original_filename);
+			const from_sharp = await try_encode_master_jpeg(buf, upload_id, original_filename, pipeline);
 			if (from_sharp) candidates.push(from_sharp);
 
 			const source_path = opts?.source_absolute_path;
@@ -353,14 +422,15 @@ export async function write_preview_jpeg_for_upload(
 				const from_exiftool = await collect_exiftool_raw_jpeg_candidates(
 					source_path,
 					upload_id,
-					original_filename
+					original_filename,
+					pipeline
 				);
 				candidates.push(...from_exiftool);
 			} else {
 				const embedded = await try_exifr_embedded_preview(buf, upload_id, original_filename);
 				if (embedded) {
 					const embed_label = `${original_filename}#exifr_embedded`;
-					let from_embed = await try_encode_master_jpeg(embedded, upload_id, embed_label);
+					let from_embed = await try_encode_master_jpeg(embedded, upload_id, embed_label, pipeline);
 					if (from_embed == null && looks_like_jpeg(embedded)) {
 						from_embed = embedded;
 					}
@@ -370,11 +440,11 @@ export async function write_preview_jpeg_for_upload(
 
 			master_jpeg = await pick_largest_master_jpeg(candidates);
 		} else {
-			master_jpeg = await try_encode_master_jpeg(buf, upload_id, original_filename);
+			master_jpeg = await try_encode_master_jpeg(buf, upload_id, original_filename, pipeline);
 		}
 
 		if (master_jpeg == null) {
-			master_jpeg = await try_encode_master_jpeg(buf, upload_id, original_filename);
+			master_jpeg = await try_encode_master_jpeg(buf, upload_id, original_filename, pipeline);
 		}
 
 		if (master_jpeg == null) {
@@ -423,19 +493,19 @@ export async function write_preview_jpeg_for_upload(
 		}
 
 		if (master_jpeg == null) {
-			const message = 'Could not decode image or build JPEG preview.';
+			const message = 'Could not decode image or build preview.';
 			console.error(
 				`${log_prefix} failed completely: ${message} upload_id=${upload_id} file=${original_filename} bytes=${buf.byteLength}`
 			);
 			return { ok: false, message };
 		}
 
-		await write_thumb_and_full_jpegs(dir, upload_id, master_jpeg, rotation_hints);
+		await write_thumb_and_full_jpegs(dir, upload_id, master_jpeg, rotation_hints, pipeline);
 
 		return {
 			ok: true,
-			thumb_relative_path: preview_thumb_relative_path(upload_id),
-			full_relative_path: preview_full_relative_path(upload_id)
+			thumb_relative_path: preview_thumb_relative_path(upload_id, pipeline.upload_preview_format),
+			full_relative_path: preview_full_relative_path(upload_id, pipeline.upload_preview_format)
 		};
 	} catch (e) {
 		const message = e instanceof Error ? e.message : String(e);

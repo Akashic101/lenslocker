@@ -1,2 +1,4 @@
-/** Max size for a single RAW / image upload (matches server enforcement). */
-export const max_raw_upload_bytes = 512 * 1024 * 1024;
+import { upload_preview_pipeline_defaults } from '$lib/upload_pipeline_defaults';
+
+/** Fallback max upload size (matches default pipeline settings). Prefer `data.upload_pipeline_settings` from the upload page load. */
+export const max_raw_upload_bytes = upload_preview_pipeline_defaults.max_upload_bytes;

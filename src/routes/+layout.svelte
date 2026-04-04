@@ -10,6 +10,7 @@
 	import { Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
 	import {
 		CameraPhotoOutline,
+		CogOutline,
 		SearchOutline,
 		ChevronDoubleLeftOutline,
 		UploadOutline
@@ -31,6 +32,7 @@
 	const dashboard_url = $derived(localizeHref('/'));
 	const upload_url = $derived(localizeHref('/upload'));
 	const hardware_url = $derived(localizeHref('/hardware'));
+	const settings_url = $derived(localizeHref('/settings'));
 
 	const sidebar_collapsed_storage_key = 'lenslocker_sidebar_collapsed';
 
@@ -157,6 +159,19 @@
 			>
 				{#snippet icon()}
 					<CameraPhotoOutline
+						class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+					/>
+				{/snippet}
+			</SidebarItem>
+			<SidebarItem
+				label="Settings"
+				spanClass={sidebar_item_label_class}
+				aClass={sidebar_item_anchor_class}
+				href={settings_url}
+				title={sidebar_collapsed ? 'Settings' : undefined}
+			>
+				{#snippet icon()}
+					<CogOutline
 						class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 					/>
 				{/snippet}

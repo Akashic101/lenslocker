@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { max_raw_upload_bytes } from '$lib/raw_upload_limits';
 import { db } from '$lib/server/db';
+import { get_upload_preview_pipeline_settings } from '$lib/server/upload_pipeline_settings';
 import { raw_image_upload } from '$lib/server/db/raw_image_upload.schema';
 import { is_allowed_raw_upload_extension } from '$lib/raw_upload_extensions';
 import { build_metadata_fields } from '$lib/server/raw_upload/metadata_from_exifr';
@@ -35,15 +35,27 @@ export type process_raw_upload_result = process_raw_upload_ok | process_raw_uplo
  * Store one RAW/image file, persist EXIF metadata to SQLite, and generate JPEG previews.
  * Shared by the legacy form action and the JSON API for batch uploads.
  */
+function format_max_upload_label(max_bytes: number): string {
+	const mb = max_bytes / (1024 * 1024);
+	if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+	if (Number.isInteger(mb)) return `${mb} MB`;
+	return `${mb.toFixed(1)} MB`;
+}
+
 export async function process_single_raw_upload(
 	input: process_raw_upload_input
 ): Promise<process_raw_upload_result> {
+	const pipeline = await get_upload_preview_pipeline_settings();
+
 	if (input.byte_size === 0) {
 		return { ok: false, message: 'The file is empty.' };
 	}
 
-	if (input.byte_size > max_raw_upload_bytes) {
-		return { ok: false, message: 'File is too large (max 512 MB).' };
+	if (input.byte_size > pipeline.max_upload_bytes) {
+		return {
+			ok: false,
+			message: `File is too large (max ${format_max_upload_label(pipeline.max_upload_bytes)}).`
+		};
 	}
 
 	if (!is_allowed_raw_upload_extension(input.original_filename)) {
@@ -104,13 +116,14 @@ export async function process_single_raw_upload(
 		input.original_filename,
 		{
 			source_absolute_path: absolute_path,
-			exif_orientation: metadata.orientation ?? null
+			exif_orientation: metadata.orientation ?? null,
+			pipeline
 		}
 	);
 
 	if (!preview.ok) {
 		console.error(
-			'[upload] JPEG preview not created:',
+			'[upload] preview not created:',
 			'upload_id=',
 			id,
 			'file=',

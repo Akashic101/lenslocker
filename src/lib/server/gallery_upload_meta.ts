@@ -1,6 +1,6 @@
-/** Grid listing: `upload-previews/<uuid>_thumb.jpg`. */
+/** Grid listing: `upload-previews/<uuid>_thumb.{jpg,webp,avif,png}`. */
 const upload_preview_thumb_pattern =
-	/^upload-previews\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_thumb\.jpe?g$/i;
+	/^upload-previews\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_thumb\.(?:jpe?g|webp|avif|png)$/i;
 
 export function upload_id_from_gallery_preview_path(relative_posix_path: string): string | null {
 	const thumb_match = relative_posix_path.match(upload_preview_thumb_pattern);

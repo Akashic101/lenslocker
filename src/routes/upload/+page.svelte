@@ -9,7 +9,6 @@
 		raw_upload_extensions,
 		is_allowed_raw_upload_extension
 	} from '$lib/raw_upload_extensions';
-	import { max_raw_upload_bytes } from '$lib/raw_upload_limits';
 
 	let { data } = $props();
 
@@ -137,8 +136,13 @@
 				invalid_lines.push({ name: file.name, ok: false, message: 'Empty file' });
 				continue;
 			}
-			if (file.size > max_raw_upload_bytes) {
-				invalid_lines.push({ name: file.name, ok: false, message: 'Too large (max 512 MB)' });
+			if (file.size > data.upload_pipeline_settings.max_upload_bytes) {
+				const mb = Math.round(data.upload_pipeline_settings.max_upload_bytes / (1024 * 1024));
+				invalid_lines.push({
+					name: file.name,
+					ok: false,
+					message: `Too large (max ${mb} MB)`
+				});
 				continue;
 			}
 			if (!is_allowed_raw_upload_extension(file.name)) {
