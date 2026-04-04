@@ -18,6 +18,7 @@
 		ClockOutline,
 		EyeOutline,
 		FilterOutline,
+		FilterSolid,
 		FolderOutline,
 		GridOutline,
 		ImageOutline,
@@ -73,6 +74,11 @@
 			? 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
 			: 'grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7'
 	);
+
+	const gallery_header_icon_button_class =
+		'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700';
+
+	const gallery_header_icon_glyph_class = 'h-5 w-5 shrink-0 text-gray-600 dark:text-gray-300';
 
 	function on_filters_toggle_click(): void {
 		if (filters_panel_open) {
@@ -583,14 +589,16 @@
 </svelte:head>
 
 <div class="mx-auto max-w-7xl">
-	<header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-		<div class="min-w-0">
-			<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">LensLocker</h1>
+	<header
+		class="mb-8 flex min-w-0 flex-row flex-nowrap items-center justify-between gap-3 sm:gap-4"
+	>
+		<div class="min-w-0 flex-1">
+			<h1 class="truncate text-2xl font-semibold text-gray-900 dark:text-white">LensLocker</h1>
 		</div>
-		<div class="flex shrink-0 flex-wrap items-center gap-2">
+		<div class="flex shrink-0 items-center gap-2">
 			<button
 				type="button"
-				class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+				class={gallery_header_icon_button_class}
 				aria-pressed={gallery_grid_show_meta}
 				aria-label={gallery_grid_show_meta
 					? 'Switch to compact grid (hide captions under photos)'
@@ -598,29 +606,24 @@
 				onclick={toggle_gallery_grid_show_meta}
 			>
 				{#if gallery_grid_show_meta}
-					<GridOutline
-						class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-300"
-						aria-hidden="true"
-					/>
+					<GridOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
 				{:else}
-					<ColumnOutline
-						class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-300"
-						aria-hidden="true"
-					/>
+					<ColumnOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
 				{/if}
 			</button>
 			<button
 				type="button"
-				class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+				class={gallery_header_icon_button_class}
 				aria-expanded={filters_panel_open}
 				aria-controls="gallery-filters-panel"
+				aria-label={filters_panel_open ? 'Hide filters' : 'Show filters'}
 				onclick={on_filters_toggle_click}
 			>
-				<FilterOutline
-					class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
-					aria-hidden="true"
-				/>
-				{filters_panel_open ? 'Hide filters' : 'Filters'}
+				{#if filters_panel_open}
+					<FilterSolid class={gallery_header_icon_glyph_class} aria-hidden="true" />
+				{:else}
+					<FilterOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+				{/if}
 			</button>
 		</div>
 	</header>
