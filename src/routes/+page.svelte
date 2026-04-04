@@ -816,7 +816,7 @@
 		class="mb-8 flex min-w-0 flex-row flex-nowrap items-center justify-between gap-3 sm:gap-4"
 	>
 		<div class="min-w-0 flex-1">
-			<h1 class="truncate text-2xl font-semibold text-gray-900 dark:text-white">LensLocker</h1>
+			<h1 class="truncate text-2xl font-semibold text-gray-900 dark:text-white">Dashboard</h1>
 			{#if gallery_view_blurb != null}
 				<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{gallery_view_blurb}</p>
 			{/if}

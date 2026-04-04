@@ -1,19 +1,15 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { afterNavigate, invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import { onMount } from 'svelte';
+	import { slide } from 'svelte/transition';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import {
-		DarkMode,
-		Sidebar,
-		SidebarDropdownWrapper,
-		SidebarGroup,
-		SidebarItem
-	} from 'flowbite-svelte';
+	import { DarkMode, Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
 	import {
 		ArchiveOutline,
 		CameraPhotoOutline,
@@ -22,6 +18,7 @@
 		ExclamationCircleOutline,
 		SearchOutline,
 		ChevronDoubleLeftOutline,
+		ChevronDownOutline,
 		UploadOutline
 	} from 'flowbite-svelte-icons';
 
@@ -38,7 +35,7 @@
 
 	const span_class = 'flex-1 ms-3 whitespace-nowrap';
 
-	const dashboard_all_href = $derived(localizeHref('/'));
+	const dashboard_all_href = $derived(localizeHref(resolve('/')));
 	const dashboard_needs_attention_href = $derived(localizeHref('/?gallery_focus=needs_attention'));
 	const dashboard_archived_href = $derived(localizeHref('/?gallery_focus=archived'));
 	const upload_url = $derived(localizeHref('/upload'));
@@ -110,14 +107,6 @@
 	const dashboard_all_active = $derived(active_url === '/' && gallery_focus_param === '');
 	const dashboard_attention_active = $derived(gallery_focus_param === 'needs_attention');
 	const dashboard_archived_active = $derived(gallery_focus_param === 'archived');
-
-	const dashboard_collapsed_href = $derived(
-		gallery_focus_param === 'needs_attention'
-			? dashboard_needs_attention_href
-			: gallery_focus_param === 'archived'
-				? dashboard_archived_href
-				: dashboard_all_href
-	);
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -145,13 +134,23 @@
 			<SidebarGroup>
 				<li class="mb-2 list-none">
 					<div
-						class="flex min-h-10 items-center px-0.5"
+						class="flex min-h-10 w-full items-center gap-2 px-0.5"
 						class:justify-center={sidebar_collapsed}
-						class:justify-end={!sidebar_collapsed}
+						class:justify-between={!sidebar_collapsed}
 					>
+						{#if !sidebar_collapsed}
+							<a
+								// TODO: Why is this broken???
+								// eslint-disable-next-line svelte/no-navigation-without-resolve
+								href={dashboard_all_href}
+								class="min-w-0 flex-1 truncate text-lg font-semibold text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+							>
+								LensLocker
+							</a>
+						{/if}
 						<button
 							type="button"
-							class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-primary-300 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:ring-primary-800"
+							class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-primary-300 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:ring-primary-800"
 							aria-expanded={!sidebar_collapsed}
 							aria-controls="app-sidebar"
 							aria-label={sidebar_collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -171,8 +170,8 @@
 						label="Dashboard"
 						spanClass={sidebar_item_label_class}
 						aClass={sidebar_item_anchor_class}
-						href={dashboard_collapsed_href}
-						title="Dashboard — expand sidebar for All photos, Needs attention, and Archived"
+						href={dashboard_all_href}
+						title="All photos — expand sidebar for Needs attention and Archived"
 					>
 						{#snippet icon()}
 							<SearchOutline
@@ -181,65 +180,82 @@
 						{/snippet}
 					</SidebarItem>
 				{:else}
-					<SidebarDropdownWrapper
-						label="Dashboard"
-						bind:isOpen={dashboard_menu_open}
-						classes={{ btn: 'p-2' }}
-						spanClass={span_class}
-					>
-						{#snippet icon()}
-							<SearchOutline
-								class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
-							/>
-						{/snippet}
-						<SidebarItem
-							label="All photos"
-							spanClass={span_class}
-							aClass={sidebar_item_anchor_class}
-							href={dashboard_all_href}
-							active={dashboard_all_active}
+					<li class="list-none">
+						<div
+							class="flex w-full items-stretch overflow-hidden rounded-sm transition duration-75 hover:bg-gray-100 dark:hover:bg-gray-700"
 						>
-							{#snippet icon()}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- paraglide localizeHref(resolve('/')) -->
+							<a
+								href={dashboard_all_href}
+								aria-current={dashboard_all_active ? 'page' : undefined}
+								class="group flex min-h-10 min-w-0 flex-1 items-center p-2 text-base font-normal text-gray-900 transition duration-75 dark:text-white {dashboard_all_active
+									? 'bg-gray-100 dark:bg-gray-700'
+									: ''}"
+							>
 								<SearchOutline
-									class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+									class="h-5 w-5 shrink-0 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 								/>
-							{/snippet}
-							{#snippet subtext()}
+								<span class={span_class}>Dashboard</span>
 								<span
-									class="ms-3 inline-flex min-w-8 items-center justify-center rounded-full bg-primary-200 px-2 py-1 text-sm font-medium text-primary-900"
+									class="ms-3 inline-flex min-w-8 shrink-0 items-center justify-center rounded-full bg-primary-200 px-2 py-1 text-sm font-medium text-primary-900 dark:bg-primary-200 dark:text-primary-900"
 								>
 									{data.gallery_active_upload_count}
 								</span>
-							{/snippet}
-						</SidebarItem>
-						<SidebarItem
-							label="Needs attention"
-							spanClass={span_class}
-							aClass={sidebar_item_anchor_class}
-							href={dashboard_needs_attention_href}
-							active={dashboard_attention_active}
-							title="Missing GPS, camera or lens metadata, or shot date"
-						>
-							{#snippet icon()}
-								<ExclamationCircleOutline
-									class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+							</a>
+							<button
+								type="button"
+								class="inline-flex min-h-10 w-9 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-gray-800 hover:bg-gray-200/50 dark:text-white dark:hover:bg-gray-600/40"
+								aria-expanded={dashboard_menu_open}
+								aria-controls="dashboard-submenu"
+								aria-label={dashboard_menu_open
+									? 'Hide Needs attention and Archived'
+									: 'Show Needs attention and Archived'}
+								onclick={() => (dashboard_menu_open = !dashboard_menu_open)}
+							>
+								<ChevronDownOutline
+									class="h-3 w-3 transition-transform duration-200 {dashboard_menu_open
+										? 'rotate-180'
+										: ''}"
+									aria-hidden="true"
 								/>
-							{/snippet}
-						</SidebarItem>
-						<SidebarItem
-							label="Archived only"
-							spanClass={span_class}
-							aClass={sidebar_item_anchor_class}
-							href={dashboard_archived_href}
-							active={dashboard_archived_active}
-						>
-							{#snippet icon()}
-								<ArchiveOutline
-									class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
-								/>
-							{/snippet}
-						</SidebarItem>
-					</SidebarDropdownWrapper>
+							</button>
+						</div>
+						{#if dashboard_menu_open}
+							<ul
+								id="dashboard-submenu"
+								class="space-y-0 py-2"
+								transition:slide={{ duration: 150 }}
+							>
+								<SidebarItem
+									label="Needs attention"
+									spanClass={span_class}
+									aClass={sidebar_item_anchor_class}
+									href={dashboard_needs_attention_href}
+									active={dashboard_attention_active}
+									title="Missing GPS, camera or lens metadata, or shot date"
+								>
+									{#snippet icon()}
+										<ExclamationCircleOutline
+											class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+										/>
+									{/snippet}
+								</SidebarItem>
+								<SidebarItem
+									label="Archived only"
+									spanClass={span_class}
+									aClass={sidebar_item_anchor_class}
+									href={dashboard_archived_href}
+									active={dashboard_archived_active}
+								>
+									{#snippet icon()}
+										<ArchiveOutline
+											class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+										/>
+									{/snippet}
+								</SidebarItem>
+							</ul>
+						{/if}
+					</li>
 				{/if}
 				<SidebarItem
 					label="Upload"
