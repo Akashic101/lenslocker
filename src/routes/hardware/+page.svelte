@@ -122,10 +122,8 @@
 <div class="mx-auto max-w-4xl">
 	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Hardware</h1>
 	<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-		Track cameras, lenses, and other gear. Stored in SQLite (<code class="text-xs"
-			>hardware_item</code
-		>). For camera and lens, make and model are dropdowns built from EXIF on your uploaded photos
-		(text fields if there is no data yet).
+		Track cameras, lenses, and other gear. For camera and lens, make and model give suggestions
+		built from EXIF on your uploaded photos.
 	</p>
 
 	{#if form?.message}

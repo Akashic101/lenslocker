@@ -195,15 +195,7 @@
 <div class="mx-auto max-w-xl">
 	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Upload RAW</h1>
 	<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-		Select one or more files — each is uploaded in turn with a progress bar. Original files are
-		stored under
-		<code class="text-xs">RAW_UPLOAD_ROOT</code> (default
-		<code class="text-xs">data/uploads/raw</code>). Metadata is parsed with exifr and saved to
-		SQLite. Two JPEG previews — a grid thumbnail (~480px) and a larger modal image (up to ~4096px) —
-		are written under your transformed media root (
-		<code class="text-xs">TRANSFORMED_MEDIA_ROOT</code> or
-		<code class="text-xs">static/transformed</code>) in
-		<code class="text-xs">upload-previews/</code> and appear on the home page grid (newest first).
+		Select one or more files to upload them to the database with the metadata included.
 	</p>
 
 	{#if data.just_uploaded}
