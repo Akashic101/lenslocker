@@ -129,7 +129,9 @@
 </svelte:head>
 
 <div class="mx-auto max-w-4xl">
-	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{m.wise_keen_beaver_savor_hardware()}</h1>
+	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
+		{m.wise_keen_beaver_savor_hardware()}
+	</h1>
 	<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
 		{m.proud_novel_octopus_zap_track_cameras_lenses_gear()}
 	</p>
@@ -342,9 +344,13 @@
 	</section>
 
 	<section class="mt-10">
-		<h2 class="text-sm font-semibold text-gray-900 dark:text-white">{m.away_green_martin_advise_your_gear()}</h2>
+		<h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+			{m.away_green_martin_advise_your_gear()}
+		</h2>
 		{#if data.items.length === 0}
-			<p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{m.royal_long_gibbon_exhale_no_items_yet()}</p>
+			<p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+				{m.royal_long_gibbon_exhale_no_items_yet()}
+			</p>
 		{:else}
 			<div class="mt-3 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
 				<table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
@@ -379,7 +385,9 @@
 									{hardware_category_label(item.category)}
 								</td>
 								<td class="px-3 py-2 text-gray-800 dark:text-gray-200">
-									<span class="font-medium">{item.make ?? '—'}</span>
+									<span class="font-medium"
+										>{item.make ?? m.flat_moody_gull_detail_empty_dash()}</span
+									>
 									<span class="text-gray-500 dark:text-gray-400"> · {item.model}</span>
 									{#if item.notes}
 										<p class="mt-0.5 text-xs wrap-break-word text-gray-500 dark:text-gray-400">
@@ -387,9 +395,11 @@
 										</p>
 									{/if}
 								</td>
-								<td class="px-3 py-2 text-gray-600 dark:text-gray-300">{item.mount ?? '—'}</td>
+								<td class="px-3 py-2 text-gray-600 dark:text-gray-300">
+									{item.mount ?? m.flat_moody_gull_detail_empty_dash()}
+								</td>
 								<td class="px-3 py-2 font-mono text-xs text-gray-600 dark:text-gray-300">
-									{item.serial_number ?? '—'}
+									{item.serial_number ?? m.flat_moody_gull_detail_empty_dash()}
 								</td>
 								<td class="px-3 py-2 text-right">
 									<div class="flex items-center justify-end gap-2">

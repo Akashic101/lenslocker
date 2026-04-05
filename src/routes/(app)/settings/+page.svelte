@@ -131,7 +131,9 @@
 		}
 	}
 
-	function settings_translated_needs_attention_label(entry: needs_attention_field_catalog_entry): string {
+	function settings_translated_needs_attention_label(
+		entry: needs_attention_field_catalog_entry
+	): string {
 		switch (entry.key) {
 			case 'gps_either_missing':
 				return m.icy_merry_loon_need_special_gps_missing();
@@ -586,7 +588,9 @@
 						class="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-primary-600 dark:hover:bg-primary-700"
 						onclick={() => void save_upload_pipeline_settings()}
 					>
-						{save_loading ? m.fierce_small_goat_busy_saving() : m.zesty_fresh_ibex_save_upload_settings()}
+						{save_loading
+							? m.fierce_small_goat_busy_saving()
+							: m.zesty_fresh_ibex_save_upload_settings()}
 					</button>
 				</div>
 			</TabItem>

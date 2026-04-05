@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { Button, Card, Input, Label } from 'flowbite-svelte';
+	import { m } from '$lib/paraglide/messages.js';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -13,10 +14,10 @@
 >
 	<div class="w-full max-w-md">
 		<h1 class="mb-2 text-center text-2xl font-semibold text-gray-900 dark:text-white">
-			LensLocker
+			{m.clever_quiet_eagle_brand_lenslocker()}
 		</h1>
 		<p class="mb-8 text-center text-gray-600 dark:text-gray-400">
-			Sign in to manage your library, or create an account to get started.
+			{m.swift_royal_starling_start_intro()}
 		</p>
 
 		<Card class="w-full max-w-md shadow-md" size="lg">
@@ -29,7 +30,7 @@
 						: 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'}"
 					onclick={() => (mode = 'sign_up')}
 				>
-					Create account
+					{m.warm_kind_swallow_start_tab_create_account()}
 				</button>
 				<button
 					type="button"
@@ -39,7 +40,7 @@
 						: 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'}"
 					onclick={() => (mode = 'sign_in')}
 				>
-					Sign in
+					{m.cool_brisk_nuthatch_start_tab_sign_in()}
 				</button>
 			</div>
 
@@ -47,56 +48,66 @@
 				<form class="flex flex-col gap-4" method="post" action="?/sign_up_email" use:enhance>
 					<input type="hidden" name="redirectTo" value={form?.redirect_to ?? data.redirect_to} />
 					<div>
-						<Label class="mb-2 block">Name</Label>
-						<Input type="text" name="name" autocomplete="name" required placeholder="Your name" />
+						<Label class="mb-2 block">{m.plain_social_robin_start_label_name()}</Label>
+						<Input
+							type="text"
+							name="name"
+							autocomplete="name"
+							required
+							placeholder={m.plain_social_robin_start_placeholder_name()}
+						/>
 					</div>
 					<div>
-						<Label class="mb-2 block">Email</Label>
+						<Label class="mb-2 block">{m.plain_social_robin_start_label_email()}</Label>
 						<Input
 							type="email"
 							name="email"
 							autocomplete="email"
 							required
-							placeholder="you@example.com"
+							placeholder={m.plain_social_robin_start_placeholder_email()}
 						/>
 					</div>
 					<div>
-						<Label class="mb-2 block">Password</Label>
+						<Label class="mb-2 block">{m.plain_social_robin_start_label_password()}</Label>
 						<Input
 							type="password"
 							name="password"
 							autocomplete="new-password"
 							required
 							minlength={8}
-							placeholder="At least 8 characters"
+							placeholder={m.plain_social_robin_start_placeholder_password_signup()}
 						/>
 					</div>
-					<Button type="submit" class="w-full" color="primary">Create account</Button>
+					<Button type="submit" class="w-full" color="primary"
+						>{m.plain_social_robin_start_submit_create_account()}</Button
+					>
 				</form>
 			{:else}
 				<form class="flex flex-col gap-4" method="post" action="?/sign_in_email" use:enhance>
 					<input type="hidden" name="redirectTo" value={form?.redirect_to ?? data.redirect_to} />
 					<div>
-						<Label class="mb-2 block">Email</Label>
+						<Label class="mb-2 block">{m.plain_social_robin_start_label_email()}</Label>
 						<Input
 							type="email"
 							name="email"
 							autocomplete="email"
 							required
-							placeholder="you@example.com"
+							placeholder={m.plain_social_robin_start_placeholder_email()}
 						/>
 					</div>
 					<div>
-						<Label class="mb-2 block">Password</Label>
+						<Label class="mb-2 block">{m.plain_social_robin_start_label_password()}</Label>
 						<Input
 							type="password"
 							name="password"
 							autocomplete="current-password"
 							required
-							placeholder="Password"
+							placeholder={m.plain_social_robin_start_placeholder_password_signin()}
 						/>
 					</div>
-					<Button type="submit" class="w-full" color="primary">Sign in</Button>
+					<Button type="submit" class="w-full" color="primary"
+						>{m.plain_social_robin_start_submit_sign_in()}</Button
+					>
 				</form>
 			{/if}
 

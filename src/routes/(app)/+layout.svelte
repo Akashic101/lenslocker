@@ -141,7 +141,7 @@
 								href={localizeHref(resolve('/'))}
 								class="min-w-0 flex-1 truncate text-lg font-semibold text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
 							>
-								LensLocker
+								{m.clever_quiet_eagle_brand_lenslocker()}
 							</a>
 						{/if}
 						<button
@@ -149,7 +149,9 @@
 							class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-primary-300 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:ring-primary-800"
 							aria-expanded={!sidebar_collapsed}
 							aria-controls="app-sidebar"
-							aria-label={sidebar_collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+							aria-label={sidebar_collapsed
+								? m.royal_tidy_lark_layout_aria_expand_sidebar()
+								: m.royal_tidy_lark_layout_aria_collapse_sidebar()}
 							onclick={toggle_sidebar_collapsed}
 						>
 							<ChevronDoubleLeftOutline
@@ -167,7 +169,7 @@
 						spanClass={sidebar_item_label_class}
 						aClass={sidebar_item_anchor_class}
 						href={dashboard_all_href}
-						title="All photos — expand sidebar for Needs attention and Archived"
+						title={m.royal_tidy_lark_layout_title_dashboard_collapsed()}
 					>
 						{#snippet icon()}
 							<SearchOutline
@@ -203,8 +205,8 @@
 								aria-expanded={dashboard_menu_open}
 								aria-controls="dashboard-submenu"
 								aria-label={dashboard_menu_open
-									? 'Hide Needs attention and Archived'
-									: 'Show Needs attention and Archived'}
+									? m.royal_tidy_lark_layout_aria_hide_dashboard_views()
+									: m.royal_tidy_lark_layout_aria_show_dashboard_views()}
 								onclick={() => (dashboard_menu_open = !dashboard_menu_open)}
 							>
 								<ChevronDownOutline
@@ -227,7 +229,7 @@
 									aClass={sidebar_item_anchor_class}
 									href={dashboard_needs_attention_href}
 									active={dashboard_attention_active}
-									title="Missing GPS, camera or lens metadata, or shot date"
+									title={m.royal_tidy_lark_layout_title_review_needs_attention()}
 								>
 									{#snippet icon()}
 										<ExclamationCircleOutline

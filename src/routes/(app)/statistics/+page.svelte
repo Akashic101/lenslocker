@@ -51,7 +51,7 @@
 							value: { show: true },
 							total: {
 								show: true,
-								label: 'Total',
+								label: m.lofty_clear_stork_stats_chart_total(),
 								formatter: () => String(s.kpis.total)
 							}
 						}
@@ -59,7 +59,12 @@
 				}
 			},
 			stroke: { width: 0 },
-			tooltip: { y: { formatter: (val: number) => `${val} photos` } }
+			tooltip: {
+				y: {
+					formatter: (val: number) =>
+						m.lofty_clear_stork_stats_tooltip_y_photos({ val: String(val) })
+				}
+			}
 		};
 	}
 
@@ -87,7 +92,7 @@
 							show: true,
 							total: {
 								show: true,
-								label: 'Total',
+								label: m.lofty_clear_stork_stats_chart_total(),
 								formatter: () => String(s.kpis.total)
 							}
 						}
@@ -95,7 +100,12 @@
 				}
 			},
 			stroke: { width: 0 },
-			tooltip: { y: { formatter: (val: number) => `${val} photos` } }
+			tooltip: {
+				y: {
+					formatter: (val: number) =>
+						m.lofty_clear_stork_stats_tooltip_y_photos({ val: String(val) })
+				}
+			}
 		};
 	}
 
@@ -111,7 +121,9 @@
 				redrawOnParentResize: true
 			},
 			plotOptions: { bar: { borderRadius: 4, columnWidth: '72%' } },
-			series: [{ name: 'Uploads', data: s.uploads_by_month.series }],
+			series: [
+				{ name: m.lofty_clear_stork_stats_series_uploads(), data: s.uploads_by_month.series }
+			],
 			xaxis: {
 				categories: s.uploads_by_month.labels,
 				labels: { style: { colors: '#6b7280' } }
@@ -120,7 +132,12 @@
 			colors: ['#0ea5e9'],
 			dataLabels: { enabled: false },
 			grid: { borderColor: '#e5e7eb', strokeDashArray: 4 },
-			tooltip: { y: { formatter: (val: number) => `${val} uploads` } }
+			tooltip: {
+				y: {
+					formatter: (val: number) =>
+						m.lofty_clear_stork_stats_tooltip_y_uploads({ val: String(val) })
+				}
+			}
 		};
 	}
 
@@ -137,7 +154,7 @@
 				redrawOnParentResize: true
 			},
 			plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '78%' } },
-			series: [{ name: 'Photos', data: s.top_cameras.series }],
+			series: [{ name: m.lofty_clear_stork_stats_series_photos(), data: s.top_cameras.series }],
 			xaxis: {
 				categories: s.top_cameras.labels,
 				labels: { style: { colors: '#6b7280' } }
@@ -146,7 +163,12 @@
 			colors: ['#fe795d'],
 			dataLabels: { enabled: true, style: { colors: ['#fff'] } },
 			grid: { borderColor: '#e5e7eb', strokeDashArray: 4 },
-			tooltip: { y: { formatter: (val: number) => `${val} photos` } }
+			tooltip: {
+				y: {
+					formatter: (val: number) =>
+						m.lofty_clear_stork_stats_tooltip_y_photos({ val: String(val) })
+				}
+			}
 		};
 	}
 
@@ -162,7 +184,7 @@
 				redrawOnParentResize: true
 			},
 			plotOptions: { bar: { borderRadius: 4, columnWidth: '72%' } },
-			series: [{ name: 'Photos', data: s.iso_buckets.series }],
+			series: [{ name: m.lofty_clear_stork_stats_series_photos(), data: s.iso_buckets.series }],
 			xaxis: {
 				categories: s.iso_buckets.labels,
 				labels: { style: { colors: '#6b7280' } }
@@ -171,7 +193,12 @@
 			colors: ['#8b5cf6'],
 			dataLabels: { enabled: false },
 			grid: { borderColor: '#e5e7eb', strokeDashArray: 4 },
-			tooltip: { y: { formatter: (val: number) => `${val} photos` } }
+			tooltip: {
+				y: {
+					formatter: (val: number) =>
+						m.lofty_clear_stork_stats_tooltip_y_photos({ val: String(val) })
+				}
+			}
 		};
 	}
 
@@ -205,7 +232,9 @@
 </svelte:head>
 
 <div class="mx-auto max-w-7xl">
-	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{m.proud_tough_oryx_dare_statistics()}</h1>
+	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
+		{m.proud_tough_oryx_dare_statistics()}
+	</h1>
 	<p class="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-400">
 		{m.wild_crisp_sheep_renew_library_insights_from_uploads()}
 	</p>

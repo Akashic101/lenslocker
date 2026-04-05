@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import { toggle_persisted_color_scheme } from '$lib/theme/persisted_theme';
 
 	/** Mirrors flowbite-svelte `darkmode` tv base (no extra theme merge). */
@@ -12,11 +13,16 @@
 	}
 </script>
 
-<button type="button" class={toggle_button_class} aria-label="Toggle dark mode" onclick={on_click}>
+<button
+	type="button"
+	class={toggle_button_class}
+	aria-label={m.calm_round_gecko_theme_toggle_dark_mode()}
+	onclick={on_click}
+>
 	<span class="hidden dark:block">
 		<svg
 			role="img"
-			aria-label="Light mode"
+			aria-label={m.calm_round_gecko_theme_aria_light_mode()}
 			class="h-5 w-5"
 			fill="currentColor"
 			viewBox="0 0 20 20"
@@ -32,7 +38,7 @@
 	<span class="block dark:hidden">
 		<svg
 			role="img"
-			aria-label="Dark mode"
+			aria-label={m.calm_round_gecko_theme_aria_dark_mode()}
 			class="h-5 w-5"
 			fill="currentColor"
 			viewBox="0 0 20 20"

@@ -140,7 +140,11 @@
 
 		for (const file of files) {
 			if (file.size === 0) {
-				invalid_lines.push({ name: file.name, ok: false, message: m.drab_minor_crow_spot_empty_file() });
+				invalid_lines.push({
+					name: file.name,
+					ok: false,
+					message: m.drab_minor_crow_spot_empty_file()
+				});
 				continue;
 			}
 			if (file.size > data.upload_pipeline_settings.max_upload_bytes) {
@@ -254,7 +258,9 @@
 </svelte:head>
 
 <div class="mx-auto max-w-xl">
-	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{m.true_zippy_finch_title_upload_raw()}</h1>
+	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
+		{m.true_zippy_finch_title_upload_raw()}
+	</h1>
 	<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
 		{m.vivid_merry_quail_say_upload_raw_intro()}
 	</p>
@@ -327,7 +333,9 @@
 							>
 								<span class="font-medium wrap-break-word">{line.name}</span>
 								{#if line.ok}
-									<span class="text-green-700 dark:text-green-400">{m.green_low_moose_ok_saved()}</span>
+									<span class="text-green-700 dark:text-green-400"
+										>{m.green_low_moose_ok_saved()}</span
+									>
 									{#if line.message}
 										<span class="text-amber-700 dark:text-amber-400">({line.message})</span>
 									{/if}
@@ -348,7 +356,9 @@
 			disabled={batch_busy}
 			class="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
 		>
-			{batch_busy ? m.next_merry_falcon_busy_uploading_ellipsis() : m.quaint_grand_snail_amaze_upload()}
+			{batch_busy
+				? m.next_merry_falcon_busy_uploading_ellipsis()
+				: m.quaint_grand_snail_amaze_upload()}
 		</button>
 	</form>
 </div>

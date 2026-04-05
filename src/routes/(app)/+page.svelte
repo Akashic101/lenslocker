@@ -1245,7 +1245,11 @@
 							class="w-full border-t border-gray-200 bg-white/90 px-2 py-2 text-left dark:border-gray-700 dark:bg-gray-950/90"
 							onclick={() => on_gallery_tile_activate(item)}
 						>
-							<div class="space-y-1" role="group" aria-label={m.calm_gray_martin_aria_photo_details()}>
+							<div
+								class="space-y-1"
+								role="group"
+								aria-label={m.calm_gray_martin_aria_photo_details()}
+							>
 								{#each item.meta.rows as row, row_i (`${item.relative_path}-${row.key}-${row_i}`)}
 									{@const Icon = meta_row_icon_component(row.key)}
 									<div
@@ -1263,7 +1267,10 @@
 		</ul>
 
 		{#if data.pagination.total_pages > 1}
-			<nav class="mt-10 flex flex-wrap items-center justify-center gap-2" aria-label={m.level_social_skate_nav_pagination()}>
+			<nav
+				class="mt-10 flex flex-wrap items-center justify-center gap-2"
+				aria-label={m.level_social_skate_nav_pagination()}
+			>
 				{#if data.pagination.has_previous}
 					<a
 						href={pagination_href(data.pagination.current_page - 1)}

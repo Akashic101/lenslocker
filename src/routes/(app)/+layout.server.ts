@@ -1,4 +1,6 @@
 import { gallery_active_upload_count_depends_key } from '$lib/cache/gallery_upload_count_cache';
+import { m } from '$lib/paraglide/messages.js';
+import { extractLocaleFromRequest } from '$lib/paraglide/runtime';
 import { count_non_archived_raw_uploads } from '$lib/server/services/gallery/gallery_service';
 import type { LayoutServerLoad } from './$types';
 
@@ -28,14 +30,16 @@ function derive_user_initials(user: user_for_initials | undefined): string {
 	return '?';
 }
 
-export const load: LayoutServerLoad = async ({ depends, locals }) => {
+export const load: LayoutServerLoad = async ({ depends, locals, request }) => {
 	depends(gallery_active_upload_count_depends_key);
 
 	const gallery_active_upload_count = await count_non_archived_raw_uploads();
+	const locale = extractLocaleFromRequest(request);
+	const brand_fallback = m.clever_quiet_eagle_brand_lenslocker({}, { locale });
 
 	return {
 		gallery_active_upload_count,
 		user_initials: derive_user_initials(locals.user),
-		user_label: locals.user?.name?.trim() || locals.user?.email || 'LensLocker'
+		user_label: locals.user?.name?.trim() || locals.user?.email || brand_fallback
 	};
 };
