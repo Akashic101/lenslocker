@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import InlineNotice from '$lib/components/inline_notice.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { app_form_field_class } from '$lib/ui/form_classes';
 
 	let { form, data } = $props();
 
@@ -99,9 +101,6 @@
 		return base.sort((a, b) => a.localeCompare(b));
 	});
 
-	const field_control_class =
-		'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100';
-
 	function on_category_change() {
 		if (editing_item == null) {
 			form_make = '';
@@ -137,12 +136,7 @@
 	</p>
 
 	{#if form?.message}
-		<p
-			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
-			role="alert"
-		>
-			{form.message}
-		</p>
+		<InlineNotice class="mt-4" variant="error" message={form.message} />
 	{/if}
 
 	<section
@@ -176,7 +170,7 @@
 						id="hw-category"
 						name="category"
 						required
-						class={field_control_class}
+						class={app_form_field_class}
 						bind:value={form_category}
 						onchange={on_category_change}
 					>
@@ -193,14 +187,14 @@
 						>{m.loud_pretty_moose_tag_make()}</label
 					>
 					{#if form_category === 'camera' && data.from_photos.camera_makes.length > 0}
-						<select id="hw-make" name="make" class={field_control_class} bind:value={form_make}>
+						<select id="hw-make" name="make" class={app_form_field_class} bind:value={form_make}>
 							<option value="" placeholder={m.home_crazy_cow_endure_optional()}></option>
 							{#each camera_make_choices as make_option (make_option)}
 								<option value={make_option}>{make_option}</option>
 							{/each}
 						</select>
 					{:else if form_category === 'lens' && data.from_photos.lens_makes.length > 0}
-						<select id="hw-make" name="make" class={field_control_class} bind:value={form_make}>
+						<select id="hw-make" name="make" class={app_form_field_class} bind:value={form_make}>
 							<option value="" placeholder={m.home_crazy_cow_endure_optional()}></option>
 							{#each lens_make_choices as make_option (make_option)}
 								<option value={make_option}>{make_option}</option>
@@ -212,7 +206,7 @@
 							name="make"
 							type="text"
 							autocomplete="off"
-							class={field_control_class}
+							class={app_form_field_class}
 							bind:value={form_make}
 						/>
 					{/if}
@@ -228,7 +222,7 @@
 							id="hw-model"
 							name="model"
 							required
-							class={field_control_class}
+							class={app_form_field_class}
 							bind:value={form_model}
 						>
 							<option value="" disabled>— {m.basic_noble_marten_pride_choose_model()} —</option>
@@ -241,7 +235,7 @@
 							id="hw-model"
 							name="model"
 							required
-							class={field_control_class}
+							class={app_form_field_class}
 							bind:value={form_model}
 						>
 							<option value="" disabled>— {m.basic_noble_marten_pride_choose_model()} —</option>
@@ -256,7 +250,7 @@
 							type="text"
 							required
 							autocomplete="off"
-							class={field_control_class}
+							class={app_form_field_class}
 							bind:value={form_model}
 						/>
 					{/if}
@@ -273,7 +267,7 @@
 						type="text"
 						autocomplete="off"
 						placeholder={m.mild_tidy_raven_placeholder_mount()}
-						class="{field_control_class} placeholder:text-gray-400 dark:placeholder:text-gray-500"
+						class="{app_form_field_class} placeholder:text-gray-400 dark:placeholder:text-gray-500"
 						value={editing_item?.mount ?? ''}
 					/>
 				</div>
@@ -288,7 +282,7 @@
 						name="serial_number"
 						type="text"
 						autocomplete="off"
-						class={field_control_class}
+						class={app_form_field_class}
 						value={editing_item?.serial_number ?? ''}
 					/>
 				</div>
@@ -302,7 +296,7 @@
 						id="hw-acquired"
 						name="acquired_at"
 						type="date"
-						class={field_control_class}
+						class={app_form_field_class}
 						value={editing_item ? acquired_date_input_value(editing_item) : ''}
 					/>
 				</div>

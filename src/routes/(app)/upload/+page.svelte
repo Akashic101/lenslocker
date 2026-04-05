@@ -9,6 +9,9 @@
 		raw_upload_extensions,
 		is_allowed_raw_upload_extension
 	} from '$lib/gallery/raw_upload_extensions';
+	import type { raw_upload_batch_log_line } from '$lib/gallery/raw_upload_batch_types';
+	import InlineNotice from '$lib/components/inline_notice.svelte';
+	import RawUploadBatchProgressPanel from '$lib/components/raw_upload_batch_progress_panel.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	let { data } = $props();
@@ -26,8 +29,7 @@
 	type batch_phase = 'idle' | 'uploading' | 'processing';
 	let batch_phase = $state<batch_phase>('idle');
 	let batch_upload_pct = $state(0);
-	type batch_line = { name: string; ok: boolean; message?: string };
-	let batch_log_lines = $state<batch_line[]>([]);
+	let batch_log_lines = $state<raw_upload_batch_log_line[]>([]);
 	let batch_last_error = $state<string | null>(null);
 
 	let batch_log_list_el: HTMLUListElement | undefined = $state();
@@ -136,7 +138,7 @@
 		const files = [...input.files];
 
 		const valid_files: File[] = [];
-		const invalid_lines: batch_line[] = [];
+		const invalid_lines: raw_upload_batch_log_line[] = [];
 
 		for (const file of files) {
 			if (file.size === 0) {
@@ -266,21 +268,15 @@
 	</p>
 
 	{#if data.just_uploaded}
-		<p
-			class="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
-			role="status"
-		>
-			{m.warm_civil_bison_note_upload_saved_banner()}
-		</p>
+		<InlineNotice
+			class="mt-4"
+			variant="success"
+			message={m.warm_civil_bison_note_upload_saved_banner()}
+		/>
 	{/if}
 
 	{#if batch_last_error}
-		<p
-			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
-			role="alert"
-		>
-			{batch_last_error}
-		</p>
+		<InlineNotice class="mt-4" variant="error" message={batch_last_error} />
 	{/if}
 
 	<form class="mt-6 space-y-4" onsubmit={(e) => void start_batch_upload(e)}>
@@ -300,56 +296,13 @@
 			/>
 		</div>
 
-		{#if batch_busy || batch_total > 0 || batch_log_lines.length > 0}
-			<div
-				class="space-y-2 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
-			>
-				<div
-					class="flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-400"
-				>
-					<span>{m.super_quiet_gecko_gauge_overall_progress()}</span>
-					<span class="font-mono tabular-nums">{Math.round(overall_batch_percent)}%</span>
-				</div>
-				<progress
-					class="h-2.5 w-full overflow-hidden rounded-full accent-primary-600 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-gray-200 dark:[&::-webkit-progress-bar]:bg-gray-700 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-primary-600"
-					max={100}
-					value={overall_batch_percent}
-				></progress>
-				<p
-					class="min-h-10 text-sm text-gray-800 dark:text-gray-200"
-					role="status"
-					aria-live="polite"
-				>
-					{batch_status_text}
-				</p>
-				{#if batch_log_lines.length > 0}
-					<ul
-						bind:this={batch_log_list_el}
-						class="max-h-40 space-y-1 overflow-y-auto text-xs text-gray-700 dark:text-gray-300"
-					>
-						{#each batch_log_lines as line, line_i (line_i)}
-							<li
-								class="flex flex-wrap gap-x-2 border-t border-gray-100 pt-1 first:border-0 first:pt-0 dark:border-gray-700"
-							>
-								<span class="font-medium wrap-break-word">{line.name}</span>
-								{#if line.ok}
-									<span class="text-green-700 dark:text-green-400"
-										>{m.green_low_moose_ok_saved()}</span
-									>
-									{#if line.message}
-										<span class="text-amber-700 dark:text-amber-400">({line.message})</span>
-									{/if}
-								{:else}
-									<span class="text-red-700 dark:text-red-400"
-										>{line.message ?? m.red_flat_newt_fail_line_failed()}</span
-									>
-								{/if}
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</div>
-		{/if}
+		<RawUploadBatchProgressPanel
+			visible={batch_busy || batch_total > 0 || batch_log_lines.length > 0}
+			{overall_batch_percent}
+			{batch_status_text}
+			{batch_log_lines}
+			bind:log_list_el={batch_log_list_el}
+		/>
 
 		<button
 			type="submit"

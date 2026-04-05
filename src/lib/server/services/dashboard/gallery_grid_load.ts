@@ -165,7 +165,7 @@ function compare_gallery_paths(
 	if (ma == null) return 1;
 	if (mb == null) return -1;
 
-	let c = 0;
+	let c: number;
 	switch (sort) {
 		case 'date_desc':
 			c = cmp_shot_date(ma.shot, mb.shot, true);

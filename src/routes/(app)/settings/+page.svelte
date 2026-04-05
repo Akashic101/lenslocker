@@ -14,7 +14,10 @@
 	import { albums_list_depends_key } from '$lib/cache/albums_cache';
 	import { upload_pipeline_settings_depends_key } from '$lib/cache/upload_pipeline_settings_cache';
 	import type { upload_preview_format } from '$lib/config/upload_preview_format';
+	import FilePickerButton from '$lib/components/file_picker_button.svelte';
+	import InlineNotice from '$lib/components/inline_notice.svelte';
 	import ThemeToggle from '$lib/components/theme_toggle.svelte';
+	import { app_form_field_class_max_w_md } from '$lib/ui/form_classes';
 	import { assertIsLocale, locales, setLocale } from '$lib/paraglide/runtime';
 	import { use_system_color_scheme } from '$lib/theme/persisted_theme';
 	import { Tabs, TabItem } from 'flowbite-svelte';
@@ -150,9 +153,6 @@
 				return entry.label;
 		}
 	}
-
-	const field_class =
-		'w-full max-w-md rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100';
 
 	function paraglide_locale_label(locale: (typeof locales)[number]): string {
 		if (locale === 'en') return m.loud_formal_finch_locale_english();
@@ -427,7 +427,7 @@
 						</label>
 						<select
 							id="settings-paraglide-locale"
-							class={field_class}
+							class={app_form_field_class_max_w_md}
 							value={data.paraglide_locale}
 							onchange={on_paraglide_locale_change}
 						>
@@ -471,7 +471,7 @@
 							min="64"
 							max="4096"
 							step="1"
-							class={field_class}
+							class={app_form_field_class_max_w_md}
 							bind:value={thumb_max_edge_px}
 						/>
 						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -487,7 +487,7 @@
 						</label>
 						<select
 							id="set-preview-format"
-							class={field_class}
+							class={app_form_field_class_max_w_md}
 							bind:value={chosen_upload_preview_format}
 						>
 							{#each upload_preview_format_choices as choice (choice.format_value)}
@@ -511,7 +511,7 @@
 							min="256"
 							max="16384"
 							step="1"
-							class={field_class}
+							class={app_form_field_class_max_w_md}
 							bind:value={max_full_edge_px}
 						/>
 						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -531,7 +531,7 @@
 							min="1"
 							max="100"
 							step="1"
-							class={field_class}
+							class={app_form_field_class_max_w_md}
 							bind:value={jpeg_q_thumb}
 						/>
 						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -551,7 +551,7 @@
 							min="1"
 							max="100"
 							step="1"
-							class={field_class}
+							class={app_form_field_class_max_w_md}
 							bind:value={jpeg_q_full}
 						/>
 						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -571,7 +571,7 @@
 							min="1"
 							max="2048"
 							step="1"
-							class={field_class}
+							class={app_form_field_class_max_w_md}
 							bind:value={max_upload_mb}
 						/>
 						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -580,20 +580,14 @@
 					</div>
 
 					{#if save_error}
-						<p
-							class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
-							role="alert"
-						>
-							{save_error}
-						</p>
+						<InlineNotice variant="error" density="compact" message={save_error} />
 					{/if}
 					{#if save_ok}
-						<p
-							class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
-							role="status"
-						>
-							{m.kind_green_gull_note_saved_upload_pipeline()}
-						</p>
+						<InlineNotice
+							variant="success"
+							density="compact"
+							message={m.kind_green_gull_note_saved_upload_pipeline()}
+						/>
 					{/if}
 
 					<button
@@ -675,20 +669,14 @@
 					</div>
 
 					{#if dash_save_error}
-						<p
-							class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
-							role="alert"
-						>
-							{dash_save_error}
-						</p>
+						<InlineNotice variant="error" density="compact" message={dash_save_error} />
 					{/if}
 					{#if dash_save_ok}
-						<p
-							class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
-							role="status"
-						>
-							{m.warm_tidy_eel_note_saved_dashboard()}
-						</p>
+						<InlineNotice
+							variant="success"
+							density="compact"
+							message={m.warm_tidy_eel_note_saved_dashboard()}
+						/>
 					{/if}
 
 					<button
@@ -738,65 +726,34 @@
 								? m.short_kingly_tern_busy_creating()
 								: m.quiet_green_nuthatch_create_backup_zip()}
 						</button>
-						<div class="relative">
-							<input
-								id="settings-backup-import-input"
-								bind:this={backup_import_input_el}
-								type="file"
-								accept=".zip,application/zip"
-								disabled={backup_import_loading}
-								class="peer sr-only"
-								onchange={on_settings_backup_import_change}
-							/>
-							<label
-								for="settings-backup-import-input"
-								class="inline-flex cursor-pointer items-center rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 peer-disabled:cursor-not-allowed peer-disabled:opacity-60 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-							>
-								{backup_import_loading
-									? m.bold_pretty_finch_busy_importing()
-									: m.nest_empty_quail_import_backup_zip()}
-							</label>
-						</div>
+						<FilePickerButton
+							input_id="settings-backup-import-input"
+							accept=".zip,application/zip"
+							busy={backup_import_loading}
+							busy_label={m.bold_pretty_finch_busy_importing()}
+							idle_label={m.nest_empty_quail_import_backup_zip()}
+							on_change={on_settings_backup_import_change}
+							bind:input_el={backup_import_input_el}
+						/>
 					</div>
 					{#if backup_create_error}
-						<p
-							class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
-							role="alert"
-						>
-							{backup_create_error}
-						</p>
+						<InlineNotice variant="error" density="compact" message={backup_create_error} />
 					{/if}
 					{#if backup_create_ok}
-						<p
-							class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
-							role="status"
-						>
-							{m.swift_calm_robin_backup_created_banner()}
-						</p>
+						<InlineNotice
+							variant="success"
+							density="compact"
+							message={m.swift_calm_robin_backup_created_banner()}
+						/>
 					{/if}
 					{#if backup_import_error}
-						<p
-							class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
-							role="alert"
-						>
-							{backup_import_error}
-						</p>
+						<InlineNotice variant="error" density="compact" message={backup_import_error} />
 					{/if}
 					{#if backup_import_ok}
-						<p
-							class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
-							role="status"
-						>
-							{backup_import_ok}
-						</p>
+						<InlineNotice variant="success" density="compact" message={backup_import_ok} />
 					{/if}
 					{#if backup_delete_error}
-						<p
-							class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
-							role="alert"
-						>
-							{backup_delete_error}
-						</p>
+						<InlineNotice variant="error" density="compact" message={backup_delete_error} />
 					{/if}
 
 					<div>
