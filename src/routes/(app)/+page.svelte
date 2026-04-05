@@ -181,7 +181,9 @@
 	const gallery_camera_models = $derived.by(() => {
 		const pairs = data.gallery_filter_meta.camera_pairs as gallery_meta_camera_pair[];
 		const make_lc = filter_camera_make.trim().toLowerCase();
-		const camera_models_trimmed: string[] = pairs.map((p) => p.model.trim()).filter((m) => m !== '');
+		const camera_models_trimmed: string[] = pairs
+			.map((p) => p.model.trim())
+			.filter((m) => m !== '');
 		const all = [...new Set(camera_models_trimmed)].sort((a, b) => a.localeCompare(b));
 		if (make_lc === '') return all;
 		const narrowed_trimmed: string[] = pairs
@@ -204,7 +206,9 @@
 	const gallery_lens_models = $derived.by(() => {
 		const pairs = data.gallery_filter_meta.lens_pairs as gallery_meta_lens_pair[];
 		const make_lc = filter_lens_make.trim().toLowerCase();
-		const lens_models_trimmed: string[] = pairs.map((p) => p.lens_model.trim()).filter((m) => m !== '');
+		const lens_models_trimmed: string[] = pairs
+			.map((p) => p.lens_model.trim())
+			.filter((m) => m !== '');
 		const all = [...new Set(lens_models_trimmed)].sort((a, b) => a.localeCompare(b));
 		if (make_lc === '') return all;
 		const narrowed_trimmed: string[] = pairs
@@ -993,7 +997,7 @@
 						<label
 							for="gf-camera-make"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.spry_dark_jay_skip_camera_make()}</label
+							>{m.dry_honest_earthworm_gleam_camera_make()}</label
 						>
 						<select
 							id="gf-camera-make"
@@ -1012,7 +1016,7 @@
 						<label
 							for="gf-camera-model"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.house_cozy_cuckoo_renew_camera_model()}</label
+							>{m.green_lime_swan_gasp_camera_model()}</label
 						>
 						<select
 							id="gf-camera-model"
@@ -1020,7 +1024,7 @@
 							class={filter_field_class}
 							bind:value={filter_camera_model}
 						>
-							<option value="">{m.equal_dull_samuel_edit_any()}</option>
+							<option value="">{m.topical_front_vole_shine_any()}</option>
 							{#each gallery_camera_models as model_option (model_option)}
 								<option value={model_option}>{model_option}</option>
 							{/each}
@@ -1030,7 +1034,7 @@
 						<label
 							for="gf-lens-make"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.safe_crazy_beetle_bask_lens_make()}</label
+							>{m.east_mealy_vulture_aspire_lens_make()}</label
 						>
 						<select
 							id="gf-lens-make"
@@ -1049,7 +1053,7 @@
 						<label
 							for="gf-lens-model"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.arable_each_capybara_empower_lens_model()}</label
+							>{m.keen_mealy_eagle_yell_lens_model()}</label
 						>
 						<select
 							id="gf-lens-model"
@@ -1067,7 +1071,7 @@
 						<label
 							for="gf-date-from"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.free_even_cat_strive_date_from()}</label
+							>{m.only_many_leopard_express_date_from()}</label
 						>
 						<input
 							id="gf-date-from"
@@ -1082,7 +1086,8 @@
 					<div>
 						<label
 							for="gf-date-to"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{m.every_swift_tortoise_dazzle_date_to()}</label
+							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+							>{m.gray_any_ibex_flow_date_from()}</label
 						>
 						<input
 							id="gf-date-to"
@@ -1106,14 +1111,15 @@
 							class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
 							bind:checked={filter_starred_only}
 						/>
-						{m.good_fine_rooster_dare_starred_only()}
+						{m.gaudy_nimble_ladybug_spin_starred_only()}
 					</label>
 				</div>
 				<div class="flex flex-wrap items-end gap-3">
 					<div class="w-full max-w-xs min-w-32 sm:w-auto">
 						<label
 							for="gf-iso-min"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{m.fit_fresh_dog_dare_iso_min()}</label
+							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+							>{m.petty_same_dog_dine_iso_min()}</label
 						>
 						<input
 							id="gf-iso-min"
@@ -1130,7 +1136,8 @@
 					<div class="w-full max-w-xs min-w-32 sm:w-auto">
 						<label
 							for="gf-iso-max"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{m.aqua_elegant_osprey_build_iso_max()}</label
+							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+							>{m.moving_slimy_alpaca_feast_iso_max()}</label
 						>
 						<input
 							id="gf-iso-max"
@@ -1149,13 +1156,13 @@
 							type="submit"
 							class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600"
 						>
-							{m.level_these_spider_spin_apply_filters()}
+							{m.lofty_slow_guppy_inspire_apply_filters()}
 						</button>
 						<a
 							href={dashboard_clear_href}
 							class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
 						>
-							{m.yummy_mad_hedgehog_prosper_clear()}
+							{m.green_suave_butterfly_succeed_clear()}
 						</a>
 					</div>
 				</div>
@@ -1168,15 +1175,15 @@
 			class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500 dark:border-gray-600 dark:text-gray-400"
 		>
 			{#if data.gallery_filters.starred_only || data.gallery_filters.exif_filters_active}
-				{m.acidic_loud_gibbon_fetch_no_photos_match_these_filters()}
+				{m.east_icy_iguana_arise_no_photos_match_these_filters()}
 			{:else if data.gallery_filters.gallery_focus === 'needs_attention'}
-				{m.full_royal_pug_dine_no_photos_need_attention()}
+				{m.inclusive_pretty_hornet_quiz_no_photos_need_attention()}
 			{:else if data.gallery_filters.gallery_focus === 'archived'}
-				{m.every_extra_millipede_radiate_no_archived_phozos()}
+				{m.watery_small_wren_lift_no_archived_photos()}
 			{:else}
-				{m.ok_gray_kudu_stop_no_media_yet()} <a
-					href={localizeHref('/upload')}
-					class="text-primary-600 underline dark:text-primary-400">{m.quaint_grand_snail_amaze_upload()}</a
+				{m.bad_vexed_carp_grasp_no_images_found()}
+				<a href={localizeHref('/upload')} class="text-primary-600 underline dark:text-primary-400"
+					>{m.quaint_grand_snail_amaze_upload()}</a
 				>
 			{/if}
 		</p>
@@ -1251,12 +1258,12 @@
 						href={pagination_href(data.pagination.current_page - 1)}
 						class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
 					>
-						{m.tangy_arable_hornet_zip_previous()}
+						{m.misty_less_goat_strive_previous()}
 					</a>
 				{/if}
 
 				<span class="px-3 text-sm text-gray-600 dark:text-gray-400">
-					{m.white_stale_rabbit_hunt_pagination_page_of()}
+					{m.main_lower_skate_empower_pagination_page_of()}
 				</span>
 
 				{#if data.pagination.has_next}
@@ -1264,7 +1271,7 @@
 						href={pagination_href(data.pagination.current_page + 1)}
 						class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
 					>
-						{m.even_true_dove_delight_next()}
+						{m.still_kind_racoon_engage_next()}
 					</a>
 				{/if}
 			</nav>
@@ -1395,11 +1402,14 @@
 						<p
 							class="pointer-events-none absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded bg-black/50 px-2 py-0.5 text-[10px] text-white"
 						>
-							{m.busy_fun_toad_feel_scroll_to_zoom()} · {m.ornate_house_flamingo_foster_drag_tp_pan()} · {m.topical_lower_eagle_pull_double_click_to_reset()}
+							{m.busy_fun_toad_feel_scroll_to_zoom()} · {m.ornate_house_flamingo_foster_drag_tp_pan()}
+							· {m.topical_lower_eagle_pull_double_click_to_reset()}
 						</p>
 					</div>
 				{:else}
-					<p class="m-auto text-sm text-gray-500 dark:text-gray-400">{m.each_direct_kestrel_praise_no_image_url()}</p>
+					<p class="m-auto text-sm text-gray-500 dark:text-gray-400">
+						{m.each_direct_kestrel_praise_no_image_url()}
+					</p>
 				{/if}
 			</div>
 			<div
@@ -1413,7 +1423,9 @@
 					</div>
 				{:else if modal_detail_loading}
 					<div class="px-1 py-3 sm:px-2">
-						<p class="text-gray-500 dark:text-gray-400">{m.silly_these_deer_amaze_loading_metadata()}</p>
+						<p class="text-gray-500 dark:text-gray-400">
+							{m.silly_these_deer_amaze_loading_metadata()}
+						</p>
 					</div>
 				{:else if modal_detail_error}
 					<div class="px-1 py-3 sm:px-2">

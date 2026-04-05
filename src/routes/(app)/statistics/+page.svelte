@@ -215,7 +215,9 @@
 			class="mt-8 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:border-gray-600 dark:bg-gray-800/50"
 			role="status"
 		>
-			<p class="text-gray-700 dark:text-gray-300">{m.proof_new_vole_hint_no_photos_yet_charts()}.</p>
+			<p class="text-gray-700 dark:text-gray-300">
+				{m.proof_new_vole_hint_no_photos_yet_charts()}.
+			</p>
 			<button
 				type="button"
 				class="mt-4 inline-flex rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 dark:bg-primary-600 dark:hover:bg-primary-700"
@@ -270,7 +272,9 @@
 
 		<div class="mt-10 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">
 			<div class={chart_card_class}>
-				<h2 class={chart_title_class}>{m.stale_grand_mantis_glow_gallery_vs_archived_vs_starred()}</h2>
+				<h2 class={chart_title_class}>
+					{m.stale_grand_mantis_glow_gallery_vs_archived_vs_starred()}
+				</h2>
 				<div class={chart_host_class}>
 					<Chart
 						options={gallery_archived_starred_chart_options}
@@ -281,7 +285,9 @@
 
 			<div class={chart_card_class}>
 				<h2 class={chart_title_class}>{m.cool_sunny_bat_imagine_geotagging()}</h2>
-				<p class={chart_subtitle_class}>{m.jumpy_calm_bee_feast_photos_with_both_latitude_and_longitude()}.</p>
+				<p class={chart_subtitle_class}>
+					{m.jumpy_calm_bee_feast_photos_with_both_latitude_and_longitude()}.
+				</p>
 				<div class={chart_host_class}>
 					<Chart options={gps_chart_options} class="min-h-[300px] w-full max-w-full" />
 				</div>
@@ -300,7 +306,9 @@
 						/>
 					</div>
 				{:else}
-					<p class="text-sm text-gray-500 dark:text-gray-400">{m.chunky_least_pig_persist_no_monthly_upload_data_to_plot()}.</p>
+					<p class="text-sm text-gray-500 dark:text-gray-400">
+						{m.chunky_least_pig_persist_no_monthly_upload_data_to_plot()}.
+					</p>
 				{/if}
 			</div>
 
@@ -312,7 +320,9 @@
 						<Chart options={top_cameras_chart_options} class="w-full max-w-full" />
 					</div>
 				{:else}
-					<p class="text-sm text-gray-500 dark:text-gray-400">{m.weird_short_moth_gasp_no_camera_make_model_metadata()}.</p>
+					<p class="text-sm text-gray-500 dark:text-gray-400">
+						{m.weird_short_moth_gasp_no_camera_make_model_metadata()}.
+					</p>
 				{/if}
 			</div>
 
