@@ -1492,7 +1492,7 @@
 							>
 								{meta_save_loading
 									? m.fierce_small_goat_busy_saving()
-									: m.quick_merry_ant_save_one_word()}
+									: m.bold_calm_koala_save_changes()}
 							</button>
 						{/if}
 					</div>

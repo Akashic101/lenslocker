@@ -594,11 +594,11 @@
 					</button>
 				</div>
 			</TabItem>
-			<TabItem key="dashboard" title={m.tidy_plain_swan_tab_dashboard()}>
+			<TabItem key="dashboard" title={m.tidy_best_bumblebee_feast_dashboard()}>
 				<div class="space-y-6 pt-4">
 					<p class="text-sm text-gray-600 dark:text-gray-400">
 						{m.grand_polite_shrew_dashboard_criteria_intro_before()}
-						<strong>{m.gray_mild_robin_word_any_lowercase()}</strong>
+						<strong class="lowercase">{m.topical_front_vole_shine_any()}</strong>
 						{m.grand_polite_shrew_dashboard_criteria_intro_after()}
 					</p>
 					<div class="flex flex-wrap gap-2">

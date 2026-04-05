@@ -125,12 +125,12 @@
 </script>
 
 <svelte:head>
-	<title>{m.wise_keen_beaver_savor_hardware()}</title>
+	<title>{m.such_tangy_mare_conquer_hardware()}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-4xl">
 	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
-		{m.wise_keen_beaver_savor_hardware()}
+		{m.such_tangy_mare_conquer_hardware()}
 	</h1>
 	<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
 		{m.proud_novel_octopus_zap_track_cameras_lenses_gear()}
@@ -336,7 +336,7 @@
 						class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
 						onclick={() => clear_edit()}
 					>
-						{m.mellow_livid_jaguar_read_cancel_edit()}
+						{m.low_seemly_crow_slurp_cancel()}
 					</button>
 				{/if}
 			</div>

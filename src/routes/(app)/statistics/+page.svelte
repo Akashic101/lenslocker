@@ -283,7 +283,7 @@
 			</div>
 			<div class={kpi_card_class}>
 				<p class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400">
-					{m.bold_tiny_slug_arrive_archived()}
+					{m.safe_home_moose_sing_archived_only()}
 				</p>
 				<p class="mt-1 text-2xl font-bold text-slate-600 dark:text-slate-300">
 					{stats.kpis.archived.toLocaleString()}
