@@ -15,6 +15,7 @@
 	import { use_system_color_scheme } from '$lib/theme/persisted_theme';
 	import { Tabs, TabItem } from 'flowbite-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const upload_preview_format_choices: { format_value: upload_preview_format; label: string }[] = [
 		{ format_value: 'jpeg', label: 'JPEG (default)' },
@@ -403,7 +404,7 @@
 							bind:value={thumb_max_edge_px}
 						/>
 						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-							Longest side of the grid thumbnail (64–4096).
+							{m.caring_suave_wallaby_adore_longest_side_of_grid_thumbnail()}.
 						</p>
 					</div>
 					<div>
@@ -411,7 +412,7 @@
 							for="set-preview-format"
 							class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
 						>
-							Preview image format
+							{m.raw_ago_mare_win_preview_image_format()}
 						</label>
 						<select
 							id="set-preview-format"
@@ -432,7 +433,7 @@
 							for="set-full-max"
 							class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
 						>
-							Modal / full preview max edge (px)
+							{m.wide_wide_stingray_absorb_modal_full_preview_max_edge()}
 						</label>
 						<input
 							id="set-full-max"

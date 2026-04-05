@@ -27,5 +27,8 @@
 	"bad_vexed_carp_grasp_no_images_found": "No images found",
 	"misty_less_goat_strive_previous": "Previous",
 	"main_lower_skate_empower_pagination_page_of": "Page \\{data.pagination.current_page\\} of \\{data.pagination.total_pages\\}",
-	"still_kind_racoon_engage_next": "Next"
+	"still_kind_racoon_engage_next": "Next",
+	"caring_suave_wallaby_adore_longest_side_of_grid_thumbnail": "Longest side of the grid thumbnail (64–4096)",
+	"raw_ago_mare_win_preview_image_format": "Preview image format",
+	"wide_wide_stingray_absorb_modal_full_preview_max_edge": "Modal / full preview max edge (px)"
 }
