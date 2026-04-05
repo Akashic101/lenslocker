@@ -6,7 +6,10 @@
 	import { dashboard_attention_settings_depends_key } from '$lib/cache/dashboard_attention_settings_cache';
 	import { settings_backup_list_depends_key } from '$lib/cache/settings_backup_list_cache';
 	import { dashboard_needs_attention_default_keys } from '$lib/config/dashboard_attention_defaults';
-	import { needs_attention_catalog } from '$lib/gallery/needs_attention_catalog';
+	import {
+		needs_attention_catalog,
+		type needs_attention_field_catalog_entry
+	} from '$lib/gallery/needs_attention_catalog';
 	import { upload_preview_pipeline_defaults } from '$lib/config/upload_pipeline_defaults';
 	import { upload_pipeline_settings_depends_key } from '$lib/cache/upload_pipeline_settings_cache';
 	import type { upload_preview_format } from '$lib/config/upload_preview_format';
@@ -17,12 +20,14 @@
 	import { SvelteMap } from 'svelte/reactivity';
 	import { m } from '$lib/paraglide/messages.js';
 
-	const upload_preview_format_choices: { format_value: upload_preview_format; label: string }[] = [
-		{ format_value: 'jpeg', label: 'JPEG (default)' },
-		{ format_value: 'webp', label: 'WebP' },
-		{ format_value: 'avif', label: 'AVIF' },
-		{ format_value: 'png', label: 'PNG' }
-	];
+	const upload_preview_format_choices = $derived.by(
+		(): { format_value: upload_preview_format; label: string }[] => [
+			{ format_value: 'jpeg', label: m.keen_plain_ibis_upload_format_jpeg_default() },
+			{ format_value: 'webp', label: m.stout_calm_raven_upload_format_webp() },
+			{ format_value: 'avif', label: m.zany_short_hawk_upload_format_avif() },
+			{ format_value: 'png', label: m.moody_clear_shrew_upload_format_png() }
+		]
+	);
 
 	let { data } = $props();
 
@@ -78,9 +83,11 @@
 	const needs_attention_catalog_grouped = $derived.by(() => {
 		const map = new SvelteMap<string, { key: string; label: string; group: string }[]>();
 		for (const entry of needs_attention_catalog) {
-			const list = map.get(entry.group) ?? [];
-			list.push(entry);
-			map.set(entry.group, list);
+			const group = settings_translated_needs_attention_group(entry.group);
+			const label = settings_translated_needs_attention_label(entry);
+			const list = map.get(group) ?? [];
+			list.push({ key: entry.key, label, group });
+			map.set(group, list);
 		}
 		return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
 	});
@@ -99,13 +106,56 @@
 		}
 	}
 
+	function settings_translated_needs_attention_group(group: string): string {
+		switch (group) {
+			case 'File':
+				return m.each_neat_kiwi_need_group_file();
+			case 'Image geometry':
+				return m.whole_suave_lark_need_group_image_geometry();
+			case 'Camera & lens':
+				return m.proud_key_badger_need_group_camera_lens();
+			case 'Date & time':
+				return m.late_merry_husk_need_group_date_time();
+			case 'Exposure & shooting':
+				return m.pink_clear_impala_need_group_exposure();
+			case 'GPS':
+				return m.tiny_loud_carp_need_group_gps();
+			case 'Description & IPTC':
+				return m.round_soft_mink_need_group_description_iptc();
+			case 'RAW / DNG':
+				return m.cold_sleek_yak_need_group_raw_dng();
+			case 'Shortcuts':
+				return m.swift_older_frog_need_group_shortcuts();
+			default:
+				return group;
+		}
+	}
+
+	function settings_translated_needs_attention_label(entry: needs_attention_field_catalog_entry): string {
+		switch (entry.key) {
+			case 'gps_either_missing':
+				return m.icy_merry_loon_need_special_gps_missing();
+			case 'camera_body_incomplete':
+				return m.wide_dull_gull_need_special_camera_incomplete();
+			case 'lens_incomplete':
+				return m.teal_brief_pike_need_special_lens_incomplete();
+			case 'shot_date_calendar_missing':
+				return m.brown_quiet_hare_need_special_shot_date_bad();
+			case 'exposure_both_missing':
+				return m.soft_glad_snipe_need_special_exposure_missing();
+			default:
+				return entry.label;
+		}
+	}
+
 	const field_class =
 		'w-full max-w-md rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100';
 
-	const paraglide_locale_labels: Record<(typeof locales)[number], string> = {
-		en: 'English',
-		de: 'Deutsch'
-	};
+	function paraglide_locale_label(locale: (typeof locales)[number]): string {
+		if (locale === 'en') return m.loud_formal_finch_locale_english();
+		if (locale === 'de') return m.mild_formal_finch_locale_deutsch();
+		return locale;
+	}
 
 	function on_paraglide_locale_change(ev: Event): void {
 		if (!browser) return;
@@ -189,11 +239,7 @@
 	}
 
 	async function submit_settings_backup_import(file: File): Promise<void> {
-		if (
-			!confirm(
-				'Restore from this backup? New zips replace the entire SQLite database file (gallery metadata, settings, hardware, auth, etc.). Image files on disk are not inside the zip. Older zips without database.sqlite only replace settings and hardware rows. This cannot be undone.'
-			)
-		) {
+		if (!confirm(m.dark_heavy_oryx_confirm_restore_backup())) {
 			reset_settings_backup_import_input();
 			return;
 		}
@@ -226,14 +272,18 @@
 			};
 			const ac = parsed.app_settings_count ?? 0;
 			const hc = parsed.hardware_items_count ?? 0;
-			const stamp =
+			const stamp_suffix =
 				typeof parsed.date_stamp === 'string' && parsed.date_stamp !== ''
-					? ` (backup stamp ${parsed.date_stamp})`
+					? m.plain_tiny_wren_backup_stamp_suffix({ stamp: parsed.date_stamp })
 					: '';
 			const full = parsed.restored_full_database === true;
 			backup_import_ok = full
-				? `Restored full database from zip${stamp}. Reload or navigate to refresh all data.`
-				: `Imported ${ac} setting row(s) and ${hc} hardware item(s)${stamp}.`;
+				? m.such_proud_puffin_restore_full_db({ stamp_suffix })
+				: m.calm_bright_dotterel_restore_partial({
+						app_count: ac,
+						hardware_count: hc,
+						stamp_suffix
+					});
 			if (full) {
 				await invalidateAll();
 			} else {
@@ -257,7 +307,7 @@
 	}
 
 	async function delete_settings_backup_row(filename: string): Promise<void> {
-		if (!confirm(`Delete backup "${filename}" from this server? This cannot be undone.`)) {
+		if (!confirm(m.moody_broad_gadfly_confirm_delete_backup({ filename }))) {
 			return;
 		}
 		backup_delete_busy_filename = filename;
@@ -312,29 +362,31 @@
 </script>
 
 <svelte:head>
-	<title>Settings</title>
+	<title>{m.fuzzy_dull_alpaca_achieve_settings()}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">
-	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Settings</h1>
+	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
+		{m.fuzzy_dull_alpaca_achieve_settings()}
+	</h1>
 	<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-		Adjust behavior for uploads and previews. Changes apply to new uploads; existing previews are
-		not regenerated automatically. The gallery resolves modal images by format when you change this
-		setting.
+		{m.dear_stoic_gull_note_settings_intro()}
 	</p>
 
 	{#if data.account_email}
 		<div
 			class="mt-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
 		>
-			<h2 class="text-sm font-medium text-gray-900 dark:text-white">Account</h2>
+			<h2 class="text-sm font-medium text-gray-900 dark:text-white">
+				{m.plain_polite_penguin_heading_account()}
+			</h2>
 			<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{data.account_email}</p>
 			<form method="post" action="?/sign_out" class="mt-3" use:enhance>
 				<button
 					type="submit"
 					class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
 				>
-					Sign out
+					{m.quiet_merry_lark_sign_out()}
 				</button>
 			</form>
 		</div>
@@ -342,18 +394,20 @@
 
 	<div class="mt-8">
 		<Tabs bind:selected={selected_tab} tabStyle="underline" class="flex flex-wrap">
-			<TabItem key="general" title="General">
+			<TabItem key="general" title={m.fresh_noble_otter_tab_general()}>
 				<div class="space-y-8 pt-4">
 					<div>
-						<h2 class="text-sm font-medium text-gray-900 dark:text-white">Language</h2>
+						<h2 class="text-sm font-medium text-gray-900 dark:text-white">
+							{m.bright_social_raven_heading_language()}
+						</h2>
 						<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-							Interface language for LensLocker (Paraglide). The page reloads after you change this.
+							{m.soft_slow_bison_say_settings_language_blurb()}
 						</p>
 						<label
 							for="settings-paraglide-locale"
 							class="mt-3 mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
 						>
-							Display language
+							{m.such_neat_gecko_label_display_language()}
 						</label>
 						<select
 							id="settings-paraglide-locale"
@@ -362,15 +416,16 @@
 							onchange={on_paraglide_locale_change}
 						>
 							{#each locales as locale (locale)}
-								<option value={locale}>{paraglide_locale_labels[locale]}</option>
+								<option value={locale}>{paraglide_locale_label(locale)}</option>
 							{/each}
 						</select>
 					</div>
 					<div>
-						<h2 class="text-sm font-medium text-gray-900 dark:text-white">Appearance</h2>
+						<h2 class="text-sm font-medium text-gray-900 dark:text-white">
+							{m.cool_wood_mammoth_heading_appearance()}
+						</h2>
 						<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-							By default the app follows your system light or dark mode. Use the toggle to pin a
-							look; you can return to the system setting anytime.
+							{m.long_quiet_capybara_settings_appearance_blurb()}
 						</p>
 						<div class="mt-4 flex flex-wrap items-center gap-3">
 							<ThemeToggle />
@@ -379,20 +434,20 @@
 								class="text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
 								onclick={() => use_system_color_scheme()}
 							>
-								Use system appearance
+								{m.safe_sleek_herring_use_system_appearance()}
 							</button>
 						</div>
 					</div>
 				</div>
 			</TabItem>
-			<TabItem key="upload" title="Upload">
+			<TabItem key="upload" title={m.warm_coastal_fruit_bat_tab_upload()}>
 				<div class="space-y-6 pt-4">
 					<div>
 						<label
 							for="set-thumb-max"
 							class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
 						>
-							Grid thumbnail max edge (px)
+							{m.crisp_sunny_owl_label_grid_thumb_max()}
 						</label>
 						<input
 							id="set-thumb-max"
@@ -424,8 +479,7 @@
 							{/each}
 						</select>
 						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-							Grid and lightbox previews use Sharp (JPEG, WebP, AVIF, or PNG). JPEG remains the
-							default; AVIF/WebP need a Sharp build with those encoders.
+							{m.blue_bold_moth_note_preview_format_sharp()}
 						</p>
 					</div>
 					<div>
@@ -445,8 +499,7 @@
 							bind:value={max_full_edge_px}
 						/>
 						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-							Cap for the large preview in the lightbox and for intermediate RAW decode (256–16384).
-							Higher values use more RAM and disk.
+							{m.dull_solid_bream_note_modal_preview_cap()}
 						</p>
 					</div>
 					<div>
@@ -454,7 +507,7 @@
 							for="set-q-thumb"
 							class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
 						>
-							Quality — grid thumbnail (1–100; lossy formats)
+							{m.tiny_proud_goose_label_quality_thumb()}
 						</label>
 						<input
 							id="set-q-thumb"
@@ -466,7 +519,7 @@
 							bind:value={jpeg_q_thumb}
 						/>
 						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-							For PNG, a higher number means less compression (larger files).
+							{m.soft_fine_duck_note_png_quality()}
 						</p>
 					</div>
 					<div>
@@ -474,7 +527,7 @@
 							for="set-q-full"
 							class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
 						>
-							Quality — full preview (1–100; lossy formats)
+							{m.round_bright_linnet_label_quality_full()}
 						</label>
 						<input
 							id="set-q-full"
@@ -486,7 +539,7 @@
 							bind:value={jpeg_q_full}
 						/>
 						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-							For PNG, a higher number means less compression (larger files).
+							{m.soft_fine_duck_note_png_quality()}
 						</p>
 					</div>
 					<div>
@@ -494,7 +547,7 @@
 							for="set-max-mb"
 							class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
 						>
-							Max upload size (MB)
+							{m.best_curly_crow_label_max_upload_mb()}
 						</label>
 						<input
 							id="set-max-mb"
@@ -506,7 +559,7 @@
 							bind:value={max_upload_mb}
 						/>
 						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-							Per-file limit enforced on the server (1–2048 MB).
+							{m.slow_wide_crane_note_max_upload_mb()}
 						</p>
 					</div>
 
@@ -523,7 +576,7 @@
 							class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
 							role="status"
 						>
-							Saved. New uploads will use these values.
+							{m.kind_green_gull_note_saved_upload_pipeline()}
 						</p>
 					{/if}
 
@@ -533,15 +586,16 @@
 						class="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-primary-600 dark:hover:bg-primary-700"
 						onclick={() => void save_upload_pipeline_settings()}
 					>
-						{save_loading ? 'Saving…' : 'Save upload settings'}
+						{save_loading ? m.fierce_small_goat_busy_saving() : m.zesty_fresh_ibex_save_upload_settings()}
 					</button>
 				</div>
 			</TabItem>
-			<TabItem key="dashboard" title="Dashboard">
+			<TabItem key="dashboard" title={m.tidy_plain_swan_tab_dashboard()}>
 				<div class="space-y-6 pt-4">
 					<p class="text-sm text-gray-600 dark:text-gray-400">
-						Select any metadata fields or shortcuts. A photo appears under Needs attention if it
-						fails <strong>any</strong> selected rule. All rules are equal — there is no priority order.
+						{m.grand_polite_shrew_dashboard_criteria_intro_before()}
+						<strong>{m.gray_mild_robin_word_any_lowercase()}</strong>
+						{m.grand_polite_shrew_dashboard_criteria_intro_after()}
 					</p>
 					<div class="flex flex-wrap gap-2">
 						<button
@@ -551,7 +605,7 @@
 								dash_required_field_keys = [...dashboard_needs_attention_default_keys];
 							}}
 						>
-							Reset to defaults
+							{m.noble_quick_frog_reset_dashboard_defaults()}
 						</button>
 						<button
 							type="button"
@@ -560,7 +614,7 @@
 								dash_required_field_keys = [];
 							}}
 						>
-							Clear all
+							{m.raw_tiny_wren_clear_all()}
 						</button>
 					</div>
 					<div
@@ -615,7 +669,7 @@
 							class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
 							role="status"
 						>
-							Saved. The Needs attention view updates when you open the Dashboard.
+							{m.warm_tidy_eel_note_saved_dashboard()}
 						</p>
 					{/if}
 
@@ -625,28 +679,28 @@
 						class="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-primary-600 dark:hover:bg-primary-700"
 						onclick={() => void save_dashboard_attention_settings()}
 					>
-						{dash_save_loading ? 'Saving…' : 'Save dashboard criteria'}
+						{dash_save_loading
+							? m.fierce_small_goat_busy_saving()
+							: m.salty_bold_snipe_save_dashboard_criteria()}
 					</button>
 				</div>
 			</TabItem>
-			<TabItem key="backup" title="Backup">
+			<TabItem key="backup" title={m.calm_steady_elk_tab_backup()}>
 				<div class="space-y-6 pt-4">
 					<p class="text-sm text-gray-600 dark:text-gray-400">
-						Each zip includes a full
-						<strong>SQLite database</strong> snapshot (<code
+						{m.level_maroon_nurse_backup_intro_a()}<strong
+							>{m.level_maroon_nurse_backup_intro_sqlite()}</strong
+						>{m.level_maroon_nurse_backup_intro_b()}<code
 							class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
 							>database.sqlite</code
-						>) plus JSON copies of
-						<code class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
-							>app_setting</code
+						>{m.level_maroon_nurse_backup_intro_c()}<code
+							class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800">app_setting</code
 						>
-						and hardware for readability. Backups are named
-						<code class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
+						{m.level_maroon_nurse_backup_intro_d()}<code
+							class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
 							>LensLocker-backup-yyyy-mm-dd-hh-mm-&lt;n&gt;.zip</code
-						>
-						where <strong>&lt;n&gt;</strong> is a running count. Importing restores the whole database
-						file (gallery and upload records, settings, hardware, auth, etc.); originals and previews
-						on disk are not in the zip.
+						>{m.level_maroon_nurse_backup_intro_e()}<strong>&lt;n&gt;</strong
+						>{m.level_maroon_nurse_backup_intro_f()}
 					</p>
 					<div class="flex flex-wrap gap-3">
 						<button
@@ -655,7 +709,9 @@
 							class="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-primary-600 dark:hover:bg-primary-700"
 							onclick={() => void create_settings_backup_zip()}
 						>
-							{backup_create_loading ? 'Creating…' : 'Create backup zip'}
+							{backup_create_loading
+								? m.short_kingly_tern_busy_creating()
+								: m.quiet_green_nuthatch_create_backup_zip()}
 						</button>
 						<div class="relative">
 							<input
@@ -671,7 +727,9 @@
 								for="settings-backup-import-input"
 								class="inline-flex cursor-pointer items-center rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 peer-disabled:cursor-not-allowed peer-disabled:opacity-60 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
 							>
-								{backup_import_loading ? 'Importing…' : 'Import backup zip…'}
+								{backup_import_loading
+									? m.bold_pretty_finch_busy_importing()
+									: m.nest_empty_quail_import_backup_zip()}
 							</label>
 						</div>
 					</div>
@@ -688,7 +746,7 @@
 							class="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
 							role="status"
 						>
-							Backup created. It appears in the list below — use Download to save a copy locally.
+							{m.swift_calm_robin_backup_created_banner()}
 						</p>
 					{/if}
 					{#if backup_import_error}
@@ -717,9 +775,13 @@
 					{/if}
 
 					<div>
-						<h2 class="mb-2 text-sm font-semibold text-gray-900 dark:text-white">Your backups</h2>
+						<h2 class="mb-2 text-sm font-semibold text-gray-900 dark:text-white">
+							{m.solid_wide_marten_heading_your_backups()}
+						</h2>
 						{#if data.settings_backups.length === 0}
-							<p class="text-sm text-gray-500 dark:text-gray-400">No backups yet.</p>
+							<p class="text-sm text-gray-500 dark:text-gray-400">
+								{m.flat_slow_goat_no_backups_yet()}
+							</p>
 						{:else}
 							<ul
 								class="divide-y divide-gray-200 overflow-hidden rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700"
@@ -745,7 +807,7 @@
 												download={b.filename}
 												class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
 											>
-												Download
+												{m.gaudy_merry_dove_download_backup()}
 											</a>
 											<button
 												type="button"
@@ -753,7 +815,9 @@
 												class="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900 dark:bg-gray-800 dark:text-red-300 dark:hover:bg-red-950/40"
 												onclick={() => void delete_settings_backup_row(b.filename)}
 											>
-												{backup_delete_busy_filename === b.filename ? 'Deleting…' : 'Delete'}
+												{backup_delete_busy_filename === b.filename
+													? m.sour_older_sparrow_busy_deleting()
+													: m.fit_brief_hedgehog_pout_delete()}
 											</button>
 										</div>
 									</li>

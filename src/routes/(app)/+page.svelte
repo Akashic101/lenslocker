@@ -86,13 +86,13 @@
 		if (f === 'needs_attention') {
 			const keys = data.needs_attention_settings.required_field_keys;
 			if (keys.length === 0) {
-				return 'No “needs attention” rules are selected. Choose at least one metadata field or shortcut in Settings → Dashboard.';
+				return m.steep_mild_crane_gallery_blurb_needs_attention_no_rules();
 			}
 			const labels = keys.map((key: string) => needs_attention_label_for_key(key));
-			return `Non-archived photos missing any of: ${labels.join('; ')}. Configure in Settings → Dashboard.`;
+			return m.bold_koala_gallery_blurb_needs_attention_rules({ rules: labels.join('; ') });
 		}
 		if (f === 'archived') {
-			return 'Photos you moved out of the main gallery (archived).';
+			return m.soft_plain_goose_gallery_blurb_archived();
 		}
 		return null;
 	});
@@ -222,12 +222,12 @@
 	const iso_placeholder_min = $derived(
 		data.gallery_filter_meta.iso_stats.min != null
 			? String(data.gallery_filter_meta.iso_stats.min)
-			: 'Min'
+			: m.tiny_neat_wren_placeholder_iso_min()
 	);
 	const iso_placeholder_max = $derived(
 		data.gallery_filter_meta.iso_stats.max != null
 			? String(data.gallery_filter_meta.iso_stats.max)
-			: 'Max'
+			: m.tiny_neat_wren_placeholder_iso_max()
 	);
 
 	const date_input_min = $derived(
@@ -254,7 +254,7 @@
 	const meta_icon_class = 'mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400';
 
 	let gallery_modal_open = $state(false);
-	let modal_heading = $state('Photo');
+	let modal_heading = $state('');
 	let modal_image_display_src = $state('');
 	let modal_image_fallback_src = $state('');
 	/** Bump to remount the preview img when the URL changes (loads reliably in the dialog). */
@@ -666,9 +666,18 @@
 	}
 
 	function format_detail_value(value: unknown): string {
-		if (value === null || value === undefined) return '—';
+		if (value === null || value === undefined) return m.flat_moody_gull_detail_empty_dash();
 		if (typeof value === 'object') return JSON.stringify(value);
 		return String(value);
+	}
+
+	function gallery_filters_toggle_aria_label(panel_open: boolean): string {
+		const n = gallery_exif_star_filter_count;
+		const suffix = n > 0 ? m.salty_bold_mare_filters_active_suffix({ count: n }) : '';
+		if (panel_open) {
+			return `${m.salty_bold_mare_filters_hide()}${suffix}`;
+		}
+		return `${m.salty_bold_mare_filters_show()}${suffix}`;
 	}
 
 	const editable_meta_keys = new Set<string>(
@@ -758,7 +767,7 @@
 		modal_image_fallback_src = item.src;
 		modal_image_display_src = item.src;
 		modal_image_key += 1;
-		modal_heading = item.relative_path.split('/').pop() ?? 'Photo';
+		modal_heading = item.relative_path.split('/').pop() ?? m.plain_soft_crow_fallback_photo();
 		modal_upload_id = item.upload_id;
 		gallery_modal_open = true;
 		modal_detail = null;
@@ -813,7 +822,7 @@
 </script>
 
 <svelte:head>
-	<title>Transformed</title>
+	<title>{m.tidy_best_bumblebee_feast_dashboard()}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-7xl">
@@ -821,7 +830,9 @@
 		class="mb-8 flex min-w-0 flex-row flex-nowrap items-center justify-between gap-3 sm:gap-4"
 	>
 		<div class="min-w-0 flex-1">
-			<h1 class="truncate text-2xl font-semibold text-gray-900 dark:text-white">Dashboard</h1>
+			<h1 class="truncate text-2xl font-semibold text-gray-900 dark:text-white">
+				{m.tidy_best_bumblebee_feast_dashboard()}
+			</h1>
 			{#if gallery_view_blurb != null}
 				<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{gallery_view_blurb}</p>
 			{/if}
@@ -832,8 +843,8 @@
 				class={gallery_header_icon_button_class}
 				aria-pressed={gallery_grid_show_meta}
 				aria-label={gallery_grid_show_meta
-					? 'Switch to compact grid (hide captions under photos)'
-					: 'Switch to grid with captions under photos'}
+					? m.calm_wide_otter_aria_compact_grid()
+					: m.calm_wide_otter_aria_meta_grid()}
 				onclick={toggle_gallery_grid_show_meta}
 			>
 				{#if gallery_grid_show_meta}
@@ -848,7 +859,9 @@
 					? 'border-primary-500 ring-2 ring-primary-200 dark:border-primary-500 dark:ring-primary-900'
 					: ''}"
 				aria-pressed={gallery_selection_mode}
-				aria-label={gallery_selection_mode ? 'Exit multi-select' : 'Select multiple photos'}
+				aria-label={gallery_selection_mode
+					? m.fierce_tiny_lark_aria_exit_multiselect()
+					: m.fierce_tiny_lark_aria_enter_multiselect()}
 				onclick={() => set_gallery_selection_mode(!gallery_selection_mode)}
 			>
 				<CheckOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
@@ -858,9 +871,7 @@
 				class="{gallery_header_icon_button_class} relative"
 				aria-expanded={filters_panel_user_open}
 				aria-controls="gallery-filters-panel"
-				aria-label={filters_panel_user_open
-					? `Hide filters${gallery_exif_star_filter_count > 0 ? `, ${gallery_exif_star_filter_count} active` : ''}`
-					: `Show filters${gallery_exif_star_filter_count > 0 ? `, ${gallery_exif_star_filter_count} active` : ''}`}
+				aria-label={gallery_filters_toggle_aria_label(filters_panel_user_open)}
 				onclick={on_filters_toggle_click}
 			>
 				{#if filters_panel_user_open || gallery_exif_star_filter_count > 0}
@@ -884,14 +895,14 @@
 		<div
 			class="dark:bg-primary-950/40 mb-4 rounded-lg border border-primary-200 bg-primary-50/90 px-3 py-2.5 dark:border-primary-900"
 			role="region"
-			aria-label="Bulk photo actions"
+			aria-label={m.dull_solid_gull_aria_bulk_actions()}
 		>
 			{#if bulk_action_error}
 				<p class="mb-2 text-xs text-red-700 dark:text-red-300" role="alert">{bulk_action_error}</p>
 			{/if}
 			<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 				<span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-					{gallery_selected_count} selected
+					{m.warm_round_bison_bulk_selected_count({ count: gallery_selected_count })}
 				</span>
 				<div class="flex flex-wrap gap-2">
 					<button
@@ -900,7 +911,7 @@
 						disabled={bulk_action_loading}
 						onclick={select_all_gallery_uploads_on_page}
 					>
-						All on page
+						{m.noble_clear_frog_bulk_all_on_page()}
 					</button>
 					<button
 						type="button"
@@ -910,7 +921,7 @@
 							gallery_selected_upload_ids = [];
 						}}
 					>
-						Clear selection
+						{m.noble_clear_frog_bulk_clear_selection()}
 					</button>
 					<button
 						type="button"
@@ -918,7 +929,7 @@
 						disabled={bulk_action_loading}
 						onclick={() => set_gallery_selection_mode(false)}
 					>
-						Done
+						{m.noble_clear_frog_bulk_done()}
 					</button>
 				</div>
 				<span class="hidden h-4 w-px bg-gray-300 sm:block dark:bg-gray-600" aria-hidden="true"
@@ -931,7 +942,7 @@
 						onclick={() => void bulk_star_selected(true)}
 					>
 						<StarSolid class="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
-						Star
+						{m.noble_clear_frog_bulk_star()}
 					</button>
 					<button
 						type="button"
@@ -940,7 +951,7 @@
 						onclick={() => void bulk_star_selected(false)}
 					>
 						<StarOutline class="h-3.5 w-3.5" aria-hidden="true" />
-						Unstar
+						{m.noble_clear_frog_bulk_unstar()}
 					</button>
 					{#if bulk_bar_can_archive}
 						<button
@@ -950,7 +961,7 @@
 							onclick={() => void bulk_archive_selected(true)}
 						>
 							<TrashBinOutline class="h-3.5 w-3.5" aria-hidden="true" />
-							Archive
+							{m.noble_clear_frog_bulk_archive()}
 						</button>
 					{/if}
 					{#if bulk_bar_can_restore}
@@ -961,13 +972,13 @@
 							onclick={() => void bulk_archive_selected(false)}
 						>
 							<ArchiveArrowDownOutline class="h-3.5 w-3.5" aria-hidden="true" />
-							Restore
+							{m.noble_clear_frog_bulk_restore()}
 						</button>
 					{/if}
 				</div>
 			</div>
 			<p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
-				Tap photos to select or deselect. Open the lightbox again by turning off multi-select.
+				{m.noble_clear_frog_bulk_hint()}
 			</p>
 		</div>
 	{/if}
@@ -986,7 +997,7 @@
 					class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
 					aria-hidden="true"
 				/>
-				Filters
+				{m.noble_steady_puffin_filters_heading()}
 			</h2>
 			<form method="GET" action={localizeHref('/')} class="mt-4 space-y-4">
 				{#if data.gallery_filters.gallery_focus != null}
@@ -1006,7 +1017,7 @@
 							bind:value={filter_camera_make}
 							onchange={on_filter_camera_make_change}
 						>
-							<option value="">Any</option>
+							<option value="">{m.topical_front_vole_shine_any()}</option>
 							{#each gallery_camera_makes as make_option (make_option)}
 								<option value={make_option}>{make_option}</option>
 							{/each}
@@ -1043,7 +1054,7 @@
 							bind:value={filter_lens_make}
 							onchange={on_filter_lens_make_change}
 						>
-							<option value="">Any</option>
+							<option value="">{m.topical_front_vole_shine_any()}</option>
 							{#each gallery_lens_makes as make_option (make_option)}
 								<option value={make_option}>{make_option}</option>
 							{/each}
@@ -1061,7 +1072,7 @@
 							class={filter_field_class}
 							bind:value={filter_lens_model}
 						>
-							<option value="">Any</option>
+							<option value="">{m.topical_front_vole_shine_any()}</option>
 							{#each gallery_lens_models as model_option (model_option)}
 								<option value={model_option}>{model_option}</option>
 							{/each}
@@ -1087,7 +1098,7 @@
 						<label
 							for="gf-date-to"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.gray_any_ibex_flow_date_from()}</label
+							>{m.wise_round_ibex_flow_date_to()}</label
 						>
 						<input
 							id="gf-date-to"
@@ -1234,7 +1245,7 @@
 							class="w-full border-t border-gray-200 bg-white/90 px-2 py-2 text-left dark:border-gray-700 dark:bg-gray-950/90"
 							onclick={() => on_gallery_tile_activate(item)}
 						>
-							<div class="space-y-1" role="group" aria-label="Photo details">
+							<div class="space-y-1" role="group" aria-label={m.calm_gray_martin_aria_photo_details()}>
 								{#each item.meta.rows as row, row_i (`${item.relative_path}-${row.key}-${row_i}`)}
 									{@const Icon = meta_row_icon_component(row.key)}
 									<div
@@ -1252,7 +1263,7 @@
 		</ul>
 
 		{#if data.pagination.total_pages > 1}
-			<nav class="mt-10 flex flex-wrap items-center justify-center gap-2" aria-label="Pagination">
+			<nav class="mt-10 flex flex-wrap items-center justify-center gap-2" aria-label={m.level_social_skate_nav_pagination()}>
 				{#if data.pagination.has_previous}
 					<a
 						href={pagination_href(data.pagination.current_page - 1)}
@@ -1263,7 +1274,10 @@
 				{/if}
 
 				<span class="px-3 text-sm text-gray-600 dark:text-gray-400">
-					{m.main_lower_skate_empower_pagination_page_of()}
+					{m.main_lower_skate_empower_pagination_page_of({
+						current_page: data.pagination.current_page,
+						total_pages: data.pagination.total_pages
+					})}
 				</span>
 
 				{#if data.pagination.has_next}
@@ -1300,7 +1314,7 @@
 				<button
 					type="button"
 					class="rounded-lg p-2 text-gray-600 hover:bg-gray-100 disabled:pointer-events-none disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-800"
-					aria-label="Previous image"
+					aria-label={m.brisk_tidy_finch_aria_prev_image()}
 					disabled={!modal_has_prev || modal_action_loading}
 					onclick={() => modal_go_delta(-1)}
 				>
@@ -1309,7 +1323,7 @@
 				<button
 					type="button"
 					class="rounded-lg p-2 text-gray-600 hover:bg-gray-100 disabled:pointer-events-none disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-800"
-					aria-label="Next image"
+					aria-label={m.brisk_tidy_finch_aria_next_image()}
 					disabled={!modal_has_next || modal_action_loading}
 					onclick={() => modal_go_delta(1)}
 				>
@@ -1319,7 +1333,9 @@
 					<button
 						type="button"
 						class="rounded-lg p-2 text-amber-600 hover:bg-amber-50 disabled:pointer-events-none disabled:opacity-40 dark:text-amber-400 dark:hover:bg-amber-950/40"
-						aria-label={modal_detail_starred ? 'Remove star' : 'Star image'}
+						aria-label={modal_detail_starred
+							? m.brisk_tidy_finch_aria_remove_star()
+							: m.brisk_tidy_finch_aria_star_image()}
 						disabled={modal_detail_loading || modal_action_loading || modal_detail == null}
 						onclick={() => void toggle_modal_star()}
 					>
@@ -1334,7 +1350,9 @@
 						class="rounded-lg p-2 disabled:pointer-events-none disabled:opacity-40 {modal_detail_archived
 							? 'text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40'
 							: 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40'}"
-						aria-label={modal_detail_archived ? 'Restore to gallery' : 'Archive image'}
+						aria-label={modal_detail_archived
+							? m.brisk_tidy_finch_aria_restore_gallery()
+							: m.brisk_tidy_finch_aria_archive_image()}
 						disabled={modal_detail_loading || modal_action_loading || modal_detail == null}
 						onclick={() => void toggle_modal_archive()}
 					>
@@ -1349,7 +1367,7 @@
 			<CloseButton
 				class="shrink-0"
 				name=""
-				ariaLabel="Close"
+				ariaLabel={m.brisk_tidy_finch_aria_close()}
 				onclick={() => {
 					gallery_modal_open = false;
 				}}
@@ -1376,7 +1394,7 @@
 						class="relative h-full w-full touch-none"
 						use:attach_zoom_pan
 						role="application"
-						aria-label="Preview: scroll to zoom, drag to pan, double-click image to reset"
+						aria-label={m.grand_sleek_herring_aria_preview_zoom_pan()}
 					>
 						<div
 							class="flex h-full w-full cursor-grab items-center justify-center active:cursor-grabbing"
@@ -1465,7 +1483,9 @@
 								disabled={meta_save_loading}
 								onclick={() => void save_meta_edits()}
 							>
-								{meta_save_loading ? 'Saving…' : 'Save'}
+								{meta_save_loading
+									? m.fierce_small_goat_busy_saving()
+									: m.quick_merry_ant_save_one_word()}
 							</button>
 						{/if}
 					</div>
@@ -1533,7 +1553,7 @@
 													class="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400"
 													aria-hidden="true"
 												/>
-												<span class="sr-only">Missing data:</span>
+												<span class="sr-only">{m.left_fresh_dolphin_nail_missing_data()}:</span>
 											{/if}
 											<span class="min-w-0">{view_row.label}</span>
 										</dt>

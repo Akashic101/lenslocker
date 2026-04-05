@@ -9,6 +9,7 @@
 		raw_upload_extensions,
 		is_allowed_raw_upload_extension
 	} from '$lib/gallery/raw_upload_extensions';
+	import { m } from '$lib/paraglide/messages.js';
 
 	let { data } = $props();
 
@@ -42,12 +43,9 @@
 		});
 	});
 
-	const upload_in_progress_leave_confirm_message =
-		'Uploads are still in progress. Leaving now may interrupt them. Leave anyway?';
-
 	beforeNavigate(({ cancel }) => {
 		if (!batch_busy) return;
-		if (!confirm(upload_in_progress_leave_confirm_message)) cancel();
+		if (!confirm(m.quiet_stale_gecko_warn_leave_during_upload())) cancel();
 	});
 
 	$effect(() => {
@@ -74,14 +72,23 @@
 
 	const batch_status_text = $derived.by(() => {
 		if (!batch_busy && batch_total === 0) return '';
-		if (!batch_busy && batch_total > 0) return 'Batch finished.';
+		if (!batch_busy && batch_total > 0) return m.plain_antsy_sloth_rest_batch_finished();
 		if (batch_phase === 'uploading') {
-			return `Uploading ${batch_current_name} (${batch_current_index} of ${batch_total}) — ${batch_upload_pct}%`;
+			return m.quick_noble_heron_push_status_uploading({
+				current_name: batch_current_name,
+				current_index: String(batch_current_index),
+				total: String(batch_total),
+				pct: String(batch_upload_pct)
+			});
 		}
 		if (batch_phase === 'processing') {
-			return `Processing ${batch_current_name} (${batch_current_index} of ${batch_total}) — metadata & JPEG previews`;
+			return m.lazy_fuzzy_badger_work_status_processing({
+				current_name: batch_current_name,
+				current_index: String(batch_current_index),
+				total: String(batch_total)
+			});
 		}
-		return `Preparing…`;
+		return m.small_proud_robin_wait_preparing();
 	});
 
 	function post_raw_file_xhr(
@@ -106,11 +113,11 @@
 				try {
 					body = JSON.parse(xhr.responseText || '{}') as Record<string, unknown>;
 				} catch {
-					body = { message: xhr.responseText || 'Invalid response' };
+					body = { message: xhr.responseText || m.cozy_livid_lark_note_invalid_response() };
 				}
 				resolve({ ok: xhr.status >= 200 && xhr.status < 300, body, status: xhr.status });
 			};
-			xhr.onerror = () => reject(new Error('Network error'));
+			xhr.onerror = () => reject(new Error(m.large_proud_gull_fail_network_error()));
 			const fd = new FormData();
 			fd.append('raw_file', file);
 			xhr.send(fd);
@@ -122,7 +129,7 @@
 		batch_last_error = null;
 		const input = file_input_el;
 		if (input == null || input.files == null || input.files.length === 0) {
-			batch_last_error = 'Choose one or more RAW or image files.';
+			batch_last_error = m.petty_alert_moth_urge_choose_raw_files();
 			return;
 		}
 
@@ -133,7 +140,7 @@
 
 		for (const file of files) {
 			if (file.size === 0) {
-				invalid_lines.push({ name: file.name, ok: false, message: 'Empty file' });
+				invalid_lines.push({ name: file.name, ok: false, message: m.drab_minor_crow_spot_empty_file() });
 				continue;
 			}
 			if (file.size > data.upload_pipeline_settings.max_upload_bytes) {
@@ -141,12 +148,16 @@
 				invalid_lines.push({
 					name: file.name,
 					ok: false,
-					message: `Too large (max ${mb} MB)`
+					message: m.acidic_royal_moose_cap_too_large_mb({ mb: String(mb) })
 				});
 				continue;
 			}
 			if (!is_allowed_raw_upload_extension(file.name)) {
-				invalid_lines.push({ name: file.name, ok: false, message: 'Unsupported extension' });
+				invalid_lines.push({
+					name: file.name,
+					ok: false,
+					message: m.flat_sleek_owl_deny_unsupported_extension()
+				});
 				continue;
 			}
 			valid_files.push(file);
@@ -155,7 +166,7 @@
 		batch_log_lines = invalid_lines;
 
 		if (valid_files.length === 0) {
-			batch_last_error = 'No valid files to upload.';
+			batch_last_error = m.good_cuddly_badger_mend_no_valid_upload_files();
 			batch_total = 0;
 			batch_done = 0;
 			return;
@@ -195,10 +206,10 @@
 							name: file.name,
 							ok: true,
 							message: is_duplicate
-								? 'Already in library'
+								? m.soft_quiet_snail_mark_already_in_library()
 								: preview_ok
 									? undefined
-									: String(body.preview_message ?? 'JPEG preview could not be created')
+									: String(body.preview_message ?? m.blue_still_finch_fail_jpeg_preview())
 						}
 					];
 					if (!is_duplicate) {
@@ -208,7 +219,9 @@
 					}
 				} else {
 					const msg =
-						typeof body.message === 'string' ? body.message : `Request failed (${status})`;
+						typeof body.message === 'string'
+							? body.message
+							: m.icy_mellow_carp_fail_request_status({ status: String(status) });
 					batch_log_lines = [...batch_log_lines, { name: file.name, ok: false, message: msg }];
 				}
 			} catch (e) {
@@ -237,13 +250,13 @@
 </script>
 
 <svelte:head>
-	<title>Upload RAW</title>
+	<title>{m.true_zippy_finch_title_upload_raw()}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-xl">
-	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Upload RAW</h1>
+	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{m.true_zippy_finch_title_upload_raw()}</h1>
 	<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-		Select one or more files to upload them to the database with the metadata included.
+		{m.vivid_merry_quail_say_upload_raw_intro()}
 	</p>
 
 	{#if data.just_uploaded}
@@ -251,7 +264,7 @@
 			class="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
 			role="status"
 		>
-			Upload saved successfully. Open the home page to see the JPEG preview if conversion succeeded.
+			{m.warm_civil_bison_note_upload_saved_banner()}
 		</p>
 	{/if}
 
@@ -267,7 +280,7 @@
 	<form class="mt-6 space-y-4" onsubmit={(e) => void start_batch_upload(e)}>
 		<div>
 			<label for="raw_files" class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
-				Files
+				{m.dear_sunny_crow_tag_files_label()}
 			</label>
 			<input
 				bind:this={file_input_el}
@@ -288,7 +301,7 @@
 				<div
 					class="flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-400"
 				>
-					<span>Overall progress</span>
+					<span>{m.super_quiet_gecko_gauge_overall_progress()}</span>
 					<span class="font-mono tabular-nums">{Math.round(overall_batch_percent)}%</span>
 				</div>
 				<progress
@@ -314,12 +327,14 @@
 							>
 								<span class="font-medium wrap-break-word">{line.name}</span>
 								{#if line.ok}
-									<span class="text-green-700 dark:text-green-400">Saved</span>
+									<span class="text-green-700 dark:text-green-400">{m.green_low_moose_ok_saved()}</span>
 									{#if line.message}
 										<span class="text-amber-700 dark:text-amber-400">({line.message})</span>
 									{/if}
 								{:else}
-									<span class="text-red-700 dark:text-red-400">{line.message ?? 'Failed'}</span>
+									<span class="text-red-700 dark:text-red-400"
+										>{line.message ?? m.red_flat_newt_fail_line_failed()}</span
+									>
 								{/if}
 							</li>
 						{/each}
@@ -333,7 +348,7 @@
 			disabled={batch_busy}
 			class="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
 		>
-			{batch_busy ? 'Uploading…' : 'Upload'}
+			{batch_busy ? m.next_merry_falcon_busy_uploading_ellipsis() : m.quaint_grand_snail_amaze_upload()}
 		</button>
 	</form>
 </div>

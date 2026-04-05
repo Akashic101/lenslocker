@@ -1,16 +1,25 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { m } from '$lib/paraglide/messages.js';
 
 	let { form, data } = $props();
 
 	type hardware_row = (typeof data.items)[number];
 
-	const category_labels: Record<string, string> = {
-		camera: 'Camera',
-		lens: 'Lens',
-		accessory: 'Accessory',
-		other: 'Other'
-	};
+	function hardware_category_label(category: string): string {
+		switch (category) {
+			case 'camera':
+				return m.orange_hour_ant_surge_camera();
+			case 'lens':
+				return m.any_misty_mallard_commend_lens();
+			case 'accessory':
+				return m.inclusive_front_florian_tap_accessory();
+			case 'other':
+				return m.whole_main_beaver_dart_other();
+			default:
+				return category;
+		}
+	}
 
 	let editing_item = $state<hardware_row | null>(null);
 
@@ -116,14 +125,13 @@
 </script>
 
 <svelte:head>
-	<title>Hardware</title>
+	<title>{m.wise_keen_beaver_savor_hardware()}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-4xl">
-	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Hardware</h1>
+	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{m.wise_keen_beaver_savor_hardware()}</h1>
 	<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-		Track cameras, lenses, and other gear. For camera and lens, make and model give suggestions
-		built from EXIF on your uploaded photos.
+		{m.proud_novel_octopus_zap_track_cameras_lenses_gear()}
 	</p>
 
 	{#if form?.message}
@@ -139,7 +147,9 @@
 		class="mt-8 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
 	>
 		<h2 class="text-sm font-semibold text-gray-900 dark:text-white">
-			{editing_item ? 'Edit item' : 'Add item'}
+			{editing_item
+				? m.calm_quick_heron_name_hardware_edit_item()
+				: m.still_fresh_bison_label_hardware_add_item()}
 		</h2>
 		<form
 			method="POST"
@@ -157,7 +167,8 @@
 				<div>
 					<label
 						for="hw-category"
-						class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Category</label
+						class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+						>{m.every_green_thrush_tag_category()}</label
 					>
 					<select
 						id="hw-category"
@@ -167,27 +178,28 @@
 						bind:value={form_category}
 						onchange={on_category_change}
 					>
-						<option value="camera">Camera</option>
-						<option value="lens">Lens</option>
-						<option value="accessory">Accessory</option>
-						<option value="other">Other</option>
+						<option value="camera">{m.orange_hour_ant_surge_camera()}</option>
+						<option value="lens">{m.any_misty_mallard_commend_lens()}</option>
+						<option value="accessory">{m.inclusive_front_florian_tap_accessory()}</option>
+						<option value="other">{m.whole_main_beaver_dart_other()}</option>
 					</select>
 				</div>
 				<div>
 					<label
 						for="hw-make"
-						class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Make</label
+						class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+						>{m.loud_pretty_moose_tag_make()}</label
 					>
 					{#if form_category === 'camera' && data.from_photos.camera_makes.length > 0}
 						<select id="hw-make" name="make" class={field_control_class} bind:value={form_make}>
-							<option value="">— Optional —</option>
+							<option value="" placeholder={m.home_crazy_cow_endure_optional()}></option>
 							{#each camera_make_choices as make_option (make_option)}
 								<option value={make_option}>{make_option}</option>
 							{/each}
 						</select>
 					{:else if form_category === 'lens' && data.from_photos.lens_makes.length > 0}
 						<select id="hw-make" name="make" class={field_control_class} bind:value={form_make}>
-							<option value="">— Optional —</option>
+							<option value="" placeholder={m.home_crazy_cow_endure_optional()}></option>
 							{#each lens_make_choices as make_option (make_option)}
 								<option value={make_option}>{make_option}</option>
 							{/each}
@@ -206,7 +218,8 @@
 				<div>
 					<label
 						for="hw-model"
-						class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Model</label
+						class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+						>{m.crisp_key_owl_tag_model()}</label
 					>
 					{#if form_category === 'camera' && data.from_photos.camera_models.length > 0}
 						<select
@@ -216,7 +229,7 @@
 							class={field_control_class}
 							bind:value={form_model}
 						>
-							<option value="" disabled>— Choose model —</option>
+							<option value="" disabled>— {m.basic_noble_marten_pride_choose_model()} —</option>
 							{#each camera_model_choices as model_option (model_option)}
 								<option value={model_option}>{model_option}</option>
 							{/each}
@@ -229,7 +242,7 @@
 							class={field_control_class}
 							bind:value={form_model}
 						>
-							<option value="" disabled>— Choose model —</option>
+							<option value="" disabled>— {m.basic_noble_marten_pride_choose_model()} —</option>
 							{#each lens_model_choices as model_option (model_option)}
 								<option value={model_option}>{model_option}</option>
 							{/each}
@@ -250,14 +263,14 @@
 					<label
 						for="hw-mount"
 						class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-						>Mount / mount type</label
+						>{m.slimy_sad_firefox_stop_mount_type()}</label
 					>
 					<input
 						id="hw-mount"
 						name="mount"
 						type="text"
 						autocomplete="off"
-						placeholder="e.g. Sony E, Canon RF"
+						placeholder={m.mild_tidy_raven_placeholder_mount()}
 						class="{field_control_class} placeholder:text-gray-400 dark:placeholder:text-gray-500"
 						value={editing_item?.mount ?? ''}
 					/>
@@ -266,7 +279,7 @@
 					<label
 						for="hw-serial"
 						class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-						>Serial number</label
+						>{m.big_topical_scallop_build_serial_number()}</label
 					>
 					<input
 						id="hw-serial"
@@ -281,7 +294,7 @@
 					<label
 						for="hw-acquired"
 						class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-						>Acquired (date)</label
+						>{m.neat_sleek_puffin_pride_acuired()}</label
 					>
 					<input
 						id="hw-acquired"
@@ -295,7 +308,8 @@
 			<div>
 				<label
 					for="hw-notes"
-					class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Notes</label
+					class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+					>{m.soft_gray_cat_tag_notes()}</label
 				>
 				<textarea
 					id="hw-notes"
@@ -310,7 +324,9 @@
 					type="submit"
 					class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600"
 				>
-					{editing_item ? 'Save changes' : 'Add item'}
+					{editing_item
+						? m.bold_calm_koala_save_changes()
+						: m.still_fresh_bison_label_hardware_add_item()}
 				</button>
 				{#if editing_item}
 					<button
@@ -318,7 +334,7 @@
 						class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
 						onclick={() => clear_edit()}
 					>
-						Cancel edit
+						{m.mellow_livid_jaguar_read_cancel_edit()}
 					</button>
 				{/if}
 			</div>
@@ -326,9 +342,9 @@
 	</section>
 
 	<section class="mt-10">
-		<h2 class="text-sm font-semibold text-gray-900 dark:text-white">Your gear</h2>
+		<h2 class="text-sm font-semibold text-gray-900 dark:text-white">{m.away_green_martin_advise_your_gear()}</h2>
 		{#if data.items.length === 0}
-			<p class="mt-3 text-sm text-gray-500 dark:text-gray-400">No items yet. Add one above.</p>
+			<p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{m.royal_long_gibbon_exhale_no_items_yet()}</p>
 		{:else}
 			<div class="mt-3 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
 				<table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
@@ -336,23 +352,23 @@
 						<tr>
 							<th
 								class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400"
-								>Type</th
+								>{m.broad_maroon_shrimp_roam_type()}</th
 							>
 							<th
 								class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400"
-								>Make / model</th
+								>{m.honest_jumpy_polecat_scold_make_mode()}</th
 							>
 							<th
 								class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400"
-								>Mount</th
+								>{m.close_ornate_ostrich_ask_mount()}</th
 							>
 							<th
 								class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400"
-								>Serial</th
+								>{m.game_that_skate_blend_serial()}</th
 							>
 							<th
 								class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase dark:text-gray-400"
-								>Actions</th
+								>{m.tasty_sad_alligator_pull_actions()}</th
 							>
 						</tr>
 					</thead>
@@ -360,7 +376,7 @@
 						{#each data.items as item (item.id)}
 							<tr>
 								<td class="px-3 py-2 text-gray-800 dark:text-gray-200">
-									{category_labels[item.category] ?? item.category}
+									{hardware_category_label(item.category)}
 								</td>
 								<td class="px-3 py-2 text-gray-800 dark:text-gray-200">
 									<span class="font-medium">{item.make ?? '—'}</span>
@@ -382,7 +398,7 @@
 											class="text-xs font-medium text-primary-600 hover:underline dark:text-primary-400"
 											onclick={() => start_edit(item)}
 										>
-											Edit
+											{m.long_tense_ray_read_edit()}
 										</button>
 										<form
 											method="POST"
@@ -395,7 +411,7 @@
 												type="submit"
 												class="text-xs font-medium text-primary-600 hover:underline dark:text-primary-400"
 											>
-												Delete
+												{m.fit_brief_hedgehog_pout_delete()}
 											</button>
 										</form>
 									</div>
