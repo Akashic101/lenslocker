@@ -2,7 +2,7 @@ import type { RawImageUploadRow } from '$lib/server/db/raw_image_upload.schema';
 import {
 	upload_meta_editable_field_list,
 	type upload_meta_editable_field_key
-} from '$lib/upload_meta_editable_fields';
+} from '$lib/gallery/upload_meta_editable_fields';
 
 export const upload_meta_patchable_columns = upload_meta_editable_field_list.map((f) => f.key);
 

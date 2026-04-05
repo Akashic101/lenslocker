@@ -2,11 +2,11 @@ import { eq } from 'drizzle-orm';
 import {
 	dashboard_needs_attention_defaults,
 	type dashboard_needs_attention_settings
-} from '$lib/dashboard_attention_defaults';
+} from '$lib/config/dashboard_attention_defaults';
 import {
 	normalize_dashboard_needs_attention_request_body,
 	parse_dashboard_needs_attention_stored_json
-} from '$lib/needs_attention_catalog';
+} from '$lib/gallery/needs_attention_catalog';
 import { db } from '$lib/server/db';
 import { app_setting } from '$lib/server/db/app_setting.schema';
 

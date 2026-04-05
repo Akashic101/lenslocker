@@ -14,8 +14,11 @@ import {
 	get_upload_preview_pipeline_settings,
 	type upload_preview_pipeline_settings
 } from '$lib/server/services/settings/upload_pipeline_settings';
-import type { upload_preview_format } from '$lib/upload_preview_format';
-import { upload_preview_formats, upload_preview_format_file_ext } from '$lib/upload_preview_format';
+import type { upload_preview_format } from '$lib/config/upload_preview_format';
+import {
+	upload_preview_formats,
+	upload_preview_format_file_ext
+} from '$lib/config/upload_preview_format';
 
 /** RAW-like: extract large embedded JPEGs via ExifTool; Sharp may also decode some via libraw. */
 const raw_like_extensions = new Set([

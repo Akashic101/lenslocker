@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
-import { dashboard_attention_settings_depends_key } from '$lib/dashboard_attention_settings_cache';
-import { settings_backup_list_depends_key } from '$lib/settings_backup_list_cache';
-import { upload_pipeline_settings_depends_key } from '$lib/upload_pipeline_settings_cache';
+import { dashboard_attention_settings_depends_key } from '$lib/cache/dashboard_attention_settings_cache';
+import { settings_backup_list_depends_key } from '$lib/cache/settings_backup_list_cache';
+import { upload_pipeline_settings_depends_key } from '$lib/cache/upload_pipeline_settings_cache';
 import { auth } from '$lib/server/auth';
 import { get_dashboard_needs_attention_settings } from '$lib/server/services/settings/dashboard_attention_settings';
 import { list_settings_backups } from '$lib/server/services/settings/settings_backup_service';

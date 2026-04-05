@@ -4,7 +4,7 @@
 	import { afterNavigate, invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
+	import { gallery_active_upload_count_depends_key } from '$lib/cache/gallery_upload_count_cache';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';

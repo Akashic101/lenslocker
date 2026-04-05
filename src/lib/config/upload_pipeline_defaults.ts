@@ -1,4 +1,4 @@
-import type { upload_preview_format } from '$lib/upload_preview_format';
+import type { upload_preview_format } from './upload_preview_format';
 
 /** Client-safe defaults; keep aligned with `clamp_upload_preview_pipeline_settings` bounds on the server. */
 export const upload_preview_pipeline_defaults = {

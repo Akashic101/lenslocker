@@ -2,8 +2,8 @@
  * Catalog for Dashboard → Needs attention: any combination of field keys is valid;
  * there is no priority order. Keys are OR’d for SQL and for “photo needs attention”.
  */
-import { upload_meta_editable_field_list } from '$lib/upload_meta_editable_fields';
-import { dashboard_needs_attention_default_keys } from '$lib/dashboard_attention_defaults';
+import { dashboard_needs_attention_default_keys } from '$lib/config/dashboard_attention_defaults';
+import { upload_meta_editable_field_list } from './upload_meta_editable_fields';
 
 export type needs_attention_field_catalog_entry = {
 	key: string;

@@ -2,8 +2,8 @@ import { eq } from 'drizzle-orm';
 import {
 	upload_preview_pipeline_defaults,
 	type upload_preview_pipeline_settings
-} from '$lib/upload_pipeline_defaults';
-import { is_upload_preview_format } from '$lib/upload_preview_format';
+} from '$lib/config/upload_pipeline_defaults';
+import { is_upload_preview_format } from '$lib/config/upload_preview_format';
 import { db } from '$lib/server/db';
 import { app_setting } from '$lib/server/db/app_setting.schema';
 

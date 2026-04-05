@@ -1,4 +1,4 @@
-import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
+import { gallery_active_upload_count_depends_key } from '$lib/cache/gallery_upload_count_cache';
 import { count_non_archived_raw_uploads } from '$lib/server/services/gallery/gallery_service';
 import type { LayoutServerLoad } from './$types';
 

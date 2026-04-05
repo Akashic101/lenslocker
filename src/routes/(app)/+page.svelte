@@ -4,13 +4,13 @@
 	import { invalidate } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
-	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
-	import { transformed_media_depends_key } from '$lib/transformed_media_cache';
+	import { gallery_active_upload_count_depends_key } from '$lib/cache/gallery_upload_count_cache';
+	import { transformed_media_depends_key } from '$lib/cache/transformed_media_cache';
 	import {
 		needs_attention_issue_for_detail_key,
 		needs_attention_label_for_key
-	} from '$lib/needs_attention_catalog';
-	import { upload_meta_editable_field_list } from '$lib/upload_meta_editable_fields';
+	} from '$lib/gallery/needs_attention_catalog';
+	import { upload_meta_editable_field_list } from '$lib/gallery/upload_meta_editable_fields';
 	import { CloseButton, Modal } from 'flowbite-svelte';
 	import {
 		AdjustmentsHorizontalOutline,

@@ -1,7 +1,7 @@
 import { and, eq, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm';
-import { dashboard_attention_settings_depends_key } from '$lib/dashboard_attention_settings_cache';
-import { transformed_media_depends_key } from '$lib/transformed_media_cache';
-import { transformed_media_url } from '$lib/transformed_urls';
+import { dashboard_attention_settings_depends_key } from '$lib/cache/dashboard_attention_settings_cache';
+import { transformed_media_depends_key } from '$lib/cache/transformed_media_cache';
+import { transformed_media_url } from '$lib/gallery/transformed_urls';
 import { raw_image_upload } from '$lib/server/db/raw_image_upload.schema';
 import { sql_shot_calendar_date } from '$lib/server/gallery_shot_date_sql';
 import {

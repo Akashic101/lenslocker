@@ -2,13 +2,13 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { invalidate, invalidateAll } from '$app/navigation';
-	import { dashboard_attention_settings_depends_key } from '$lib/dashboard_attention_settings_cache';
-	import { settings_backup_list_depends_key } from '$lib/settings_backup_list_cache';
-	import { dashboard_needs_attention_default_keys } from '$lib/dashboard_attention_defaults';
-	import { needs_attention_catalog } from '$lib/needs_attention_catalog';
-	import { upload_preview_pipeline_defaults } from '$lib/upload_pipeline_defaults';
-	import { upload_pipeline_settings_depends_key } from '$lib/upload_pipeline_settings_cache';
-	import type { upload_preview_format } from '$lib/upload_preview_format';
+	import { dashboard_attention_settings_depends_key } from '$lib/cache/dashboard_attention_settings_cache';
+	import { settings_backup_list_depends_key } from '$lib/cache/settings_backup_list_cache';
+	import { dashboard_needs_attention_default_keys } from '$lib/config/dashboard_attention_defaults';
+	import { needs_attention_catalog } from '$lib/gallery/needs_attention_catalog';
+	import { upload_preview_pipeline_defaults } from '$lib/config/upload_pipeline_defaults';
+	import { upload_pipeline_settings_depends_key } from '$lib/cache/upload_pipeline_settings_cache';
+	import type { upload_preview_format } from '$lib/config/upload_preview_format';
 	import { DarkMode, Tabs, TabItem } from 'flowbite-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 

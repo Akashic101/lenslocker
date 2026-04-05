@@ -6,7 +6,7 @@ import {
 	insert_raw_upload_row,
 	select_raw_upload_id_by_sha256_hex
 } from '$lib/server/services/gallery/gallery_service';
-import { is_allowed_raw_upload_extension } from '$lib/raw_upload_extensions';
+import { is_allowed_raw_upload_extension } from '$lib/gallery/raw_upload_extensions';
 import { build_metadata_fields } from '$lib/server/raw_upload/metadata_from_exifr';
 import {
 	get_raw_upload_root,

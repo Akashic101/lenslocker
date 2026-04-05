@@ -3,12 +3,12 @@
 	import { resolve } from '$app/paths';
 	import { beforeNavigate, invalidate } from '$app/navigation';
 	import { tick } from 'svelte';
-	import { gallery_active_upload_count_depends_key } from '$lib/gallery_upload_count_cache';
-	import { transformed_media_depends_key } from '$lib/transformed_media_cache';
+	import { gallery_active_upload_count_depends_key } from '$lib/cache/gallery_upload_count_cache';
+	import { transformed_media_depends_key } from '$lib/cache/transformed_media_cache';
 	import {
 		raw_upload_extensions,
 		is_allowed_raw_upload_extension
-	} from '$lib/raw_upload_extensions';
+	} from '$lib/gallery/raw_upload_extensions';
 
 	let { data } = $props();
 

@@ -5,7 +5,7 @@ import {
 	needs_attention_int_column_keys,
 	needs_attention_real_column_keys,
 	needs_attention_text_column_keys
-} from '$lib/needs_attention_catalog';
+} from '$lib/gallery/needs_attention_catalog';
 
 function column_ref(key: string) {
 	const col = raw_image_upload[key as keyof typeof raw_image_upload];
