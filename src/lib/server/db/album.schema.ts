@@ -1,5 +1,5 @@
 import { integer, sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core';
-import { raw_image_upload } from '$lib/server/db/raw_image_upload.schema';
+import { raw_image_upload } from './raw_image_upload.schema';
 
 /**
  * Virtual albums: DB-only groupings of uploads. Files on disk are not moved.

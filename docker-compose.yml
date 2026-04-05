@@ -1,18 +1,12 @@
-# LensLocker — SQLite + local volumes for DB, uploads, transformed previews, backups.
-#
-# 1. Create a .env next to this file (see .env.example). At minimum set:
-#    BETTER_AUTH_SECRET  (32+ random chars)
-#    ORIGIN              (public URL users use, e.g. https://photos.example.com)
-#
-# 2. Apply the database schema once:
-#    docker compose run --rm lenslocker bun run db:push
-#
-# 3. Run:
-#    docker compose up --build
+# Try: git clone … && cd lenslocker && docker compose up -d  → http://localhost:3000
+# Optional: create .env with BETTER_AUTH_SECRET and ORIGIN for production (see docker-compose.example.yaml).
 
 services:
   lenslocker:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - '3000:3000'
     environment:
@@ -21,7 +15,11 @@ services:
       RAW_UPLOAD_ROOT: /data/uploads/raw
       LENSLOCKER_BACKUP_ROOT: /data/backups
       ORIGIN: ${ORIGIN:-http://localhost:3000}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
+      # Default is for local try-out only. Override via .env or shell when exposing to a network.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-lenslocker_dev_only_replace_before_production_min32chars}
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3000'
     volumes:
       - lenslocker_data:/data
 

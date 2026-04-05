@@ -1,0 +1,36 @@
+# LensLocker — same stack as docker-compose.yml with full comments.
+#
+# Zero-config local run (after clone):
+#   docker compose up -d
+# First run builds the image; after code changes: docker compose up -d --build
+#
+# Compose reads optional .env for overrides (create from .env.example). If you do not create .env,
+# a built-in dev-only BETTER_AUTH_SECRET is used so the stack still starts — replace it before any
+# real deployment (set BETTER_AUTH_SECRET and ORIGIN at minimum).
+#
+# The container entrypoint runs drizzle-kit push before start unless LENSLOCKER_SKIP_DB_PUSH=1.
+
+services:
+  lenslocker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: /data/lenslocker.db
+      RAW_UPLOAD_ROOT: /data/uploads/raw
+      TRANSFORMED_MEDIA_ROOT: /data/transformed
+      LENSLOCKER_BACKUP_ROOT: /data/backups
+      ORIGIN: ${ORIGIN:-http://localhost:3000}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-lenslocker_dev_only_replace_before_production_min32chars}
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3000'
+    volumes:
+      - lenslocker_data:/data
+
+volumes:
+  lenslocker_data:
+    driver: local
