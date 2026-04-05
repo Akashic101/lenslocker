@@ -316,7 +316,7 @@
 					value={overall_batch_percent}
 				></progress>
 				<p
-					class="min-h-[2.5rem] text-sm text-gray-800 dark:text-gray-200"
+					class="min-h-10 text-sm text-gray-800 dark:text-gray-200"
 					role="status"
 					aria-live="polite"
 				>

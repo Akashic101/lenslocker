@@ -16,6 +16,7 @@
 		ChartMixedOutline,
 		CogOutline,
 		ExclamationCircleOutline,
+		FolderOutline,
 		SearchOutline,
 		ChevronDoubleLeftOutline,
 		ChevronDownOutline,
@@ -32,6 +33,7 @@
 	const dashboard_all_href = $derived(localizeHref(resolve('/')));
 	const dashboard_needs_attention_href = $derived(localizeHref('/?gallery_focus=needs_attention'));
 	const dashboard_archived_href = $derived(localizeHref('/?gallery_focus=archived'));
+	const dashboard_albums_href = $derived(localizeHref('/?gallery_focus=albums'));
 	const upload_url = $derived(localizeHref('/upload'));
 	const hardware_url = $derived(localizeHref('/hardware'));
 	const statistics_url = $derived(localizeHref('/statistics'));
@@ -115,14 +117,21 @@
 	const gallery_focus_param = $derived.by(() => {
 		if (active_url !== '/') return '';
 		const v = page.url.searchParams.get('gallery_focus')?.trim() ?? '';
-		if (v === 'needs_attention' || v === 'archived') return v;
+		if (v === 'needs_attention' || v === 'archived' || v === 'albums' || v === 'album') {
+			return v;
+		}
 		return '';
 	});
 
 	let dashboard_menu_open = $state(false);
 
 	$effect(() => {
-		if (gallery_focus_param === 'needs_attention' || gallery_focus_param === 'archived') {
+		if (
+			gallery_focus_param === 'needs_attention' ||
+			gallery_focus_param === 'archived' ||
+			gallery_focus_param === 'albums' ||
+			gallery_focus_param === 'album'
+		) {
 			dashboard_menu_open = true;
 		}
 	});
@@ -130,6 +139,9 @@
 	const dashboard_all_active = $derived(active_url === '/' && gallery_focus_param === '');
 	const dashboard_attention_active = $derived(gallery_focus_param === 'needs_attention');
 	const dashboard_archived_active = $derived(gallery_focus_param === 'archived');
+	const dashboard_albums_active = $derived(
+		gallery_focus_param === 'albums' || gallery_focus_param === 'album'
+	);
 
 	/** Refetch sidebar count on client navigations so it matches DB after uploads/archives on other routes. */
 	afterNavigate(({ from }) => {
@@ -286,6 +298,19 @@
 								>
 									{#snippet icon()}
 										<ArchiveOutline
+											class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+										/>
+									{/snippet}
+								</SidebarItem>
+								<SidebarItem
+									label={m.warm_calm_otter_nav_dashboard_albums()}
+									spanClass={span_class}
+									aClass={sidebar_item_anchor_class}
+									href={dashboard_albums_href}
+									active={dashboard_albums_active}
+								>
+									{#snippet icon()}
+										<FolderOutline
 											class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 										/>
 									{/snippet}

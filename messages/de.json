@@ -237,5 +237,20 @@
 	"lofty_clear_stork_stats_series_uploads": "Uploads",
 	"lofty_clear_stork_stats_series_photos": "Fotos",
 	"lofty_clear_stork_stats_tooltip_y_photos": "{val} Fotos",
-	"lofty_clear_stork_stats_tooltip_y_uploads": "{val} Uploads"
+	"lofty_clear_stork_stats_tooltip_y_uploads": "{val} Uploads",
+	"warm_calm_otter_nav_dashboard_albums": "Alben",
+	"plain_bright_lynx_albums_hub_blurb": "Fotos in Alben gruppieren. Die Zuordnung wird nur in der Datenbank gespeichert — Dateien werden auf der Festplatte nicht verschoben.",
+	"calm_short_stork_album_view_blurb": "Fotos im Album „{name}“.",
+	"dull_keen_ibex_album_invalid_blurb": "Dieses Album wurde nicht gefunden.",
+	"grand_merry_shrike_albums_hub_heading": "Ihre Alben",
+	"zesty_slow_wren_albums_create_placeholder": "Name des neuen Albums",
+	"round_calm_gull_albums_empty": "Noch keine Alben. Wählen Sie Fotos in der Galerie und „Zu Album hinzufügen“, oder legen Sie unten eines an.",
+	"keen_plain_stork_albums_create_button": "Album erstellen",
+	"jumpy_green_finch_album_add_modal_title": "Zu Album hinzufügen",
+	"late_mild_crane_album_add_existing_label": "Bestehendes Album",
+	"fancy_quaint_newt_album_add_new_label": "Neues Album",
+	"tight_proud_bass_album_add_select_placeholder": "Album wählen…",
+	"crisp_slow_lark_album_add_name_placeholder": "Albumname",
+	"noble_tidy_quail_album_add_submit": "Fotos hinzufügen",
+	"moody_bright_carp_bulk_add_to_album": "Zu Album hinzufügen"
 }

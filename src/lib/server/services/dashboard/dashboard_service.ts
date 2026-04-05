@@ -6,7 +6,7 @@ import { sql_shot_calendar_date } from '$lib/server/gallery_shot_date_sql';
 /** Paginated grid on the main dashboard. */
 export const dashboard_images_per_page = 50;
 
-export type dashboard_gallery_focus_mode = 'needs_attention' | 'archived';
+export type dashboard_gallery_focus_mode = 'needs_attention' | 'archived' | 'albums' | 'album';
 
 export async function load_dashboard_upload_flag_rows() {
 	return db

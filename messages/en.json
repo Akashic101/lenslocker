@@ -237,5 +237,20 @@
 	"lofty_clear_stork_stats_series_uploads": "Uploads",
 	"lofty_clear_stork_stats_series_photos": "Photos",
 	"lofty_clear_stork_stats_tooltip_y_photos": "{val} photos",
-	"lofty_clear_stork_stats_tooltip_y_uploads": "{val} uploads"
+	"lofty_clear_stork_stats_tooltip_y_uploads": "{val} uploads",
+	"warm_calm_otter_nav_dashboard_albums": "Albums",
+	"plain_bright_lynx_albums_hub_blurb": "Group photos into albums. Membership is stored in the database only — files are not moved on disk.",
+	"calm_short_stork_album_view_blurb": "Photos in “{name}”.",
+	"dull_keen_ibex_album_invalid_blurb": "This album could not be found.",
+	"grand_merry_shrike_albums_hub_heading": "Your albums",
+	"zesty_slow_wren_albums_create_placeholder": "New album name",
+	"round_calm_gull_albums_empty": "No albums yet. Select photos in the gallery and choose Add to album, or create one below.",
+	"keen_plain_stork_albums_create_button": "Create album",
+	"jumpy_green_finch_album_add_modal_title": "Add to album",
+	"late_mild_crane_album_add_existing_label": "Existing album",
+	"fancy_quaint_newt_album_add_new_label": "New album",
+	"tight_proud_bass_album_add_select_placeholder": "Choose an album…",
+	"crisp_slow_lark_album_add_name_placeholder": "Album name",
+	"noble_tidy_quail_album_add_submit": "Add photos",
+	"moody_bright_carp_bulk_add_to_album": "Add to album"
 }

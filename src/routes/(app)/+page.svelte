@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
-	import { invalidate } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
+	import { albums_list_depends_key } from '$lib/cache/albums_cache';
 	import { gallery_active_upload_count_depends_key } from '$lib/cache/gallery_upload_count_cache';
 	import { transformed_media_depends_key } from '$lib/cache/transformed_media_cache';
 	import {
@@ -94,15 +95,31 @@
 		if (f === 'archived') {
 			return m.soft_plain_goose_gallery_blurb_archived();
 		}
+		if (f === 'albums') {
+			return m.plain_bright_lynx_albums_hub_blurb();
+		}
+		if (f === 'album') {
+			if (data.current_album != null) {
+				return m.calm_short_stork_album_view_blurb({ name: data.current_album.name });
+			}
+			return m.dull_keen_ibex_album_invalid_blurb();
+		}
 		return null;
 	});
 
-	/** Reset EXIF filters but stay on the same dashboard view (needs attention / archived). */
-	const dashboard_clear_href = $derived(
-		data.gallery_filters.gallery_focus != null
-			? localizeHref(`/?gallery_focus=${data.gallery_filters.gallery_focus}`)
-			: localizeHref('/')
-	);
+	/** Reset EXIF filters but stay on the same dashboard view. */
+	const dashboard_clear_href = $derived.by(() => {
+		const g = data.gallery_filters;
+		const q = new SvelteURLSearchParams();
+		if (g.gallery_focus != null) {
+			q.set('gallery_focus', g.gallery_focus);
+		}
+		if (g.gallery_focus === 'album' && g.album_id != null && g.album_id !== '') {
+			q.set('album_id', g.album_id);
+		}
+		const s = q.toString();
+		return s !== '' ? localizeHref(`/?${s}`) : localizeHref('/');
+	});
 
 	function on_filters_toggle_click(): void {
 		filters_panel_user_open = !filters_panel_user_open;
@@ -276,6 +293,17 @@
 	let bulk_action_loading = $state(false);
 	let bulk_action_error = $state<string | null>(null);
 
+	let album_modal_open = $state(false);
+	let album_target_mode = $state<'existing' | 'new'>('existing');
+	let album_existing_id = $state('');
+	let album_new_name = $state('');
+	let album_modal_loading = $state(false);
+	let album_modal_error = $state<string | null>(null);
+
+	let hub_new_album_name = $state('');
+	let hub_create_loading = $state(false);
+	let hub_create_error = $state<string | null>(null);
+
 	/** Plain `let`: must not be `$state` or assigning inside `$effect` retriggers the effect forever. */
 	let gallery_list_track_prev: string | null = null;
 
@@ -423,6 +451,81 @@
 
 	async function bulk_archive_selected(archive: boolean): Promise<void> {
 		await apply_bulk_gallery_flags({ upload_ids: [...gallery_selected_upload_ids], archive });
+	}
+
+	function open_album_modal(): void {
+		album_modal_error = null;
+		if (data.albums.length > 0) {
+			album_target_mode = 'existing';
+			album_existing_id = data.albums[0]!.id;
+		} else {
+			album_target_mode = 'new';
+			album_existing_id = '';
+		}
+		album_new_name = '';
+		album_modal_open = true;
+	}
+
+	async function submit_add_to_album(): Promise<void> {
+		const ids = [...gallery_selected_upload_ids];
+		if (ids.length === 0) return;
+		if (album_target_mode === 'new' && album_new_name.trim() === '') {
+			return;
+		}
+		if (album_target_mode === 'existing' && album_existing_id.trim() === '') {
+			return;
+		}
+		album_modal_loading = true;
+		album_modal_error = null;
+		try {
+			const body =
+				album_target_mode === 'new'
+					? { upload_ids: ids, new_album_name: album_new_name.trim() }
+					: { upload_ids: ids, album_id: album_existing_id.trim() };
+			const response = await fetch(resolve('/api/gallery/album-members'), {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body)
+			});
+			if (!response.ok) {
+				const text = await response.text();
+				throw new Error(text || response.statusText);
+			}
+			await invalidate(albums_list_depends_key);
+			gallery_selected_upload_ids = [];
+			set_gallery_selection_mode(false);
+			album_modal_open = false;
+		} catch (e) {
+			album_modal_error = e instanceof Error ? e.message : String(e);
+		} finally {
+			album_modal_loading = false;
+		}
+	}
+
+	async function hub_create_empty_album(): Promise<void> {
+		const name = hub_new_album_name.trim();
+		if (name === '') return;
+		hub_create_loading = true;
+		hub_create_error = null;
+		try {
+			const response = await fetch(resolve('/api/gallery/albums'), {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name })
+			});
+			if (!response.ok) {
+				const text = await response.text();
+				throw new Error(text || response.statusText);
+			}
+			const payload = (await response.json()) as { id: string };
+			hub_new_album_name = '';
+			await invalidate(albums_list_depends_key);
+			await goto(localizeHref(`/?gallery_focus=album&album_id=${encodeURIComponent(payload.id)}`));
+		} catch (e) {
+			hub_create_error = e instanceof Error ? e.message : String(e);
+		} finally {
+			hub_create_loading = false;
+		}
 	}
 
 	const modal_list_index = $derived.by(() => {
@@ -891,459 +994,548 @@
 			{/if}
 		</div>
 		<div class="flex shrink-0 items-center gap-2">
-			<button
-				type="button"
-				class={gallery_header_icon_button_class}
-				aria-pressed={gallery_grid_show_meta}
-				aria-label={gallery_grid_show_meta
-					? m.calm_wide_otter_aria_compact_grid()
-					: m.calm_wide_otter_aria_meta_grid()}
-				onclick={toggle_gallery_grid_show_meta}
-			>
-				{#if gallery_grid_show_meta}
-					<GridOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
-				{:else}
-					<ColumnOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
-				{/if}
-			</button>
-			<button
-				type="button"
-				class="{gallery_header_icon_button_class} {gallery_selection_mode
-					? 'border-primary-500 ring-2 ring-primary-200 dark:border-primary-500 dark:ring-primary-900'
-					: ''}"
-				aria-pressed={gallery_selection_mode}
-				aria-label={gallery_selection_mode
-					? m.fierce_tiny_lark_aria_exit_multiselect()
-					: m.fierce_tiny_lark_aria_enter_multiselect()}
-				onclick={() => set_gallery_selection_mode(!gallery_selection_mode)}
-			>
-				<CheckOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
-			</button>
-			<button
-				type="button"
-				class="{gallery_header_icon_button_class} relative"
-				aria-expanded={filters_panel_user_open}
-				aria-controls="gallery-filters-panel"
-				aria-label={gallery_filters_toggle_aria_label(filters_panel_user_open)}
-				onclick={on_filters_toggle_click}
-			>
-				{#if filters_panel_user_open || gallery_exif_star_filter_count > 0}
-					<FilterSolid class={gallery_header_icon_glyph_class} aria-hidden="true" />
-				{:else}
-					<FilterOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
-				{/if}
-				{#if gallery_exif_star_filter_count > 0}
-					<span
-						class="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-600 px-1 text-[10px] leading-none font-semibold text-white tabular-nums dark:bg-primary-500"
-						aria-hidden="true"
-					>
-						{gallery_exif_star_filter_count > 99 ? '99+' : String(gallery_exif_star_filter_count)}
-					</span>
-				{/if}
-			</button>
+			{#if data.gallery_filters.gallery_focus !== 'albums'}
+				<button
+					type="button"
+					class={gallery_header_icon_button_class}
+					aria-pressed={gallery_grid_show_meta}
+					aria-label={gallery_grid_show_meta
+						? m.calm_wide_otter_aria_compact_grid()
+						: m.calm_wide_otter_aria_meta_grid()}
+					onclick={toggle_gallery_grid_show_meta}
+				>
+					{#if gallery_grid_show_meta}
+						<GridOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+					{:else}
+						<ColumnOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+					{/if}
+				</button>
+				<button
+					type="button"
+					class="{gallery_header_icon_button_class} {gallery_selection_mode
+						? 'border-primary-500 ring-2 ring-primary-200 dark:border-primary-500 dark:ring-primary-900'
+						: ''}"
+					aria-pressed={gallery_selection_mode}
+					aria-label={gallery_selection_mode
+						? m.fierce_tiny_lark_aria_exit_multiselect()
+						: m.fierce_tiny_lark_aria_enter_multiselect()}
+					onclick={() => set_gallery_selection_mode(!gallery_selection_mode)}
+				>
+					<CheckOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+				</button>
+				<button
+					type="button"
+					class="{gallery_header_icon_button_class} relative"
+					aria-expanded={filters_panel_user_open}
+					aria-controls="gallery-filters-panel"
+					aria-label={gallery_filters_toggle_aria_label(filters_panel_user_open)}
+					onclick={on_filters_toggle_click}
+				>
+					{#if filters_panel_user_open || gallery_exif_star_filter_count > 0}
+						<FilterSolid class={gallery_header_icon_glyph_class} aria-hidden="true" />
+					{:else}
+						<FilterOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+					{/if}
+					{#if gallery_exif_star_filter_count > 0}
+						<span
+							class="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-600 px-1 text-[10px] leading-none font-semibold text-white tabular-nums dark:bg-primary-500"
+							aria-hidden="true"
+						>
+							{gallery_exif_star_filter_count > 99 ? '99+' : String(gallery_exif_star_filter_count)}
+						</span>
+					{/if}
+				</button>
+			{/if}
 		</div>
 	</header>
 
-	{#if gallery_selection_mode && gallery_images.length > 0}
-		<div
-			class="dark:bg-primary-950/40 mb-4 rounded-lg border border-primary-200 bg-primary-50/90 px-3 py-2.5 dark:border-primary-900"
-			role="region"
-			aria-label={m.dull_solid_gull_aria_bulk_actions()}
-		>
-			{#if bulk_action_error}
-				<p class="mb-2 text-xs text-red-700 dark:text-red-300" role="alert">{bulk_action_error}</p>
-			{/if}
-			<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-				<span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-					{m.warm_round_bison_bulk_selected_count({ count: gallery_selected_count })}
-				</span>
-				<div class="flex flex-wrap gap-2">
-					<button
-						type="button"
-						class={bulk_bar_button_class}
-						disabled={bulk_action_loading}
-						onclick={select_all_gallery_uploads_on_page}
-					>
-						{m.noble_clear_frog_bulk_all_on_page()}
-					</button>
-					<button
-						type="button"
-						class={bulk_bar_button_class}
-						disabled={bulk_action_loading || gallery_selected_count === 0}
-						onclick={() => {
-							gallery_selected_upload_ids = [];
-						}}
-					>
-						{m.noble_clear_frog_bulk_clear_selection()}
-					</button>
-					<button
-						type="button"
-						class={bulk_bar_button_class}
-						disabled={bulk_action_loading}
-						onclick={() => set_gallery_selection_mode(false)}
-					>
-						{m.noble_clear_frog_bulk_done()}
-					</button>
-				</div>
-				<span class="hidden h-4 w-px bg-gray-300 sm:block dark:bg-gray-600" aria-hidden="true"
-				></span>
-				<div class="flex flex-wrap gap-2">
-					<button
-						type="button"
-						class="{bulk_bar_button_class} inline-flex items-center gap-1"
-						disabled={bulk_action_loading || gallery_selected_count === 0}
-						onclick={() => void bulk_star_selected(true)}
-					>
-						<StarSolid class="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
-						{m.noble_clear_frog_bulk_star()}
-					</button>
-					<button
-						type="button"
-						class="{bulk_bar_button_class} inline-flex items-center gap-1"
-						disabled={bulk_action_loading || gallery_selected_count === 0}
-						onclick={() => void bulk_star_selected(false)}
-					>
-						<StarOutline class="h-3.5 w-3.5" aria-hidden="true" />
-						{m.noble_clear_frog_bulk_unstar()}
-					</button>
-					{#if bulk_bar_can_archive}
-						<button
-							type="button"
-							class="{bulk_bar_button_class} inline-flex items-center gap-1 text-red-700 dark:text-red-300"
-							disabled={bulk_action_loading || gallery_selected_count === 0}
-							onclick={() => void bulk_archive_selected(true)}
-						>
-							<TrashBinOutline class="h-3.5 w-3.5" aria-hidden="true" />
-							{m.noble_clear_frog_bulk_archive()}
-						</button>
-					{/if}
-					{#if bulk_bar_can_restore}
-						<button
-							type="button"
-							class="{bulk_bar_button_class} inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300"
-							disabled={bulk_action_loading || gallery_selected_count === 0}
-							onclick={() => void bulk_archive_selected(false)}
-						>
-							<ArchiveArrowDownOutline class="h-3.5 w-3.5" aria-hidden="true" />
-							{m.noble_clear_frog_bulk_restore()}
-						</button>
-					{/if}
-				</div>
-			</div>
-			<p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
-				{m.noble_clear_frog_bulk_hint()}
-			</p>
-		</div>
-	{/if}
-
-	{#if filters_panel_user_open}
+	{#if data.gallery_filters.gallery_focus === 'albums'}
 		<section
-			id="gallery-filters-panel"
-			class="mb-8 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
-			aria-labelledby="gallery-filters-heading"
+			class="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+			aria-labelledby="albums-hub-heading"
 		>
-			<h2
-				id="gallery-filters-heading"
-				class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
-			>
-				<FilterOutline
-					class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
-					aria-hidden="true"
-				/>
-				{m.noble_steady_puffin_filters_heading()}
+			<h2 id="albums-hub-heading" class="text-lg font-semibold text-gray-900 dark:text-white">
+				{m.grand_merry_shrike_albums_hub_heading()}
 			</h2>
-			<form method="GET" action={localizeHref('/')} class="mt-4 space-y-4">
-				{#if data.gallery_filters.gallery_focus != null}
-					<input type="hidden" name="gallery_focus" value={data.gallery_filters.gallery_focus} />
-				{/if}
-				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-					<div>
-						<label
-							for="gf-camera-make"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.dry_honest_earthworm_gleam_camera_make()}</label
-						>
-						<select
-							id="gf-camera-make"
-							name="camera_make"
-							class={filter_field_class}
-							bind:value={filter_camera_make}
-							onchange={on_filter_camera_make_change}
-						>
-							<option value="">{m.topical_front_vole_shine_any()}</option>
-							{#each gallery_camera_makes as make_option (make_option)}
-								<option value={make_option}>{make_option}</option>
-							{/each}
-						</select>
-					</div>
-					<div>
-						<label
-							for="gf-camera-model"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.green_lime_swan_gasp_camera_model()}</label
-						>
-						<select
-							id="gf-camera-model"
-							name="camera_model"
-							class={filter_field_class}
-							bind:value={filter_camera_model}
-						>
-							<option value="">{m.topical_front_vole_shine_any()}</option>
-							{#each gallery_camera_models as model_option (model_option)}
-								<option value={model_option}>{model_option}</option>
-							{/each}
-						</select>
-					</div>
-					<div>
-						<label
-							for="gf-lens-make"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.east_mealy_vulture_aspire_lens_make()}</label
-						>
-						<select
-							id="gf-lens-make"
-							name="lens_make"
-							class={filter_field_class}
-							bind:value={filter_lens_make}
-							onchange={on_filter_lens_make_change}
-						>
-							<option value="">{m.topical_front_vole_shine_any()}</option>
-							{#each gallery_lens_makes as make_option (make_option)}
-								<option value={make_option}>{make_option}</option>
-							{/each}
-						</select>
-					</div>
-					<div>
-						<label
-							for="gf-lens-model"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.keen_mealy_eagle_yell_lens_model()}</label
-						>
-						<select
-							id="gf-lens-model"
-							name="lens_model"
-							class={filter_field_class}
-							bind:value={filter_lens_model}
-						>
-							<option value="">{m.topical_front_vole_shine_any()}</option>
-							{#each gallery_lens_models as model_option (model_option)}
-								<option value={model_option}>{model_option}</option>
-							{/each}
-						</select>
-					</div>
-					<div>
-						<label
-							for="gf-date-from"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.only_many_leopard_express_date_from()}</label
-						>
-						<input
-							id="gf-date-from"
-							name="date_from"
-							type="date"
-							min={date_input_min}
-							max={date_input_max}
-							class={filter_field_class}
-							bind:value={filter_date_from}
-						/>
-					</div>
-					<div>
-						<label
-							for="gf-date-to"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.wise_round_ibex_flow_date_to()}</label
-						>
-						<input
-							id="gf-date-to"
-							name="date_to"
-							type="date"
-							min={date_input_min}
-							max={date_input_max}
-							class={filter_field_class}
-							bind:value={filter_date_to}
-						/>
-					</div>
-				</div>
-				<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-					<label
-						class="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200"
-					>
-						<input
-							type="checkbox"
-							name="starred_only"
-							value="1"
-							class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
-							bind:checked={filter_starred_only}
-						/>
-						{m.gaudy_nimble_ladybug_spin_starred_only()}
-					</label>
-				</div>
-				<div class="flex flex-wrap items-end gap-3">
-					<div class="w-full max-w-xs min-w-32 sm:w-auto">
-						<label
-							for="gf-iso-min"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.petty_same_dog_dine_iso_min()}</label
-						>
-						<input
-							id="gf-iso-min"
-							name="iso_min"
-							type="number"
-							inputmode="numeric"
-							min="0"
-							step="1"
-							placeholder={iso_placeholder_min}
-							class={filter_field_class}
-							bind:value={filter_iso_min}
-						/>
-					</div>
-					<div class="w-full max-w-xs min-w-32 sm:w-auto">
-						<label
-							for="gf-iso-max"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>{m.moving_slimy_alpaca_feast_iso_max()}</label
-						>
-						<input
-							id="gf-iso-max"
-							name="iso_max"
-							type="number"
-							inputmode="numeric"
-							min="0"
-							step="1"
-							placeholder={iso_placeholder_max}
-							class={filter_field_class}
-							bind:value={filter_iso_max}
-						/>
-					</div>
-					<div class="flex flex-wrap gap-2 pb-0.5">
-						<button
-							type="submit"
-							class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600"
-						>
-							{m.lofty_slow_guppy_inspire_apply_filters()}
-						</button>
-						<a
-							href={dashboard_clear_href}
-							class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-						>
-							{m.green_suave_butterfly_succeed_clear()}
-						</a>
-					</div>
-				</div>
-			</form>
-		</section>
-	{/if}
-
-	{#if data.gallery_infinite.total_count === 0}
-		<p
-			class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500 dark:border-gray-600 dark:text-gray-400"
-		>
-			{#if data.gallery_filters.starred_only || data.gallery_filters.exif_filters_active}
-				{m.east_icy_iguana_arise_no_photos_match_these_filters()}
-			{:else if data.gallery_filters.gallery_focus === 'needs_attention'}
-				{m.inclusive_pretty_hornet_quiz_no_photos_need_attention()}
-			{:else if data.gallery_filters.gallery_focus === 'archived'}
-				{m.watery_small_wren_lift_no_archived_photos()}
-			{:else}
-				{m.bad_vexed_carp_grasp_no_images_found()}
-				<a href={localizeHref('/upload')} class="text-primary-600 underline dark:text-primary-400"
-					>{m.quaint_grand_snail_amaze_upload()}</a
-				>
+			{#if hub_create_error != null}
+				<p class="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">{hub_create_error}</p>
 			{/if}
-		</p>
-	{:else}
-		<ul class={gallery_grid_list_class} role="list">
-			{#each gallery_images as item (item.relative_path)}
-				<li
-					class="relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 {gallery_selection_mode &&
-					item.upload_id != null &&
-					gallery_upload_is_selected(item.upload_id)
-						? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-gray-50 dark:ring-offset-gray-900'
-						: ''}"
-				>
-					{#if gallery_selection_mode && item.upload_id != null}
-						<span
-							class="pointer-events-none absolute top-1.5 left-1.5 z-10 flex h-6 w-6 items-center justify-center rounded border-2 border-white bg-black/50 shadow dark:border-gray-800"
-							aria-hidden="true"
-						>
-							{#if gallery_upload_is_selected(item.upload_id)}
-								<CheckOutline class="h-4 w-4 text-white" />
-							{/if}
-						</span>
-					{/if}
-					<button
-						type="button"
-						class="relative block w-full shrink-0 cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none"
-						onclick={() => on_gallery_tile_activate(item)}
+			<div class="mt-4 flex max-w-xl flex-col gap-2 sm:flex-row sm:items-end">
+				<div class="min-w-0 flex-1">
+					<label
+						for="hub-new-album-name"
+						class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
 					>
-						<img
-							src={item.src}
-							alt={item.alt}
-							class="aspect-square w-full object-cover"
-							loading="lazy"
-							decoding="async"
-						/>
-						{#if item.starred}
-							<span
-								class="pointer-events-none absolute top-1 right-1 rounded bg-black/55 p-0.5 text-amber-300"
-								aria-hidden="true"
-							>
-								<StarSolid class="h-3.5 w-3.5" />
-							</span>
-						{/if}
-					</button>
-					{#if gallery_grid_show_meta && item.meta}
-						<button
-							type="button"
-							class="w-full border-t border-gray-200 bg-white/90 px-2 py-2 text-left dark:border-gray-700 dark:bg-gray-950/90"
-							onclick={() => on_gallery_tile_activate(item)}
-						>
-							<div
-								class="space-y-1"
-								role="group"
-								aria-label={m.calm_gray_martin_aria_photo_details()}
-							>
-								{#each item.meta.rows as row, row_i (`${item.relative_path}-${row.key}-${row_i}`)}
-									{@const Icon = meta_row_icon_component(row.key)}
-									<div
-										class="flex gap-1.5 text-[10px] leading-snug text-gray-700 dark:text-gray-300"
-									>
-										<Icon class={meta_icon_class} aria-hidden="true" />
-										<span class="min-w-0 wrap-break-word">{row.text}</span>
-									</div>
-								{/each}
-							</div>
-						</button>
-					{/if}
-				</li>
-			{/each}
-		</ul>
-
-		{#if gallery_has_more}
-			<div
-				bind:this={gallery_load_more_sentinel}
-				class="h-1 w-full shrink-0"
-				aria-hidden="true"
-			></div>
-		{/if}
-
-		{#if gallery_load_more_in_flight}
-			<p class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400" role="status">
-				{m.small_proud_robin_wait_preparing()}
-			</p>
-		{/if}
-
-		{#if gallery_load_more_error != null}
-			<p class="mt-4 text-center text-sm text-red-600 dark:text-red-400" role="alert">
-				{gallery_load_more_error}
+						{m.zesty_slow_wren_albums_create_placeholder()}
+					</label>
+					<input
+						id="hub-new-album-name"
+						type="text"
+						class={filter_field_class}
+						bind:value={hub_new_album_name}
+						maxlength={200}
+						autocomplete="off"
+					/>
+				</div>
 				<button
 					type="button"
-					class="ms-2 underline"
-					onclick={() => void fetch_next_gallery_batch()}
+					class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
+					disabled={hub_create_loading || hub_new_album_name.trim() === ''}
+					onclick={() => void hub_create_empty_album()}
 				>
-					{m.still_kind_racoon_engage_next()}
+					{m.keen_plain_stork_albums_create_button()}
 				</button>
+			</div>
+			{#if data.albums.length === 0}
+				<p class="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+					{m.round_calm_gull_albums_empty()}
+				</p>
+			{:else}
+				<ul class="mt-8 divide-y divide-gray-200 dark:divide-gray-600" role="list">
+					{#each data.albums as album_row (album_row.id)}
+						<li>
+							<a
+								href={localizeHref(
+									`/?gallery_focus=album&album_id=${encodeURIComponent(album_row.id)}`
+								)}
+								class="flex items-center gap-3 py-3 text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+							>
+								<FolderOutline
+									class="h-5 w-5 shrink-0 text-gray-500 dark:text-gray-400"
+									aria-hidden="true"
+								/>
+								<span class="min-w-0 flex-1 truncate font-medium">{album_row.name}</span>
+								<span class="shrink-0 text-sm text-gray-500 tabular-nums dark:text-gray-400">
+									{album_row.image_count}
+								</span>
+							</a>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
+	{:else}
+		{#if gallery_selection_mode && gallery_images.length > 0}
+			<div
+				class="dark:bg-primary-950/40 mb-4 rounded-lg border border-primary-200 bg-primary-50/90 px-3 py-2.5 dark:border-primary-900"
+				role="region"
+				aria-label={m.dull_solid_gull_aria_bulk_actions()}
+			>
+				{#if bulk_action_error}
+					<p class="mb-2 text-xs text-red-700 dark:text-red-300" role="alert">
+						{bulk_action_error}
+					</p>
+				{/if}
+				<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+					<span class="text-sm font-medium text-gray-800 dark:text-gray-200">
+						{m.warm_round_bison_bulk_selected_count({ count: gallery_selected_count })}
+					</span>
+					<div class="flex flex-wrap gap-2">
+						<button
+							type="button"
+							class={bulk_bar_button_class}
+							disabled={bulk_action_loading}
+							onclick={select_all_gallery_uploads_on_page}
+						>
+							{m.noble_clear_frog_bulk_all_on_page()}
+						</button>
+						<button
+							type="button"
+							class={bulk_bar_button_class}
+							disabled={bulk_action_loading || gallery_selected_count === 0}
+							onclick={() => {
+								gallery_selected_upload_ids = [];
+							}}
+						>
+							{m.noble_clear_frog_bulk_clear_selection()}
+						</button>
+						<button
+							type="button"
+							class={bulk_bar_button_class}
+							disabled={bulk_action_loading}
+							onclick={() => set_gallery_selection_mode(false)}
+						>
+							{m.noble_clear_frog_bulk_done()}
+						</button>
+					</div>
+					<span class="hidden h-4 w-px bg-gray-300 sm:block dark:bg-gray-600" aria-hidden="true"
+					></span>
+					<div class="flex flex-wrap gap-2">
+						<button
+							type="button"
+							class="{bulk_bar_button_class} inline-flex items-center gap-1"
+							disabled={bulk_action_loading || gallery_selected_count === 0}
+							onclick={() => void bulk_star_selected(true)}
+						>
+							<StarSolid class="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
+							{m.noble_clear_frog_bulk_star()}
+						</button>
+						<button
+							type="button"
+							class="{bulk_bar_button_class} inline-flex items-center gap-1"
+							disabled={bulk_action_loading || gallery_selected_count === 0}
+							onclick={() => void bulk_star_selected(false)}
+						>
+							<StarOutline class="h-3.5 w-3.5" aria-hidden="true" />
+							{m.noble_clear_frog_bulk_unstar()}
+						</button>
+						{#if bulk_bar_can_archive}
+							<button
+								type="button"
+								class="{bulk_bar_button_class} inline-flex items-center gap-1 text-red-700 dark:text-red-300"
+								disabled={bulk_action_loading || gallery_selected_count === 0}
+								onclick={() => void bulk_archive_selected(true)}
+							>
+								<TrashBinOutline class="h-3.5 w-3.5" aria-hidden="true" />
+								{m.noble_clear_frog_bulk_archive()}
+							</button>
+						{/if}
+						{#if bulk_bar_can_restore}
+							<button
+								type="button"
+								class="{bulk_bar_button_class} inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300"
+								disabled={bulk_action_loading || gallery_selected_count === 0}
+								onclick={() => void bulk_archive_selected(false)}
+							>
+								<ArchiveArrowDownOutline class="h-3.5 w-3.5" aria-hidden="true" />
+								{m.noble_clear_frog_bulk_restore()}
+							</button>
+						{/if}
+						<button
+							type="button"
+							class="{bulk_bar_button_class} inline-flex items-center gap-1 text-primary-700 dark:text-primary-300"
+							disabled={bulk_action_loading || gallery_selected_count === 0}
+							onclick={open_album_modal}
+						>
+							<FolderOutline class="h-3.5 w-3.5" aria-hidden="true" />
+							{m.moody_bright_carp_bulk_add_to_album()}
+						</button>
+					</div>
+				</div>
+				<p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
+					{m.noble_clear_frog_bulk_hint()}
+				</p>
+			</div>
+		{/if}
+
+		{#if filters_panel_user_open}
+			<section
+				id="gallery-filters-panel"
+				class="mb-8 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+				aria-labelledby="gallery-filters-heading"
+			>
+				<h2
+					id="gallery-filters-heading"
+					class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
+				>
+					<FilterOutline
+						class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
+						aria-hidden="true"
+					/>
+					{m.noble_steady_puffin_filters_heading()}
+				</h2>
+				<form method="GET" action={localizeHref('/')} class="mt-4 space-y-4">
+					{#if data.gallery_filters.gallery_focus != null}
+						<input type="hidden" name="gallery_focus" value={data.gallery_filters.gallery_focus} />
+					{/if}
+					{#if data.gallery_filters.album_id != null && data.gallery_filters.album_id !== ''}
+						<input type="hidden" name="album_id" value={data.gallery_filters.album_id} />
+					{/if}
+					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+						<div>
+							<label
+								for="gf-camera-make"
+								class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+								>{m.dry_honest_earthworm_gleam_camera_make()}</label
+							>
+							<select
+								id="gf-camera-make"
+								name="camera_make"
+								class={filter_field_class}
+								bind:value={filter_camera_make}
+								onchange={on_filter_camera_make_change}
+							>
+								<option value="">{m.topical_front_vole_shine_any()}</option>
+								{#each gallery_camera_makes as make_option (make_option)}
+									<option value={make_option}>{make_option}</option>
+								{/each}
+							</select>
+						</div>
+						<div>
+							<label
+								for="gf-camera-model"
+								class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+								>{m.green_lime_swan_gasp_camera_model()}</label
+							>
+							<select
+								id="gf-camera-model"
+								name="camera_model"
+								class={filter_field_class}
+								bind:value={filter_camera_model}
+							>
+								<option value="">{m.topical_front_vole_shine_any()}</option>
+								{#each gallery_camera_models as model_option (model_option)}
+									<option value={model_option}>{model_option}</option>
+								{/each}
+							</select>
+						</div>
+						<div>
+							<label
+								for="gf-lens-make"
+								class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+								>{m.east_mealy_vulture_aspire_lens_make()}</label
+							>
+							<select
+								id="gf-lens-make"
+								name="lens_make"
+								class={filter_field_class}
+								bind:value={filter_lens_make}
+								onchange={on_filter_lens_make_change}
+							>
+								<option value="">{m.topical_front_vole_shine_any()}</option>
+								{#each gallery_lens_makes as make_option (make_option)}
+									<option value={make_option}>{make_option}</option>
+								{/each}
+							</select>
+						</div>
+						<div>
+							<label
+								for="gf-lens-model"
+								class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+								>{m.keen_mealy_eagle_yell_lens_model()}</label
+							>
+							<select
+								id="gf-lens-model"
+								name="lens_model"
+								class={filter_field_class}
+								bind:value={filter_lens_model}
+							>
+								<option value="">{m.topical_front_vole_shine_any()}</option>
+								{#each gallery_lens_models as model_option (model_option)}
+									<option value={model_option}>{model_option}</option>
+								{/each}
+							</select>
+						</div>
+						<div>
+							<label
+								for="gf-date-from"
+								class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+								>{m.only_many_leopard_express_date_from()}</label
+							>
+							<input
+								id="gf-date-from"
+								name="date_from"
+								type="date"
+								min={date_input_min}
+								max={date_input_max}
+								class={filter_field_class}
+								bind:value={filter_date_from}
+							/>
+						</div>
+						<div>
+							<label
+								for="gf-date-to"
+								class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+								>{m.wise_round_ibex_flow_date_to()}</label
+							>
+							<input
+								id="gf-date-to"
+								name="date_to"
+								type="date"
+								min={date_input_min}
+								max={date_input_max}
+								class={filter_field_class}
+								bind:value={filter_date_to}
+							/>
+						</div>
+					</div>
+					<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+						<label
+							class="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200"
+						>
+							<input
+								type="checkbox"
+								name="starred_only"
+								value="1"
+								class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
+								bind:checked={filter_starred_only}
+							/>
+							{m.gaudy_nimble_ladybug_spin_starred_only()}
+						</label>
+					</div>
+					<div class="flex flex-wrap items-end gap-3">
+						<div class="w-full max-w-xs min-w-32 sm:w-auto">
+							<label
+								for="gf-iso-min"
+								class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+								>{m.petty_same_dog_dine_iso_min()}</label
+							>
+							<input
+								id="gf-iso-min"
+								name="iso_min"
+								type="number"
+								inputmode="numeric"
+								min="0"
+								step="1"
+								placeholder={iso_placeholder_min}
+								class={filter_field_class}
+								bind:value={filter_iso_min}
+							/>
+						</div>
+						<div class="w-full max-w-xs min-w-32 sm:w-auto">
+							<label
+								for="gf-iso-max"
+								class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+								>{m.moving_slimy_alpaca_feast_iso_max()}</label
+							>
+							<input
+								id="gf-iso-max"
+								name="iso_max"
+								type="number"
+								inputmode="numeric"
+								min="0"
+								step="1"
+								placeholder={iso_placeholder_max}
+								class={filter_field_class}
+								bind:value={filter_iso_max}
+							/>
+						</div>
+						<div class="flex flex-wrap gap-2 pb-0.5">
+							<button
+								type="submit"
+								class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600"
+							>
+								{m.lofty_slow_guppy_inspire_apply_filters()}
+							</button>
+							<a
+								href={dashboard_clear_href}
+								class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+							>
+								{m.green_suave_butterfly_succeed_clear()}
+							</a>
+						</div>
+					</div>
+				</form>
+			</section>
+		{/if}
+
+		{#if data.gallery_infinite.total_count === 0}
+			<p
+				class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500 dark:border-gray-600 dark:text-gray-400"
+			>
+				{#if data.gallery_filters.starred_only || data.gallery_filters.exif_filters_active}
+					{m.east_icy_iguana_arise_no_photos_match_these_filters()}
+				{:else if data.gallery_filters.gallery_focus === 'needs_attention'}
+					{m.inclusive_pretty_hornet_quiz_no_photos_need_attention()}
+				{:else if data.gallery_filters.gallery_focus === 'archived'}
+					{m.watery_small_wren_lift_no_archived_photos()}
+				{:else if data.gallery_filters.gallery_focus === 'album'}
+					{#if data.current_album == null}
+						{m.dull_keen_ibex_album_invalid_blurb()}
+					{:else}
+						{m.bad_vexed_carp_grasp_no_images_found()}
+					{/if}
+				{:else}
+					{m.bad_vexed_carp_grasp_no_images_found()}
+					<a href={localizeHref('/upload')} class="text-primary-600 underline dark:text-primary-400"
+						>{m.quaint_grand_snail_amaze_upload()}</a
+					>
+				{/if}
 			</p>
+		{:else}
+			<ul class={gallery_grid_list_class} role="list">
+				{#each gallery_images as item (item.relative_path)}
+					<li
+						class="relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 {gallery_selection_mode &&
+						item.upload_id != null &&
+						gallery_upload_is_selected(item.upload_id)
+							? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-gray-50 dark:ring-offset-gray-900'
+							: ''}"
+					>
+						{#if gallery_selection_mode && item.upload_id != null}
+							<span
+								class="pointer-events-none absolute top-1.5 left-1.5 z-10 flex h-6 w-6 items-center justify-center rounded border-2 border-white bg-black/50 shadow dark:border-gray-800"
+								aria-hidden="true"
+							>
+								{#if gallery_upload_is_selected(item.upload_id)}
+									<CheckOutline class="h-4 w-4 text-white" />
+								{/if}
+							</span>
+						{/if}
+						<button
+							type="button"
+							class="relative block w-full shrink-0 cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none"
+							onclick={() => on_gallery_tile_activate(item)}
+						>
+							<img
+								src={item.src}
+								alt={item.alt}
+								class="aspect-square w-full object-cover"
+								loading="lazy"
+								decoding="async"
+							/>
+							{#if item.starred}
+								<span
+									class="pointer-events-none absolute top-1 right-1 rounded bg-black/55 p-0.5 text-amber-300"
+									aria-hidden="true"
+								>
+									<StarSolid class="h-3.5 w-3.5" />
+								</span>
+							{/if}
+						</button>
+						{#if gallery_grid_show_meta && item.meta}
+							<button
+								type="button"
+								class="w-full border-t border-gray-200 bg-white/90 px-2 py-2 text-left dark:border-gray-700 dark:bg-gray-950/90"
+								onclick={() => on_gallery_tile_activate(item)}
+							>
+								<div
+									class="space-y-1"
+									role="group"
+									aria-label={m.calm_gray_martin_aria_photo_details()}
+								>
+									{#each item.meta.rows as row, row_i (`${item.relative_path}-${row.key}-${row_i}`)}
+										{@const Icon = meta_row_icon_component(row.key)}
+										<div
+											class="flex gap-1.5 text-[10px] leading-snug text-gray-700 dark:text-gray-300"
+										>
+											<Icon class={meta_icon_class} aria-hidden="true" />
+											<span class="min-w-0 wrap-break-word">{row.text}</span>
+										</div>
+									{/each}
+								</div>
+							</button>
+						{/if}
+					</li>
+				{/each}
+			</ul>
+
+			{#if gallery_has_more}
+				<div
+					bind:this={gallery_load_more_sentinel}
+					class="h-1 w-full shrink-0"
+					aria-hidden="true"
+				></div>
+			{/if}
+
+			{#if gallery_load_more_in_flight}
+				<p class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400" role="status">
+					{m.small_proud_robin_wait_preparing()}
+				</p>
+			{/if}
+
+			{#if gallery_load_more_error != null}
+				<p class="mt-4 text-center text-sm text-red-600 dark:text-red-400" role="alert">
+					{gallery_load_more_error}
+					<button
+						type="button"
+						class="ms-2 underline"
+						onclick={() => void fetch_next_gallery_batch()}
+					>
+						{m.still_kind_racoon_engage_next()}
+					</button>
+				</p>
+			{/if}
 		{/if}
 	{/if}
 </div>
@@ -1626,6 +1818,101 @@
 					</div>
 				{/if}
 			</div>
+		</div>
+	</div>
+</Modal>
+
+<Modal
+	bind:open={album_modal_open}
+	size="md"
+	autoclose={false}
+	classes={{
+		header: '!py-3 !px-4 !border-b !border-gray-200 dark:!border-gray-700',
+		body: '!p-4'
+	}}
+>
+	{#snippet header()}
+		<p class="text-base font-semibold text-gray-900 dark:text-white">
+			{m.jumpy_green_finch_album_add_modal_title()}
+		</p>
+	{/snippet}
+	<div class="space-y-4">
+		{#if album_modal_error != null}
+			<p class="text-sm text-red-600 dark:text-red-400" role="alert">{album_modal_error}</p>
+		{/if}
+		<fieldset class="space-y-3">
+			<legend class="sr-only">{m.jumpy_green_finch_album_add_modal_title()}</legend>
+			<label
+				class="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200"
+			>
+				<input
+					type="radio"
+					name="album_target_mode"
+					value="existing"
+					class="border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
+					bind:group={album_target_mode}
+					disabled={data.albums.length === 0}
+				/>
+				{m.late_mild_crane_album_add_existing_label()}
+			</label>
+			{#if album_target_mode === 'existing' && data.albums.length > 0}
+				<select
+					class="{filter_field_class} ms-6 max-w-md"
+					bind:value={album_existing_id}
+					aria-label={m.tight_proud_bass_album_add_select_placeholder()}
+				>
+					{#each data.albums as album_option (album_option.id)}
+						<option value={album_option.id}>{album_option.name}</option>
+					{/each}
+				</select>
+			{/if}
+			<label
+				class="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200"
+			>
+				<input
+					type="radio"
+					name="album_target_mode"
+					value="new"
+					class="border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
+					bind:group={album_target_mode}
+				/>
+				{m.fancy_quaint_newt_album_add_new_label()}
+			</label>
+			{#if album_target_mode === 'new'}
+				<input
+					type="text"
+					class="{filter_field_class} ms-6 max-w-md"
+					placeholder={m.crisp_slow_lark_album_add_name_placeholder()}
+					bind:value={album_new_name}
+					maxlength={200}
+					autocomplete="off"
+				/>
+			{/if}
+		</fieldset>
+		<div class="flex flex-wrap justify-end gap-2 pt-2">
+			<button
+				type="button"
+				class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+				disabled={album_modal_loading}
+				onclick={() => {
+					album_modal_open = false;
+				}}
+			>
+				{m.low_seemly_crow_slurp_cancel()}
+			</button>
+			<button
+				type="button"
+				class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
+				disabled={album_modal_loading ||
+					(album_target_mode === 'existing' &&
+						(data.albums.length === 0 || album_existing_id.trim() === '')) ||
+					(album_target_mode === 'new' && album_new_name.trim() === '')}
+				onclick={() => void submit_add_to_album()}
+			>
+				{album_modal_loading
+					? m.fierce_small_goat_busy_saving()
+					: m.noble_tidy_quail_album_add_submit()}
+			</button>
 		</div>
 	</div>
 </Modal>

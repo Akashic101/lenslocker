@@ -1,4 +1,4 @@
-import { and, eq, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm';
 import { transformed_media_url } from '$lib/gallery/transformed_urls';
 import { raw_image_upload } from '$lib/server/db/raw_image_upload.schema';
 import { sql_shot_calendar_date } from '$lib/server/gallery_shot_date_sql';
@@ -11,6 +11,13 @@ import {
 	resolve_upload_preview_full_relative_path,
 	resolve_upload_preview_thumb_relative_path
 } from '$lib/server/raw_upload/write_preview_jpeg';
+import {
+	get_album_by_id,
+	is_album_id_format,
+	list_album_summaries,
+	list_raw_upload_ids_in_album,
+	type album_summary_row
+} from '$lib/server/services/album/album_service';
 import { get_dashboard_needs_attention_settings } from '$lib/server/services/settings/dashboard_attention_settings';
 import { get_upload_preview_pipeline_settings } from '$lib/server/services/settings/upload_pipeline_settings';
 import {
@@ -31,6 +38,7 @@ import {
 } from '$lib/server/transformed';
 
 export { dashboard_images_per_page };
+export type { album_summary_row };
 
 export type gallery_grid_image_row = {
 	relative_path: string;
@@ -48,7 +56,9 @@ function trim_param(sp: URLSearchParams, key: string): string {
 
 export function parse_gallery_focus(sp: URLSearchParams): dashboard_gallery_focus_mode | null {
 	const v = (sp.get('gallery_focus') ?? '').trim();
-	if (v === 'needs_attention' || v === 'archived') return v;
+	if (v === 'needs_attention' || v === 'archived' || v === 'albums' || v === 'album') {
+		return v;
+	}
 	return null;
 }
 
@@ -71,7 +81,123 @@ export function build_gallery_filter_query(sp: URLSearchParams): string {
 	}
 	const focus = parse_gallery_focus(sp);
 	if (focus != null) out.set('gallery_focus', focus);
+	const album_id = (sp.get('album_id') ?? '').trim();
+	if (album_id !== '') out.set('album_id', album_id);
 	return out.toString();
+}
+
+function build_gallery_dashboard_return(params: {
+	needs_attention_settings: Awaited<ReturnType<typeof get_dashboard_needs_attention_settings>>;
+	images: gallery_grid_image_row[];
+	safe_offset: number;
+	safe_limit: number;
+	total_count: number;
+	gallery_filters_active: boolean;
+	exif_filters_active: boolean;
+	gallery_focus: dashboard_gallery_focus_mode | null;
+	starred_only: boolean;
+	camera_make: string;
+	camera_model: string;
+	lens_make: string;
+	lens_model: string;
+	date_from: string;
+	date_to: string;
+	iso_min_raw: string;
+	iso_max_raw: string;
+	iso_agg_row: Awaited<ReturnType<typeof load_dashboard_iso_aggregate>>;
+	date_agg_row: Awaited<ReturnType<typeof load_dashboard_shot_date_aggregate>>;
+	camera_pair_rows: Awaited<ReturnType<typeof load_dashboard_camera_pair_rows>>;
+	lens_pair_rows: Awaited<ReturnType<typeof load_dashboard_lens_pair_rows>>;
+	gallery_filter_query: string;
+	albums: album_summary_row[];
+	current_album: { id: string; name: string } | null;
+	album_id: string | null;
+}) {
+	const {
+		needs_attention_settings,
+		images,
+		safe_offset,
+		safe_limit,
+		total_count,
+		gallery_filters_active,
+		exif_filters_active,
+		gallery_focus,
+		starred_only,
+		camera_make,
+		camera_model,
+		lens_make,
+		lens_model,
+		date_from,
+		date_to,
+		iso_min_raw,
+		iso_max_raw,
+		iso_agg_row,
+		date_agg_row,
+		camera_pair_rows,
+		lens_pair_rows,
+		gallery_filter_query,
+		albums,
+		current_album,
+		album_id
+	} = params;
+
+	const camera_pairs = camera_pair_rows.map((r) => ({
+		make: r.make ?? '',
+		model: r.model ?? ''
+	}));
+
+	const lens_pairs = lens_pair_rows.map((r) => ({
+		lens_make: r.lens_make ?? '',
+		lens_model: r.lens_model ?? ''
+	}));
+
+	const iso_stats = {
+		min: iso_agg_row?.iso_min_db ?? null,
+		max: iso_agg_row?.iso_max_db ?? null
+	};
+
+	const date_stats = {
+		min: date_agg_row?.date_min_db ?? null,
+		max: date_agg_row?.date_max_db ?? null
+	};
+
+	const has_more = safe_offset + images.length < total_count;
+
+	return {
+		needs_attention_settings,
+		transformed_source: get_transformed_source_description(),
+		images,
+		gallery_infinite: {
+			offset: safe_offset,
+			batch_size: safe_limit,
+			total_count,
+			has_more
+		},
+		gallery_filters: {
+			active: gallery_filters_active,
+			exif_filters_active,
+			gallery_focus,
+			starred_only,
+			camera_make,
+			camera_model,
+			lens_make,
+			lens_model,
+			date_from,
+			date_to,
+			iso_min: iso_min_raw,
+			iso_max: iso_max_raw,
+			album_id
+		},
+		gallery_filter_meta: {
+			iso_stats,
+			date_stats,
+			camera_pairs,
+			lens_pairs
+		},
+		gallery_filter_query,
+		albums,
+		current_album
+	};
 }
 
 /**
@@ -92,6 +218,12 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 	const iso_max_raw = trim_param(url.searchParams, 'iso_max');
 	const starred_only = url.searchParams.get('starred_only') === '1';
 	const gallery_focus = parse_gallery_focus(url.searchParams);
+	const album_id_raw = trim_param(url.searchParams, 'album_id');
+	const album_id_for_row =
+		gallery_focus === 'album' && album_id_raw !== '' && is_album_id_format(album_id_raw)
+			? album_id_raw
+			: null;
+
 	const iso_min_parsed = iso_min_raw === '' ? null : Number.parseInt(iso_min_raw, 10);
 	const iso_max_parsed = iso_max_raw === '' ? null : Number.parseInt(iso_max_raw, 10);
 	const iso_min = iso_min_parsed != null && Number.isFinite(iso_min_parsed) ? iso_min_parsed : null;
@@ -107,11 +239,56 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 		iso_min_raw !== '' ||
 		iso_max_raw !== '';
 
-	const gallery_focus_active = gallery_focus != null;
+	const gallery_focus_active = gallery_focus != null && gallery_focus !== 'albums';
 	const gallery_filters_active = exif_filters_active || starred_only || gallery_focus_active;
-	const needs_db_id_filter = gallery_filters_active;
 
 	const shot_date = sql_shot_calendar_date();
+
+	if (gallery_focus === 'albums') {
+		const [
+			iso_agg_row,
+			date_agg_row,
+			camera_pair_rows,
+			lens_pair_rows,
+			needs_attention_settings,
+			albums
+		] = await Promise.all([
+			load_dashboard_iso_aggregate(),
+			load_dashboard_shot_date_aggregate(),
+			load_dashboard_camera_pair_rows(),
+			load_dashboard_lens_pair_rows(),
+			get_dashboard_needs_attention_settings(),
+			list_album_summaries()
+		]);
+
+		return build_gallery_dashboard_return({
+			needs_attention_settings,
+			images: [],
+			safe_offset,
+			safe_limit,
+			total_count: 0,
+			gallery_filters_active,
+			exif_filters_active,
+			gallery_focus,
+			starred_only,
+			camera_make,
+			camera_model,
+			lens_make,
+			lens_model,
+			date_from,
+			date_to,
+			iso_min_raw,
+			iso_max_raw,
+			iso_agg_row,
+			date_agg_row,
+			camera_pair_rows,
+			lens_pair_rows,
+			gallery_filter_query: build_gallery_filter_query(url.searchParams),
+			albums,
+			current_album: null,
+			album_id: null
+		});
+	}
 
 	const [
 		all_paths,
@@ -121,7 +298,8 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 		camera_pair_rows,
 		lens_pair_rows,
 		upload_pipeline_settings,
-		needs_attention_settings
+		needs_attention_settings,
+		albums
 	] = await Promise.all([
 		list_transformed_media_paths(),
 		load_dashboard_upload_flag_rows(),
@@ -130,7 +308,8 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 		load_dashboard_camera_pair_rows(),
 		load_dashboard_lens_pair_rows(),
 		get_upload_preview_pipeline_settings(),
-		get_dashboard_needs_attention_settings()
+		get_dashboard_needs_attention_settings(),
+		list_album_summaries()
 	]);
 
 	const upload_flags = new Map(
@@ -140,8 +319,31 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 		])
 	);
 
+	let current_album: { id: string; name: string } | null = null;
+	let album_member_ids: string[] = [];
+
 	let scope_paths: string[];
-	if (gallery_focus === 'archived') {
+	if (gallery_focus === 'album') {
+		if (album_id_for_row == null) {
+			scope_paths = [];
+		} else {
+			const album_row = await get_album_by_id(album_id_for_row);
+			if (album_row == null) {
+				scope_paths = [];
+			} else {
+				current_album = { id: album_row.id, name: album_row.name };
+				album_member_ids = await list_raw_upload_ids_in_album(album_id_for_row);
+				const preferred_format = upload_pipeline_settings.upload_preview_format;
+				const resolved = await Promise.all(
+					album_member_ids.map((id) =>
+						resolve_upload_preview_thumb_relative_path(id, preferred_format)
+					)
+				);
+				scope_paths = resolved.filter((rel): rel is string => rel != null);
+				scope_paths.sort((a, b) => a.localeCompare(b));
+			}
+		}
+	} else if (gallery_focus === 'archived') {
 		const archived_rows = await list_archived_raw_upload_ids();
 		const preferred_format = upload_pipeline_settings.upload_preview_format;
 		const resolved = await Promise.all(
@@ -160,9 +362,57 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 		});
 	}
 
+	const needs_db_id_filter_non_album = gallery_focus !== 'album' && gallery_filters_active;
+
 	let filtered_paths: string[];
 
-	if (needs_db_id_filter) {
+	if (gallery_focus === 'album') {
+		if (album_member_ids.length === 0) {
+			filtered_paths = [];
+		} else if (!exif_filters_active && !starred_only) {
+			filtered_paths = scope_paths;
+		} else {
+			const parts: SQL[] = [inArray(raw_image_upload.id, album_member_ids)];
+
+			if (starred_only) parts.push(eq(raw_image_upload.starred, 1));
+
+			const before_exif = parts.length;
+			if (exif_filters_active) {
+				if (camera_make !== '') parts.push(eq(raw_image_upload.make, camera_make));
+				if (camera_model !== '') parts.push(eq(raw_image_upload.model, camera_model));
+				if (lens_make !== '') parts.push(eq(raw_image_upload.lens_make, lens_make));
+				if (lens_model !== '') parts.push(eq(raw_image_upload.lens_model, lens_model));
+
+				if (date_from !== '') {
+					parts.push(isNotNull(shot_date));
+					parts.push(sql`${shot_date} >= ${date_from}`);
+				}
+				if (date_to !== '') {
+					parts.push(isNotNull(shot_date));
+					parts.push(sql`${shot_date} <= ${date_to}`);
+				}
+
+				const iso_filter_requested = iso_min_raw !== '' || iso_max_raw !== '';
+				if (iso_filter_requested) {
+					parts.push(isNotNull(raw_image_upload.iso_speed));
+					if (iso_min != null) parts.push(gte(raw_image_upload.iso_speed, iso_min));
+					if (iso_max != null) parts.push(lte(raw_image_upload.iso_speed, iso_max));
+				}
+
+				if (parts.length === before_exif) {
+					parts.push(sql`1 = 0`);
+				}
+			}
+
+			const matching_ids = await list_upload_ids_matching_filter(and(...parts)!);
+			const id_set = new Set(matching_ids);
+			filtered_paths = scope_paths.filter((p) => {
+				const upload_id = upload_id_from_gallery_preview_path(p);
+				if (upload_id == null) return false;
+				return id_set.has(upload_id);
+			});
+		}
+	} else if (needs_db_id_filter_non_album) {
 		const parts: SQL[] = [];
 
 		if (gallery_focus === 'archived') {
@@ -220,7 +470,6 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 
 	const total_count = filtered_paths.length;
 	const slice = filtered_paths.slice(safe_offset, safe_offset + safe_limit);
-	const has_more = safe_offset + slice.length < total_count;
 
 	const preview_upload_ids = slice
 		.map((p) => upload_id_from_gallery_preview_path(p))
@@ -265,58 +514,31 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 		};
 	});
 
-	const camera_pairs = camera_pair_rows.map((r) => ({
-		make: r.make ?? '',
-		model: r.model ?? ''
-	}));
-
-	const lens_pairs = lens_pair_rows.map((r) => ({
-		lens_make: r.lens_make ?? '',
-		lens_model: r.lens_model ?? ''
-	}));
-
-	const iso_stats = {
-		min: iso_agg_row?.iso_min_db ?? null,
-		max: iso_agg_row?.iso_max_db ?? null
-	};
-
-	const date_stats = {
-		min: date_agg_row?.date_min_db ?? null,
-		max: date_agg_row?.date_max_db ?? null
-	};
-
-	const gallery_filter_query = build_gallery_filter_query(url.searchParams);
-
-	return {
+	return build_gallery_dashboard_return({
 		needs_attention_settings,
-		transformed_source: get_transformed_source_description(),
 		images,
-		gallery_infinite: {
-			offset: safe_offset,
-			batch_size: safe_limit,
-			total_count,
-			has_more
-		},
-		gallery_filters: {
-			active: gallery_filters_active,
-			exif_filters_active,
-			gallery_focus,
-			starred_only,
-			camera_make,
-			camera_model,
-			lens_make,
-			lens_model,
-			date_from,
-			date_to,
-			iso_min: iso_min_raw,
-			iso_max: iso_max_raw
-		},
-		gallery_filter_meta: {
-			iso_stats,
-			date_stats,
-			camera_pairs,
-			lens_pairs
-		},
-		gallery_filter_query
-	};
+		safe_offset,
+		safe_limit,
+		total_count,
+		gallery_filters_active,
+		exif_filters_active,
+		gallery_focus,
+		starred_only,
+		camera_make,
+		camera_model,
+		lens_make,
+		lens_model,
+		date_from,
+		date_to,
+		iso_min_raw,
+		iso_max_raw,
+		iso_agg_row,
+		date_agg_row,
+		camera_pair_rows,
+		lens_pair_rows,
+		gallery_filter_query: build_gallery_filter_query(url.searchParams),
+		albums,
+		current_album,
+		album_id: album_id_for_row
+	});
 }
