@@ -277,7 +277,16 @@
 	let bulk_action_error = $state<string | null>(null);
 
 	/** Plain `let`: must not be `$state` or assigning inside `$effect` retriggers the effect forever. */
-	let gallery_list_track_prev: { page: number; q: string } | null = null;
+	let gallery_list_track_prev: string | null = null;
+
+	/** Merged grid: initial chunk from the server plus batches from `/api/gallery/grid-slice`. */
+	let gallery_images = $state<gallery_grid_item[]>([]);
+
+	let gallery_load_more_in_flight = $state(false);
+	let gallery_load_more_error = $state<string | null>(null);
+	let gallery_load_more_sentinel: HTMLDivElement | null = $state(null);
+
+	const gallery_has_more = $derived(gallery_images.length < data.gallery_infinite.total_count);
 
 	const gallery_selected_count = $derived(gallery_selected_upload_ids.length);
 
@@ -285,14 +294,66 @@
 	const bulk_bar_can_restore = $derived(data.gallery_filters.gallery_focus === 'archived');
 
 	$effect(() => {
-		const page = data.pagination.current_page;
+		const initial = data.images;
 		const q = data.gallery_filter_query;
+		gallery_images = [...initial];
+		gallery_load_more_error = null;
 		const prev = gallery_list_track_prev;
-		if (prev != null && (prev.page !== page || prev.q !== q)) {
+		if (prev != null && prev !== q) {
 			gallery_selected_upload_ids = [];
 		}
-		gallery_list_track_prev = { page, q };
+		gallery_list_track_prev = q;
 	});
+
+	$effect(() => {
+		if (!browser) return;
+		const el = gallery_load_more_sentinel;
+		if (el == null || !gallery_has_more || gallery_load_more_in_flight) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					if (entry.isIntersecting) {
+						void fetch_next_gallery_batch();
+					}
+				}
+			},
+			{ root: null, rootMargin: '280px', threshold: 0 }
+		);
+		observer.observe(el);
+		return () => observer.disconnect();
+	});
+
+	async function fetch_next_gallery_batch(): Promise<void> {
+		if (!browser) return;
+		if (gallery_load_more_in_flight || !gallery_has_more) return;
+		const filter_q = data.gallery_filter_query;
+		const next_offset = gallery_images.length;
+		if (next_offset >= data.gallery_infinite.total_count) return;
+
+		gallery_load_more_in_flight = true;
+		gallery_load_more_error = null;
+		try {
+			const u = new URL(resolve('/api/gallery/grid-slice'), window.location.origin);
+			const params = new SvelteURLSearchParams(filter_q);
+			params.forEach((v, k) => {
+				u.searchParams.set(k, v);
+			});
+			u.searchParams.set('offset', String(next_offset));
+			const response = await fetch(u.toString());
+			if (!response.ok) {
+				const text = await response.text();
+				throw new Error(text || response.statusText);
+			}
+			const body = (await response.json()) as { images: gallery_grid_item[] };
+			if (data.gallery_filter_query !== filter_q) return;
+			gallery_images = [...gallery_images, ...body.images];
+		} catch (e) {
+			gallery_load_more_error = e instanceof Error ? e.message : String(e);
+		} finally {
+			gallery_load_more_in_flight = false;
+		}
+	}
 
 	function set_gallery_selection_mode(next: boolean): void {
 		gallery_selection_mode = next;
@@ -323,7 +384,7 @@
 	}
 
 	function select_all_gallery_uploads_on_page(): void {
-		gallery_selected_upload_ids = data.images
+		gallery_selected_upload_ids = gallery_images
 			.map((i) => i.upload_id)
 			.filter((id): id is string => id != null);
 	}
@@ -366,12 +427,12 @@
 
 	const modal_list_index = $derived.by(() => {
 		if (modal_current_relative_path === '') return -1;
-		return data.images.findIndex((i) => i.relative_path === modal_current_relative_path);
+		return gallery_images.findIndex((i) => i.relative_path === modal_current_relative_path);
 	});
 
 	const modal_has_prev = $derived(modal_list_index > 0);
 	const modal_has_next = $derived(
-		modal_list_index >= 0 && modal_list_index < data.images.length - 1
+		modal_list_index >= 0 && modal_list_index < gallery_images.length - 1
 	);
 
 	const modal_detail_starred = $derived(modal_detail != null && Number(modal_detail.starred) === 1);
@@ -609,7 +670,7 @@
 	function modal_go_delta(delta: number): void {
 		const i = modal_list_index;
 		if (i < 0) return;
-		const next_item = data.images[i + delta];
+		const next_item = gallery_images[i + delta];
 		if (next_item == null) return;
 		void open_gallery_modal(next_item);
 	}
@@ -634,14 +695,6 @@
 		if (!modal_has_next || modal_action_loading) return;
 		e.preventDefault();
 		modal_go_delta(1);
-	}
-
-	function pagination_href(target_page: number): string {
-		const q = new SvelteURLSearchParams(data.gallery_filter_query);
-		if (target_page > 1) q.set('page', String(target_page));
-		else q.delete('page');
-		const s = q.toString();
-		return s ? localizeHref(`/?${s}`) : localizeHref('/');
 	}
 
 	function meta_row_icon_component(key: string) {
@@ -891,7 +944,7 @@
 		</div>
 	</header>
 
-	{#if gallery_selection_mode && data.images.length > 0}
+	{#if gallery_selection_mode && gallery_images.length > 0}
 		<div
 			class="dark:bg-primary-950/40 mb-4 rounded-lg border border-primary-200 bg-primary-50/90 px-3 py-2.5 dark:border-primary-900"
 			role="region"
@@ -1181,7 +1234,7 @@
 		</section>
 	{/if}
 
-	{#if data.images.length === 0}
+	{#if data.gallery_infinite.total_count === 0}
 		<p
 			class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500 dark:border-gray-600 dark:text-gray-400"
 		>
@@ -1200,7 +1253,7 @@
 		</p>
 	{:else}
 		<ul class={gallery_grid_list_class} role="list">
-			{#each data.images as item (item.relative_path)}
+			{#each gallery_images as item (item.relative_path)}
 				<li
 					class="relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 {gallery_selection_mode &&
 					item.upload_id != null &&
@@ -1266,36 +1319,31 @@
 			{/each}
 		</ul>
 
-		{#if data.pagination.total_pages > 1}
-			<nav
-				class="mt-10 flex flex-wrap items-center justify-center gap-2"
-				aria-label={m.level_social_skate_nav_pagination()}
-			>
-				{#if data.pagination.has_previous}
-					<a
-						href={pagination_href(data.pagination.current_page - 1)}
-						class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-					>
-						{m.misty_less_goat_strive_previous()}
-					</a>
-				{/if}
+		{#if gallery_has_more}
+			<div
+				bind:this={gallery_load_more_sentinel}
+				class="h-1 w-full shrink-0"
+				aria-hidden="true"
+			></div>
+		{/if}
 
-				<span class="px-3 text-sm text-gray-600 dark:text-gray-400">
-					{m.main_lower_skate_empower_pagination_page_of({
-						current_page: data.pagination.current_page,
-						total_pages: data.pagination.total_pages
-					})}
-				</span>
+		{#if gallery_load_more_in_flight}
+			<p class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400" role="status">
+				{m.small_proud_robin_wait_preparing()}
+			</p>
+		{/if}
 
-				{#if data.pagination.has_next}
-					<a
-						href={pagination_href(data.pagination.current_page + 1)}
-						class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-					>
-						{m.still_kind_racoon_engage_next()}
-					</a>
-				{/if}
-			</nav>
+		{#if gallery_load_more_error != null}
+			<p class="mt-4 text-center text-sm text-red-600 dark:text-red-400" role="alert">
+				{gallery_load_more_error}
+				<button
+					type="button"
+					class="ms-2 underline"
+					onclick={() => void fetch_next_gallery_batch()}
+				>
+					{m.still_kind_racoon_engage_next()}
+				</button>
+			</p>
 		{/if}
 	{/if}
 </div>
