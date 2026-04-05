@@ -141,7 +141,7 @@
 								href={localizeHref(resolve('/'))}
 								class="min-w-0 flex-1 truncate text-lg font-semibold text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
 							>
-								{m.hello_world({ name: 'David' })}
+								LensLocker
 							</a>
 						{/if}
 						<button
@@ -163,7 +163,7 @@
 				</li>
 				{#if sidebar_collapsed}
 					<SidebarItem
-						label="Dashboard"
+						label={m.tidy_best_bumblebee_feast_dashboard()}
 						spanClass={sidebar_item_label_class}
 						aClass={sidebar_item_anchor_class}
 						href={dashboard_all_href}
@@ -190,7 +190,7 @@
 								<SearchOutline
 									class="h-5 w-5 shrink-0 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 								/>
-								<span class={span_class}>Dashboard</span>
+								<span class={span_class}>{m.tidy_best_bumblebee_feast_dashboard()}</span>
 								<span
 									class="ms-3 inline-flex min-w-8 shrink-0 items-center justify-center rounded-full bg-primary-200 px-2 py-1 text-sm font-medium text-primary-900 dark:bg-primary-200 dark:text-primary-900"
 								>
@@ -222,7 +222,7 @@
 								transition:slide={{ duration: 150 }}
 							>
 								<SidebarItem
-									label="Needs attention"
+									label={m.funny_grand_mink_coax_review()}
 									spanClass={span_class}
 									aClass={sidebar_item_anchor_class}
 									href={dashboard_needs_attention_href}
@@ -236,7 +236,7 @@
 									{/snippet}
 								</SidebarItem>
 								<SidebarItem
-									label="Archived only"
+									label={m.safe_home_moose_sing_archived_only()}
 									spanClass={span_class}
 									aClass={sidebar_item_anchor_class}
 									href={dashboard_archived_href}
@@ -253,11 +253,11 @@
 					</li>
 				{/if}
 				<SidebarItem
-					label="Upload"
+					label={m.quaint_grand_snail_amaze_upload()}
 					spanClass={sidebar_item_label_class}
 					aClass={sidebar_item_anchor_class}
 					href={upload_url}
-					title={sidebar_collapsed ? 'Upload' : undefined}
+					title={sidebar_collapsed ? m.quaint_grand_snail_amaze_upload() : undefined}
 				>
 					{#snippet icon()}
 						<UploadOutline
@@ -266,11 +266,11 @@
 					{/snippet}
 				</SidebarItem>
 				<SidebarItem
-					label="Hardware"
+					label={m.such_tangy_mare_conquer_hardware()}
 					spanClass={sidebar_item_label_class}
 					aClass={sidebar_item_anchor_class}
 					href={hardware_url}
-					title={sidebar_collapsed ? 'Hardware' : undefined}
+					title={sidebar_collapsed ? m.such_tangy_mare_conquer_hardware() : undefined}
 				>
 					{#snippet icon()}
 						<CameraPhotoOutline
@@ -279,11 +279,11 @@
 					{/snippet}
 				</SidebarItem>
 				<SidebarItem
-					label="Statistics"
+					label={m.proud_tough_oryx_dare_statistics()}
 					spanClass={sidebar_item_label_class}
 					aClass={sidebar_item_anchor_class}
 					href={statistics_url}
-					title={sidebar_collapsed ? 'Statistics' : undefined}
+					title={sidebar_collapsed ? m.proud_tough_oryx_dare_statistics() : undefined}
 				>
 					{#snippet icon()}
 						<ChartMixedOutline
@@ -292,11 +292,11 @@
 					{/snippet}
 				</SidebarItem>
 				<SidebarItem
-					label="Settings"
+					label={m.fuzzy_dull_alpaca_achieve_settings()}
 					spanClass={sidebar_item_label_class}
 					aClass={sidebar_item_anchor_class}
 					href={settings_url}
-					title={sidebar_collapsed ? 'Settings' : undefined}
+					title={sidebar_collapsed ? m.fuzzy_dull_alpaca_achieve_settings() : undefined}
 				>
 					{#snippet icon()}
 						<CogOutline

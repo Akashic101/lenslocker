@@ -21,13 +21,15 @@
 		"db:studio": "drizzle-kit studio",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
 		"wipe:uploads": "bun run scripts/wipe_uploads.ts",
-		"knip": "knip"
+		"knip": "knip",
+		"translate": "inlang machine translate --project project.inlang"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "~1.4.21",
 		"@eslint/compat": "^2.0.3",
 		"@eslint/js": "^10.0.1",
 		"@flowbite-svelte-plugins/chart": "^0.2.4",
+		"@inlang/cli": "3.1.9",
 		"@inlang/paraglide-js": "^2.10.0",
 		"@sveltejs/adapter-node": "^5.5.4",
 		"@sveltejs/kit": "^2.50.2",

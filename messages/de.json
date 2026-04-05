@@ -1,3 +1,20 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"hello_world": "Hallo, {name} von en!",
+	"tidy_best_bumblebee_feast_dashboard": "Dashboard",
+	"fuzzy_dull_alpaca_achieve_settings": "Einstellungen",
+	"proud_tough_oryx_dare_statistics": "Statistiken",
+	"such_tangy_mare_conquer_hardware": "Hardware",
+	"quaint_grand_snail_amaze_upload": "Hochladen",
+	"safe_home_moose_sing_archived_only": "Archiviert",
+	"funny_grand_mink_coax_review": "Prüfung",
+	"busy_fun_toad_feel_scroll_to_zoom": "Zum Vergrößern scrollen",
+	"ornate_house_flamingo_foster_drag_tp_pan": "Zum Verschieben ziehen",
+	"topical_lower_eagle_pull_double_click_to_reset": "Doppelklicken zum Zurücksetzen",
+	"each_direct_kestrel_praise_no_image_url": "Keine Bild-URL",
+	"slow_true_angelfish_enchant_no_database_record_for_this_file": "Für diese Datei existiert kein Datenbankeintrag – es wird nur das Vorschaubild angezeigt.",
+	"silly_these_deer_amaze_loading_metadata": "Metadaten werden geladen…",
+	"tense_caring_pug_bake_edit_metadata": "Metadaten bearbeiten",
+	"low_seemly_crow_slurp_cancel": "Stornieren",
+	"left_fresh_dolphin_nail_missing_data": "Fehlende Daten"
 }

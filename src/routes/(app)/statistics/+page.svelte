@@ -6,6 +6,7 @@
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { Chart } from '@flowbite-svelte-plugins/chart';
 	import type { PageData } from './$types';
+	import { m } from '$lib/paraglide/messages.js';
 
 	type gallery_stats = PageData['stats'];
 
@@ -200,14 +201,13 @@
 </script>
 
 <svelte:head>
-	<title>Statistics</title>
+	<title>{m.proud_tough_oryx_dare_statistics()}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-7xl">
 	<h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Statistics</h1>
 	<p class="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-400">
-		Library insights from your uploads: storage, gallery vs archive vs starred, upload history,
-		cameras, ISO, and GPS coverage.
+		{m.wild_crisp_sheep_renew_library_insights_from_uploads()}
 	</p>
 
 	{#if !show_charts}
@@ -215,20 +215,20 @@
 			class="mt-8 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:border-gray-600 dark:bg-gray-800/50"
 			role="status"
 		>
-			<p class="text-gray-700 dark:text-gray-300">No photos yet. Upload some to see charts here.</p>
+			<p class="text-gray-700 dark:text-gray-300">{m.proof_new_vole_hint_no_photos_yet_charts()}.</p>
 			<button
 				type="button"
 				class="mt-4 inline-flex rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 dark:bg-primary-600 dark:hover:bg-primary-700"
 				onclick={go_to_upload}
 			>
-				Go to upload
+				{m.curly_sunny_spider_enrich_to_go_upload()}
 			</button>
 		</div>
 	{:else}
 		<div class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
 			<div class={kpi_card_class}>
 				<p class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400">
-					Total photos
+					{m.lime_flaky_cat_create_total_photos()}
 				</p>
 				<p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
 					{stats.kpis.total.toLocaleString()}
@@ -236,7 +236,7 @@
 			</div>
 			<div class={kpi_card_class}>
 				<p class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400">
-					Storage
+					{m.big_round_squid_savor_storage()}
 				</p>
 				<p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
 					{format_bytes_human(stats.kpis.total_bytes)}
@@ -244,7 +244,7 @@
 			</div>
 			<div class={kpi_card_class}>
 				<p class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400">
-					In gallery
+					{m.cozy_quaint_squid_list_in_gallery()}
 				</p>
 				<p class="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-400">
 					{stats.kpis.active.toLocaleString()}
@@ -252,7 +252,7 @@
 			</div>
 			<div class={kpi_card_class}>
 				<p class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400">
-					Archived
+					{m.bold_tiny_slug_arrive_archived()}
 				</p>
 				<p class="mt-1 text-2xl font-bold text-slate-600 dark:text-slate-300">
 					{stats.kpis.archived.toLocaleString()}
@@ -260,7 +260,7 @@
 			</div>
 			<div class={kpi_card_class}>
 				<p class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400">
-					Starred
+					{m.quaint_lazy_gadfly_hike_starred()}
 				</p>
 				<p class="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
 					{stats.kpis.starred.toLocaleString()}
@@ -270,7 +270,7 @@
 
 		<div class="mt-10 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">
 			<div class={chart_card_class}>
-				<h2 class={chart_title_class}>Gallery vs archived vs starred</h2>
+				<h2 class={chart_title_class}>{m.stale_grand_mantis_glow_gallery_vs_archived_vs_starred()}</h2>
 				<div class={chart_host_class}>
 					<Chart
 						options={gallery_archived_starred_chart_options}
@@ -280,18 +280,17 @@
 			</div>
 
 			<div class={chart_card_class}>
-				<h2 class={chart_title_class}>Geotagging</h2>
-				<p class={chart_subtitle_class}>Photos with both latitude and longitude in metadata.</p>
+				<h2 class={chart_title_class}>{m.cool_sunny_bat_imagine_geotagging()}</h2>
+				<p class={chart_subtitle_class}>{m.jumpy_calm_bee_feast_photos_with_both_latitude_and_longitude()}.</p>
 				<div class={chart_host_class}>
 					<Chart options={gps_chart_options} class="min-h-[300px] w-full max-w-full" />
 				</div>
 			</div>
 
 			<div class={chart_card_class + ' lg:col-span-2'}>
-				<h2 class={chart_title_class}>Uploads by month</h2>
+				<h2 class={chart_title_class}>{m.wacky_male_sloth_slide_uploads_by_month()}</h2>
 				<p class={chart_subtitle_class}>
-					When files were added (last ~36 months, or full history if none in that window). Times are
-					UTC.
+					{m.extra_grassy_mouse_wish_when_files_were_added()}
 				</p>
 				{#if show_month_chart}
 					<div class={chart_host_class}>
@@ -301,25 +300,25 @@
 						/>
 					</div>
 				{:else}
-					<p class="text-sm text-gray-500 dark:text-gray-400">No monthly upload data to plot.</p>
+					<p class="text-sm text-gray-500 dark:text-gray-400">{m.chunky_least_pig_persist_no_monthly_upload_data_to_plot()}.</p>
 				{/if}
 			</div>
 
 			<div class={chart_card_class + ' lg:col-span-2'}>
-				<h2 class={chart_title_class}>Top camera bodies</h2>
-				<p class={chart_subtitle_class}>Most common make + model from EXIF (top 10).</p>
+				<h2 class={chart_title_class}>{m.weird_bright_tiger_splash_top_camera_bodies()}</h2>
+				<p class={chart_subtitle_class}>{m.bad_antsy_eagle_kick_most_common_make_model()}.</p>
 				{#if show_camera_chart}
 					<div class={chart_host_class}>
 						<Chart options={top_cameras_chart_options} class="w-full max-w-full" />
 					</div>
 				{:else}
-					<p class="text-sm text-gray-500 dark:text-gray-400">No camera make/model metadata yet.</p>
+					<p class="text-sm text-gray-500 dark:text-gray-400">{m.weird_short_moth_gasp_no_camera_make_model_metadata()}.</p>
 				{/if}
 			</div>
 
 			<div class={chart_card_class + ' lg:col-span-2'}>
-				<h2 class={chart_title_class}>ISO speed</h2>
-				<p class={chart_subtitle_class}>Distribution of ISO values (or unknown when missing).</p>
+				<h2 class={chart_title_class}>{m.game_vexed_jackal_assure_iso_speed()}</h2>
+				<p class={chart_subtitle_class}>{m.free_round_hound_yell_distribution_of_iso_values()}.</p>
 				<div class={chart_host_class}>
 					<Chart options={iso_chart_options} class="min-h-[320px] w-full max-w-full" />
 				</div>

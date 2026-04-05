@@ -1,3 +1,12 @@
 {
-	"$schema": "https://inlang.com/schema/inlang-message-format"
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"busy_fun_toad_feel_scroll_to_zoom": "Scroll to zoom",
+	"ornate_house_flamingo_foster_drag_tp_pan": "drag to pan",
+	"topical_lower_eagle_pull_double_click_to_reset": "double-click to reset",
+	"each_direct_kestrel_praise_no_image_url": "No image URL",
+	"slow_true_angelfish_enchant_no_database_record_for_this_file": "No database record for this file — only the preview image is shown.",
+	"silly_these_deer_amaze_loading_metadata": "Loading metadata…",
+	"tense_caring_pug_bake_edit_metadata": "Edit metadata",
+	"low_seemly_crow_slurp_cancel": "Cancel",
+	"left_fresh_dolphin_nail_missing_data": "Missing data"
 }

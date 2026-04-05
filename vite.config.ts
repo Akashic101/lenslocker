@@ -5,12 +5,27 @@ import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
 
+/** Same URL shape for every locale; locale comes from cookie, not the path. */
+const locale_agnostic_url_pattern = ':protocol://:domain(.*)::port?/:path(.*)?';
+
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
 		sveltekit(),
 		devtoolsJson(),
-		paraglideVitePlugin({ project: './project.inlang', outdir: './src/lib/paraglide' })
+		paraglideVitePlugin({
+			project: './project.inlang',
+			outdir: './src/lib/paraglide',
+			urlPatterns: [
+				{
+					pattern: locale_agnostic_url_pattern,
+					localized: [
+						['en', locale_agnostic_url_pattern],
+						['de', locale_agnostic_url_pattern]
+					]
+				}
+			]
+		})
 	],
 	test: {
 		expect: { requireAssertions: true },

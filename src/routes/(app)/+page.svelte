@@ -35,6 +35,8 @@
 		TrashBinOutline
 	} from 'flowbite-svelte-icons';
 	import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
+	import { m } from '$lib/paraglide/messages.js';
+	import type { PageData } from './$types';
 
 	/* eslint-disable svelte/no-navigation-without-resolve -- localizeHref; /media/transformed/* URLs are not typed routes */
 
@@ -48,7 +50,10 @@
 		meta: { rows: { key: string; text: string }[] } | null;
 	};
 
-	let { data } = $props();
+	type gallery_meta_camera_pair = { make: string; model: string };
+	type gallery_meta_lens_pair = { lens_make: string; lens_model: string };
+
+	let { data }: { data: PageData } = $props();
 
 	/**
 	 * Panel visibility is only toggled by the filters button. EXIF/starred params in the URL stay
@@ -73,7 +78,7 @@
 	});
 
 	const needs_attention_required_key_set = $derived(
-		new SvelteSet(data.needs_attention_settings.required_field_keys)
+		new SvelteSet<string>(data.needs_attention_settings.required_field_keys as string[])
 	);
 
 	const gallery_view_blurb = $derived.by((): string | null => {
@@ -83,7 +88,7 @@
 			if (keys.length === 0) {
 				return 'No “needs attention” rules are selected. Choose at least one metadata field or shortcut in Settings → Dashboard.';
 			}
-			const labels = keys.map((key) => needs_attention_label_for_key(key));
+			const labels = keys.map((key: string) => needs_attention_label_for_key(key));
 			return `Non-archived photos missing any of: ${labels.join('; ')}. Configure in Settings → Dashboard.`;
 		}
 		if (f === 'archived') {
@@ -174,20 +179,16 @@
 	});
 
 	const gallery_camera_models = $derived.by(() => {
-		const pairs = data.gallery_filter_meta.camera_pairs;
+		const pairs = data.gallery_filter_meta.camera_pairs as gallery_meta_camera_pair[];
 		const make_lc = filter_camera_make.trim().toLowerCase();
-		const all = [...new Set(pairs.map((p) => p.model.trim()).filter((m) => m !== ''))].sort(
-			(a, b) => a.localeCompare(b)
-		);
+		const camera_models_trimmed: string[] = pairs.map((p) => p.model.trim()).filter((m) => m !== '');
+		const all = [...new Set(camera_models_trimmed)].sort((a, b) => a.localeCompare(b));
 		if (make_lc === '') return all;
-		const narrowed = [
-			...new Set(
-				pairs
-					.filter((p) => p.make.trim().toLowerCase() === make_lc)
-					.map((p) => p.model.trim())
-					.filter((m) => m !== '')
-			)
-		].sort((a, b) => a.localeCompare(b));
+		const narrowed_trimmed: string[] = pairs
+			.filter((p) => p.make.trim().toLowerCase() === make_lc)
+			.map((p) => p.model.trim())
+			.filter((m) => m !== '');
+		const narrowed = [...new Set(narrowed_trimmed)].sort((a, b) => a.localeCompare(b));
 		return narrowed.length > 0 ? narrowed : all;
 	});
 
@@ -201,20 +202,16 @@
 	});
 
 	const gallery_lens_models = $derived.by(() => {
-		const pairs = data.gallery_filter_meta.lens_pairs;
+		const pairs = data.gallery_filter_meta.lens_pairs as gallery_meta_lens_pair[];
 		const make_lc = filter_lens_make.trim().toLowerCase();
-		const all = [...new Set(pairs.map((p) => p.lens_model.trim()).filter((m) => m !== ''))].sort(
-			(a, b) => a.localeCompare(b)
-		);
+		const lens_models_trimmed: string[] = pairs.map((p) => p.lens_model.trim()).filter((m) => m !== '');
+		const all = [...new Set(lens_models_trimmed)].sort((a, b) => a.localeCompare(b));
 		if (make_lc === '') return all;
-		const narrowed = [
-			...new Set(
-				pairs
-					.filter((p) => p.lens_make.trim().toLowerCase() === make_lc)
-					.map((p) => p.lens_model.trim())
-					.filter((m) => m !== '')
-			)
-		].sort((a, b) => a.localeCompare(b));
+		const narrowed_trimmed: string[] = pairs
+			.filter((p) => p.lens_make.trim().toLowerCase() === make_lc)
+			.map((p) => p.lens_model.trim())
+			.filter((m) => m !== '');
+		const narrowed = [...new Set(narrowed_trimmed)].sort((a, b) => a.localeCompare(b));
 		return narrowed.length > 0 ? narrowed : all;
 	});
 
@@ -996,7 +993,7 @@
 						<label
 							for="gf-camera-make"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>Camera make</label
+							>{m.spry_dark_jay_skip_camera_make()}</label
 						>
 						<select
 							id="gf-camera-make"
@@ -1015,7 +1012,7 @@
 						<label
 							for="gf-camera-model"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>Camera model</label
+							>{m.house_cozy_cuckoo_renew_camera_model()}</label
 						>
 						<select
 							id="gf-camera-model"
@@ -1023,7 +1020,7 @@
 							class={filter_field_class}
 							bind:value={filter_camera_model}
 						>
-							<option value="">Any</option>
+							<option value="">{m.equal_dull_samuel_edit_any()}</option>
 							{#each gallery_camera_models as model_option (model_option)}
 								<option value={model_option}>{model_option}</option>
 							{/each}
@@ -1033,7 +1030,7 @@
 						<label
 							for="gf-lens-make"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>Lens make</label
+							>{m.safe_crazy_beetle_bask_lens_make()}</label
 						>
 						<select
 							id="gf-lens-make"
@@ -1052,7 +1049,7 @@
 						<label
 							for="gf-lens-model"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>Lens model</label
+							>{m.arable_each_capybara_empower_lens_model()}</label
 						>
 						<select
 							id="gf-lens-model"
@@ -1070,7 +1067,7 @@
 						<label
 							for="gf-date-from"
 							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-							>Date from</label
+							>{m.free_even_cat_strive_date_from()}</label
 						>
 						<input
 							id="gf-date-from"
@@ -1085,7 +1082,7 @@
 					<div>
 						<label
 							for="gf-date-to"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Date to</label
+							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{m.every_swift_tortoise_dazzle_date_to()}</label
 						>
 						<input
 							id="gf-date-to"
@@ -1109,14 +1106,14 @@
 							class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
 							bind:checked={filter_starred_only}
 						/>
-						Starred only
+						{m.good_fine_rooster_dare_starred_only()}
 					</label>
 				</div>
 				<div class="flex flex-wrap items-end gap-3">
 					<div class="w-full max-w-xs min-w-32 sm:w-auto">
 						<label
 							for="gf-iso-min"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">ISO min</label
+							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{m.fit_fresh_dog_dare_iso_min()}</label
 						>
 						<input
 							id="gf-iso-min"
@@ -1133,7 +1130,7 @@
 					<div class="w-full max-w-xs min-w-32 sm:w-auto">
 						<label
 							for="gf-iso-max"
-							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">ISO max</label
+							class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{m.aqua_elegant_osprey_build_iso_max()}</label
 						>
 						<input
 							id="gf-iso-max"
@@ -1152,13 +1149,13 @@
 							type="submit"
 							class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600"
 						>
-							Apply filters
+							{m.level_these_spider_spin_apply_filters()}
 						</button>
 						<a
 							href={dashboard_clear_href}
 							class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
 						>
-							Clear
+							{m.yummy_mad_hedgehog_prosper_clear()}
 						</a>
 					</div>
 				</div>
@@ -1171,15 +1168,15 @@
 			class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500 dark:border-gray-600 dark:text-gray-400"
 		>
 			{#if data.gallery_filters.starred_only || data.gallery_filters.exif_filters_active}
-				No photos match these filters. Try clearing filters or broadening ISO / dates.
+				{m.acidic_loud_gibbon_fetch_no_photos_match_these_filters()}
 			{:else if data.gallery_filters.gallery_focus === 'needs_attention'}
-				No photos need attention with your current criteria (Settings → Dashboard).
+				{m.full_royal_pug_dine_no_photos_need_attention()}
 			{:else if data.gallery_filters.gallery_focus === 'archived'}
-				No archived photos.
+				{m.every_extra_millipede_radiate_no_archived_phozos()}
 			{:else}
-				No media yet. You can add them from <a
+				{m.ok_gray_kudu_stop_no_media_yet()} <a
 					href={localizeHref('/upload')}
-					class="text-primary-600 underline dark:text-primary-400">Upload</a
+					class="text-primary-600 underline dark:text-primary-400">{m.quaint_grand_snail_amaze_upload()}</a
 				>
 			{/if}
 		</p>
@@ -1254,12 +1251,12 @@
 						href={pagination_href(data.pagination.current_page - 1)}
 						class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
 					>
-						Previous
+						{m.tangy_arable_hornet_zip_previous()}
 					</a>
 				{/if}
 
 				<span class="px-3 text-sm text-gray-600 dark:text-gray-400">
-					Page {data.pagination.current_page} of {data.pagination.total_pages}
+					{m.white_stale_rabbit_hunt_pagination_page_of()}
 				</span>
 
 				{#if data.pagination.has_next}
@@ -1267,7 +1264,7 @@
 						href={pagination_href(data.pagination.current_page + 1)}
 						class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
 					>
-						Next
+						{m.even_true_dove_delight_next()}
 					</a>
 				{/if}
 			</nav>
@@ -1398,11 +1395,11 @@
 						<p
 							class="pointer-events-none absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded bg-black/50 px-2 py-0.5 text-[10px] text-white"
 						>
-							Scroll to zoom · drag to pan · double-click to reset
+							{m.busy_fun_toad_feel_scroll_to_zoom()} · {m.ornate_house_flamingo_foster_drag_tp_pan()} · {m.topical_lower_eagle_pull_double_click_to_reset()}
 						</p>
 					</div>
 				{:else}
-					<p class="m-auto text-sm text-gray-500 dark:text-gray-400">No image URL</p>
+					<p class="m-auto text-sm text-gray-500 dark:text-gray-400">{m.each_direct_kestrel_praise_no_image_url()}</p>
 				{/if}
 			</div>
 			<div
@@ -1411,12 +1408,12 @@
 				{#if modal_upload_id == null}
 					<div class="overflow-y-auto px-1 py-3 sm:px-2">
 						<p class="text-gray-500 dark:text-gray-400">
-							No database record for this file — only the preview image is shown.
+							{m.slow_true_angelfish_enchant_no_database_record_for_this_file()}
 						</p>
 					</div>
 				{:else if modal_detail_loading}
 					<div class="px-1 py-3 sm:px-2">
-						<p class="text-gray-500 dark:text-gray-400">Loading metadata…</p>
+						<p class="text-gray-500 dark:text-gray-400">{m.silly_these_deer_amaze_loading_metadata()}</p>
 					</div>
 				{:else if modal_detail_error}
 					<div class="px-1 py-3 sm:px-2">
@@ -1436,7 +1433,7 @@
 								}}
 							>
 								<PenOutline class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-								Edit metadata
+								{m.tense_caring_pug_bake_edit_metadata()}
 							</button>
 						{:else}
 							<button
@@ -1448,7 +1445,7 @@
 									meta_save_error = null;
 								}}
 							>
-								Cancel
+								{m.low_seemly_crow_slurp_cancel()}
 							</button>
 							<button
 								type="button"
@@ -1487,7 +1484,7 @@
 													class="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400"
 													aria-hidden="true"
 												/>
-												<span class="sr-only">Missing data:</span>
+												<span class="sr-only">{m.left_fresh_dolphin_nail_missing_data()}:</span>
 											{/if}
 											<span class="min-w-0">{field.label}</span>
 										</label>
