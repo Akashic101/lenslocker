@@ -9,7 +9,7 @@
 	import { upload_preview_pipeline_defaults } from '$lib/upload_pipeline_defaults';
 	import { upload_pipeline_settings_depends_key } from '$lib/upload_pipeline_settings_cache';
 	import type { upload_preview_format } from '$lib/upload_preview_format';
-	import { Tabs, TabItem } from 'flowbite-svelte';
+	import { DarkMode, Tabs, TabItem } from 'flowbite-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 
 	const upload_preview_format_choices: { format_value: upload_preview_format; label: string }[] = [
@@ -305,6 +305,18 @@
 		not regenerated automatically. The gallery resolves modal images by format when you change this
 		setting.
 	</p>
+
+	<div
+		class="mt-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+	>
+		<h2 class="text-sm font-medium text-gray-900 dark:text-white">Appearance</h2>
+		<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+			Choose light or dark mode for the dashboard.
+		</p>
+		<div class="mt-4">
+			<DarkMode />
+		</div>
+	</div>
 
 	{#if data.account_email}
 		<div

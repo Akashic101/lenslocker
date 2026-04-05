@@ -8,7 +8,7 @@
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
-	import { DarkMode, Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
+	import { Avatar, Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
 	import {
 		ArchiveOutline,
 		CameraPhotoOutline,
@@ -75,17 +75,17 @@
 		sidebar_collapsed ? '!min-h-10 !justify-center' : '!min-h-10'
 	);
 
-	/** `min-h-svh` + stretch (not fixed `h-svh`) so the rail grows with tall main content while scrolling. */
+	/** Fills the app shell (`h-svh`); main column scrolls independently so the rail stays pinned. */
 	const sidebar_shell_class = $derived(
 		sidebar_collapsed
-			? 'flex min-h-svh min-h-0 !w-[3.5rem] min-w-[3.5rem] shrink-0 grow-0 flex-col self-stretch border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700'
-			: 'flex min-h-svh min-h-0 !w-64 shrink-0 grow-0 flex-col self-stretch border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700'
+			? 'flex h-full min-h-0 !w-[3.5rem] min-w-[3.5rem] shrink-0 grow-0 flex-col self-stretch border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700'
+			: 'flex h-full min-h-0 !w-64 shrink-0 grow-0 flex-col self-stretch border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700'
 	);
 
 	const sidebar_inner_div_class = $derived(
 		sidebar_collapsed
-			? 'flex min-h-0 flex-1 flex-col !px-1 py-4 bg-gray-50 dark:bg-gray-800'
-			: 'flex min-h-0 flex-1 flex-col px-3 py-4 bg-gray-50 dark:bg-gray-800'
+			? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden !px-1 py-4 bg-gray-50 dark:bg-gray-800'
+			: 'flex h-full min-h-0 flex-1 flex-col overflow-hidden px-3 py-4 bg-gray-50 dark:bg-gray-800'
 	);
 
 	const gallery_focus_param = $derived.by(() => {
@@ -108,7 +108,7 @@
 	const dashboard_archived_active = $derived(gallery_focus_param === 'archived');
 </script>
 
-<div class="flex min-h-svh w-full items-stretch bg-gray-50 dark:bg-gray-900">
+<div class="flex h-svh min-h-0 w-full items-stretch overflow-hidden bg-gray-50 dark:bg-gray-900">
 	<Sidebar
 		id="app-sidebar"
 		activeUrl={active_url}
@@ -305,15 +305,25 @@
 				</SidebarItem>
 			</SidebarGroup>
 		</div>
-		<div class="shrink-0">
+		<div class="mt-auto shrink-0">
 			<SidebarGroup border={true}>
 				<li class="list-none">
 					<div
-						class="flex min-h-10 items-center px-0.5"
-						class:justify-center={sidebar_collapsed}
+						class="flex flex-col gap-2 px-0.5 pt-1 pb-3"
+						class:items-center={sidebar_collapsed}
+						class:items-start={!sidebar_collapsed}
 						class:ps-2={!sidebar_collapsed}
 					>
-						<DarkMode />
+						<Avatar
+							cornerStyle="rounded"
+							size="sm"
+							title={data.user_label}
+							aria-label={data.user_label}
+						>
+							<span class="text-xs font-semibold tracking-wide uppercase select-none">
+								{data.user_initials}
+							</span>
+						</Avatar>
 					</div>
 				</li>
 			</SidebarGroup>
