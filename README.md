@@ -225,3 +225,7 @@ Use this for **configuration and catalog portability** between instances; pair i
 ## Danger zone
 
 - **`bun run wipe:uploads -- --yes`** — deletes RAW files, preview JPEGs/WebP/etc. under the configured roots, and related DB rows. Only for intentional resets.
+
+## Usage of AI
+
+This project is not slop. AI was used sparingly in this project which was developed using the Cursor IDE but mainly typed by hand. Cursor was only used to write boilerplate, fix some nasty bugs if they block development or as a resource-option to better understand svelte, drizzle and better-auth. If you want to improve this project you are allowed to use AI but please be sensible and look over the code that you made the AI write. Obvious slop will be not accepted.
