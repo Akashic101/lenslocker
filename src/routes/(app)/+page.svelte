@@ -290,6 +290,8 @@
 
 	let gallery_selection_mode = $state(false);
 	let gallery_selected_upload_ids = $state<string[]>([]);
+	/** Grid index for shift+click range select; reset when the selection list is cleared. */
+	let gallery_selection_anchor_index = $state<number | null>(null);
 	let bulk_action_loading = $state(false);
 	let bulk_action_error = $state<string | null>(null);
 
@@ -329,6 +331,7 @@
 		const prev = gallery_list_track_prev;
 		if (prev != null && prev !== q) {
 			gallery_selected_upload_ids = [];
+			gallery_selection_anchor_index = null;
 		}
 		gallery_list_track_prev = q;
 	});
@@ -387,6 +390,7 @@
 		gallery_selection_mode = next;
 		if (!next) {
 			gallery_selected_upload_ids = [];
+			gallery_selection_anchor_index = null;
 			bulk_action_error = null;
 		}
 	}
@@ -403,9 +407,30 @@
 		}
 	}
 
-	function on_gallery_tile_activate(item: gallery_grid_item): void {
+	function gallery_tile_index(item: gallery_grid_item): number {
+		return gallery_images.findIndex((i) => i.relative_path === item.relative_path);
+	}
+
+	function on_gallery_tile_activate(item: gallery_grid_item, e: MouseEvent): void {
 		if (gallery_selection_mode && item.upload_id != null) {
+			const idx = gallery_tile_index(item);
+			if (idx < 0) return;
+
+			if (e.shiftKey && gallery_selection_anchor_index != null) {
+				const anchor = gallery_selection_anchor_index;
+				const lo = Math.min(anchor, idx);
+				const hi = Math.max(anchor, idx);
+				const range_ids: string[] = [];
+				for (let i = lo; i <= hi; i++) {
+					const u = gallery_images[i]?.upload_id;
+					if (u != null) range_ids.push(u);
+				}
+				gallery_selected_upload_ids = [...new Set([...gallery_selected_upload_ids, ...range_ids])];
+				return;
+			}
+
 			toggle_gallery_upload_selected(item.upload_id);
+			gallery_selection_anchor_index = idx;
 			return;
 		}
 		void open_gallery_modal(item);
@@ -415,6 +440,8 @@
 		gallery_selected_upload_ids = gallery_images
 			.map((i) => i.upload_id)
 			.filter((id): id is string => id != null);
+		const first_idx = gallery_images.findIndex((i) => i.upload_id != null);
+		gallery_selection_anchor_index = first_idx >= 0 ? first_idx : null;
 	}
 
 	async function apply_bulk_gallery_flags(payload: {
@@ -436,6 +463,7 @@
 				throw new Error(text || response.statusText);
 			}
 			gallery_selected_upload_ids = [];
+			gallery_selection_anchor_index = null;
 			await invalidate(transformed_media_depends_key);
 			await invalidate(gallery_active_upload_count_depends_key);
 		} catch (e) {
@@ -493,6 +521,7 @@
 			}
 			await invalidate(albums_list_depends_key);
 			gallery_selected_upload_ids = [];
+			gallery_selection_anchor_index = null;
 			set_gallery_selection_mode(false);
 			album_modal_open = false;
 		} catch (e) {
@@ -1145,6 +1174,7 @@
 							disabled={bulk_action_loading || gallery_selected_count === 0}
 							onclick={() => {
 								gallery_selected_upload_ids = [];
+								gallery_selection_anchor_index = null;
 							}}
 						>
 							{m.noble_clear_frog_bulk_clear_selection()}
@@ -1465,7 +1495,7 @@
 						<button
 							type="button"
 							class="relative block w-full shrink-0 cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none"
-							onclick={() => on_gallery_tile_activate(item)}
+							onclick={(e) => on_gallery_tile_activate(item, e)}
 						>
 							<img
 								src={item.src}
@@ -1487,7 +1517,7 @@
 							<button
 								type="button"
 								class="w-full border-t border-gray-200 bg-white/90 px-2 py-2 text-left dark:border-gray-700 dark:bg-gray-950/90"
-								onclick={() => on_gallery_tile_activate(item)}
+								onclick={(e) => on_gallery_tile_activate(item, e)}
 							>
 								<div
 									class="space-y-1"
