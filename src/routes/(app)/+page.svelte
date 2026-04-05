@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
 	import { goto, invalidate } from '$app/navigation';
+	import { page } from '$app/state';
 	import { onMount, untrack } from 'svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { albums_list_depends_key } from '$lib/cache/albums_cache';
@@ -119,9 +120,21 @@
 		if (g.gallery_focus === 'album' && g.album_id != null && g.album_id !== '') {
 			q.set('album_id', g.album_id);
 		}
+		q.set('sort', g.sort);
 		const s = q.toString();
 		return s !== '' ? localizeHref(`/?${s}`) : localizeHref('/');
 	});
+
+	function on_gallery_sort_change(ev: Event): void {
+		if (!browser) return;
+		const sel = ev.currentTarget as HTMLSelectElement;
+		const next = sel.value;
+		if (next === data.gallery_filters.sort) return;
+		const q = new SvelteURLSearchParams(data.gallery_filter_query);
+		q.set('sort', next);
+		const path = page.url.pathname;
+		void goto(localizeHref(`${path}?${q.toString()}`), { keepFocus: true, noScroll: true });
+	}
 
 	function on_filters_toggle_click(): void {
 		filters_panel_user_open = !filters_panel_user_open;
@@ -1094,8 +1107,29 @@
 				<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{gallery_view_blurb}</p>
 			{/if}
 		</div>
-		<div class="flex shrink-0 items-center gap-2">
+		<div class="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">
 			{#if data.gallery_filters.gallery_focus !== 'albums'}
+				<div class="flex max-w-[14rem] min-w-[9.5rem] shrink-0 flex-col gap-0.5 sm:min-w-[11rem]">
+					<label
+						for="gallery-sort-select"
+						class="text-[10px] font-medium text-gray-500 dark:text-gray-400"
+						>{m.frank_sound_emu_gallery_sort_label()}</label
+					>
+					<select
+						id="gallery-sort-select"
+						class="{filter_field_class} py-1.5 text-sm"
+						aria-label={m.frank_sound_emu_gallery_sort_aria()}
+						value={data.gallery_filters.sort}
+						onchange={on_gallery_sort_change}
+					>
+						<option value="date_desc">{m.frank_sound_emu_gallery_sort_date_desc()}</option>
+						<option value="date_asc">{m.frank_sound_emu_gallery_sort_date_asc()}</option>
+						<option value="iso_desc">{m.frank_sound_emu_gallery_sort_iso_desc()}</option>
+						<option value="iso_asc">{m.frank_sound_emu_gallery_sort_iso_asc()}</option>
+						<option value="size_desc">{m.frank_sound_emu_gallery_sort_size_desc()}</option>
+						<option value="size_asc">{m.frank_sound_emu_gallery_sort_size_asc()}</option>
+					</select>
+				</div>
 				<button
 					type="button"
 					class={gallery_header_icon_button_class}
@@ -1343,6 +1377,7 @@
 					{#if data.gallery_filters.album_id != null && data.gallery_filters.album_id !== ''}
 						<input type="hidden" name="album_id" value={data.gallery_filters.album_id} />
 					{/if}
+					<input type="hidden" name="sort" value={data.gallery_filters.sort} />
 					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 						<div>
 							<label

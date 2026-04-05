@@ -1,8 +1,5 @@
-/** Lowercase extensions (with dot) allowed for RAW / image upload (kept in sync with server rules). */
+/** Lowercase extensions (with dot) allowed for RAW / similar upload (kept in sync with server rules). */
 export const raw_upload_extensions = new Set([
-	'.jpg',
-	'.jpeg',
-	'.png',
 	'.tif',
 	'.tiff',
 	'.dng',
@@ -34,3 +31,7 @@ export function is_allowed_raw_upload_extension(filename: string): boolean {
 	if (dot < 0) return false;
 	return raw_upload_extensions.has(filename.slice(dot).toLowerCase());
 }
+
+/** API / server error text when the filename extension is not allowed. */
+export const raw_upload_extension_rejected_message =
+	'Unsupported extension. Only camera RAW formats (e.g. CR2, NEF, ARW, RAF), DNG, and TIFF are accepted — not JPEG or PNG.';

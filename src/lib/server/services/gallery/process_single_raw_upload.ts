@@ -6,7 +6,10 @@ import {
 	insert_raw_upload_row,
 	select_raw_upload_id_by_sha256_hex
 } from '$lib/server/services/gallery/gallery_service';
-import { is_allowed_raw_upload_extension } from '$lib/gallery/raw_upload_extensions';
+import {
+	is_allowed_raw_upload_extension,
+	raw_upload_extension_rejected_message
+} from '$lib/gallery/raw_upload_extensions';
 import { build_metadata_fields } from '$lib/server/raw_upload/metadata_from_exifr';
 import {
 	get_raw_upload_root,
@@ -39,7 +42,7 @@ export type process_raw_upload_err = {
 export type process_raw_upload_result = process_raw_upload_ok | process_raw_upload_err;
 
 /**
- * Store one RAW/image file, persist EXIF metadata to SQLite, and generate JPEG previews.
+ * Store one RAW-like file, persist EXIF metadata to SQLite, and generate JPEG previews.
  * Shared by the legacy form action and the JSON API for batch uploads.
  */
 function format_max_upload_label(max_bytes: number): string {
@@ -68,8 +71,7 @@ export async function process_single_raw_upload(
 	if (!is_allowed_raw_upload_extension(input.original_filename)) {
 		return {
 			ok: false,
-			message:
-				'Unsupported extension. Use a camera RAW type or common image format (JPEG, TIFF, DNG, …).'
+			message: raw_upload_extension_rejected_message
 		};
 	}
 

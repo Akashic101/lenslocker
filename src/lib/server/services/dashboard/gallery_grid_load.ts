@@ -36,9 +36,175 @@ import {
 	get_transformed_source_description,
 	list_transformed_media_paths
 } from '$lib/server/transformed';
+import { db } from '$lib/server/db';
 
 export { dashboard_images_per_page };
 export type { album_summary_row };
+
+/** URL `sort=` values; default `date_desc` when absent or invalid. */
+export type gallery_sort_key =
+	| 'date_desc'
+	| 'date_asc'
+	| 'iso_desc'
+	| 'iso_asc'
+	| 'size_desc'
+	| 'size_asc';
+
+const gallery_sort_allowed = new Set<gallery_sort_key>([
+	'date_desc',
+	'date_asc',
+	'iso_desc',
+	'iso_asc',
+	'size_desc',
+	'size_asc'
+]);
+
+export function parse_gallery_sort(sp: URLSearchParams): gallery_sort_key {
+	const v = (sp.get('sort') ?? '').trim() as gallery_sort_key;
+	if (gallery_sort_allowed.has(v)) return v;
+	return 'date_desc';
+}
+
+type gallery_path_sort_meta = {
+	shot: string | null;
+	iso: number | null;
+	size: number;
+	uploaded_at_ms: number;
+};
+
+function chunk_unique_strings(items: string[], chunk_size: number): string[][] {
+	const unique = [...new Set(items)];
+	const out: string[][] = [];
+	for (let i = 0; i < unique.length; i += chunk_size) {
+		out.push(unique.slice(i, i + chunk_size));
+	}
+	return out;
+}
+
+async function load_gallery_path_sort_meta(
+	upload_ids: string[]
+): Promise<Map<string, gallery_path_sort_meta>> {
+	const map = new Map<string, gallery_path_sort_meta>();
+	if (upload_ids.length === 0) return map;
+
+	const shot_cal_sql = sql_shot_calendar_date();
+
+	for (const chunk of chunk_unique_strings(upload_ids, 450)) {
+		const rows = await db
+			.select({
+				id: raw_image_upload.id,
+				shot_cal: sql<string | null>`(${shot_cal_sql})`,
+				iso_speed: raw_image_upload.iso_speed,
+				byte_size: raw_image_upload.byte_size,
+				uploaded_at_ms: raw_image_upload.uploaded_at_ms
+			})
+			.from(raw_image_upload)
+			.where(inArray(raw_image_upload.id, chunk));
+
+		for (const r of rows) {
+			const shot_raw = r.shot_cal;
+			const shot =
+				shot_raw == null || String(shot_raw).trim() === '' ? null : String(shot_raw).trim();
+			const iso =
+				r.iso_speed == null || !Number.isFinite(Number(r.iso_speed)) ? null : Number(r.iso_speed);
+			map.set(r.id, {
+				shot,
+				iso,
+				size: r.byte_size,
+				uploaded_at_ms: r.uploaded_at_ms
+			});
+		}
+	}
+	return map;
+}
+
+function normalize_shot_for_sort(shot: string | null): string | null {
+	if (shot == null || shot === '') return null;
+	return shot;
+}
+
+function cmp_shot_date(a: string | null, b: string | null, desc: boolean): number {
+	const a_n = normalize_shot_for_sort(a) == null;
+	const b_n = normalize_shot_for_sort(b) == null;
+	if (a_n && b_n) return 0;
+	if (a_n) return 1;
+	if (b_n) return -1;
+	const sa = a as string;
+	const sb = b as string;
+	const c = sa.localeCompare(sb);
+	return desc ? -c : c;
+}
+
+function cmp_iso(a: number | null, b: number | null, desc: boolean): number {
+	const a_n = a == null || !Number.isFinite(a);
+	const b_n = b == null || !Number.isFinite(b);
+	if (a_n && b_n) return 0;
+	if (a_n) return 1;
+	if (b_n) return -1;
+	const diff = desc ? (b as number) - (a as number) : (a as number) - (b as number);
+	return diff !== 0 ? diff : 0;
+}
+
+function cmp_size(a: number, b: number, desc: boolean): number {
+	const diff = desc ? b - a : a - b;
+	return diff !== 0 ? diff : 0;
+}
+
+function compare_gallery_paths(
+	path_a: string,
+	path_b: string,
+	sort: gallery_sort_key,
+	meta: Map<string, gallery_path_sort_meta>
+): number {
+	const id_a = upload_id_from_gallery_preview_path(path_a);
+	const id_b = upload_id_from_gallery_preview_path(path_b);
+	const ma = id_a != null ? meta.get(id_a) : undefined;
+	const mb = id_b != null ? meta.get(id_b) : undefined;
+
+	if (ma == null && mb == null) return path_a.localeCompare(path_b);
+	if (ma == null) return 1;
+	if (mb == null) return -1;
+
+	let c = 0;
+	switch (sort) {
+		case 'date_desc':
+			c = cmp_shot_date(ma.shot, mb.shot, true);
+			break;
+		case 'date_asc':
+			c = cmp_shot_date(ma.shot, mb.shot, false);
+			break;
+		case 'iso_desc':
+			c = cmp_iso(ma.iso, mb.iso, true);
+			break;
+		case 'iso_asc':
+			c = cmp_iso(ma.iso, mb.iso, false);
+			break;
+		case 'size_desc':
+			c = cmp_size(ma.size, mb.size, true);
+			break;
+		case 'size_asc':
+			c = cmp_size(ma.size, mb.size, false);
+			break;
+		default:
+			c = 0;
+	}
+
+	if (c !== 0) return c;
+	c = mb.uploaded_at_ms - ma.uploaded_at_ms;
+	if (c !== 0) return c;
+	return path_a.localeCompare(path_b);
+}
+
+async function sort_gallery_paths(paths: string[], sort: gallery_sort_key): Promise<string[]> {
+	if (paths.length <= 1) return paths;
+	const ids = paths
+		.map((p) => upload_id_from_gallery_preview_path(p))
+		.filter((id): id is string => id != null);
+	const meta = await load_gallery_path_sort_meta(ids);
+	const copy = [...paths];
+	copy.sort((a, b) => compare_gallery_paths(a, b, sort, meta));
+	return copy;
+}
 
 export type gallery_grid_image_row = {
 	relative_path: string;
@@ -83,6 +249,7 @@ export function build_gallery_filter_query(sp: URLSearchParams): string {
 	if (focus != null) out.set('gallery_focus', focus);
 	const album_id = (sp.get('album_id') ?? '').trim();
 	if (album_id !== '') out.set('album_id', album_id);
+	out.set('sort', parse_gallery_sort(sp));
 	return out.toString();
 }
 
@@ -112,6 +279,7 @@ function build_gallery_dashboard_return(params: {
 	albums: album_summary_row[];
 	current_album: { id: string; name: string } | null;
 	album_id: string | null;
+	gallery_sort: gallery_sort_key;
 }) {
 	const {
 		needs_attention_settings,
@@ -138,7 +306,8 @@ function build_gallery_dashboard_return(params: {
 		gallery_filter_query,
 		albums,
 		current_album,
-		album_id
+		album_id,
+		gallery_sort
 	} = params;
 
 	const camera_pairs = camera_pair_rows.map((r) => ({
@@ -186,7 +355,8 @@ function build_gallery_dashboard_return(params: {
 			date_to,
 			iso_min: iso_min_raw,
 			iso_max: iso_max_raw,
-			album_id
+			album_id,
+			sort: gallery_sort
 		},
 		gallery_filter_meta: {
 			iso_stats,
@@ -242,6 +412,7 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 	const gallery_focus_active = gallery_focus != null && gallery_focus !== 'albums';
 	const gallery_filters_active = exif_filters_active || starred_only || gallery_focus_active;
 
+	const gallery_sort = parse_gallery_sort(url.searchParams);
 	const shot_date = sql_shot_calendar_date();
 
 	if (gallery_focus === 'albums') {
@@ -286,7 +457,8 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 			gallery_filter_query: build_gallery_filter_query(url.searchParams),
 			albums,
 			current_album: null,
-			album_id: null
+			album_id: null,
+			gallery_sort
 		});
 	}
 
@@ -468,6 +640,8 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 		filtered_paths = scope_paths;
 	}
 
+	filtered_paths = await sort_gallery_paths(filtered_paths, gallery_sort);
+
 	const total_count = filtered_paths.length;
 	const slice = filtered_paths.slice(safe_offset, safe_offset + safe_limit);
 
@@ -539,6 +713,7 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 		gallery_filter_query: build_gallery_filter_query(url.searchParams),
 		albums,
 		current_album,
-		album_id: album_id_for_row
+		album_id: album_id_for_row,
+		gallery_sort
 	});
 }
