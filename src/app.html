@@ -3,6 +3,23 @@
 <html lang="%paraglide.lang%" dir="%paraglide.dir%">
 	<head>
 		<meta charset="utf-8" />
+		<script>
+			(function () {
+				try {
+					var k = 'THEME_PREFERENCE_KEY';
+					var root = document.documentElement;
+					function apply_system() {
+						if (window.matchMedia('(prefers-color-scheme: dark)').matches)
+							root.classList.add('dark');
+						else root.classList.remove('dark');
+					}
+					var stored = localStorage.getItem(k);
+					if (stored === 'dark') root.classList.add('dark');
+					else if (stored === 'light') root.classList.remove('dark');
+					else apply_system();
+				} catch (e) {}
+			})();
+		</script>
 
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 

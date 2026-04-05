@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { invalidate, invalidateAll } from '$app/navigation';
@@ -9,7 +10,10 @@
 	import { upload_preview_pipeline_defaults } from '$lib/config/upload_pipeline_defaults';
 	import { upload_pipeline_settings_depends_key } from '$lib/cache/upload_pipeline_settings_cache';
 	import type { upload_preview_format } from '$lib/config/upload_preview_format';
-	import { DarkMode, Tabs, TabItem } from 'flowbite-svelte';
+	import ThemeToggle from '$lib/components/theme_toggle.svelte';
+	import { assertIsLocale, locales, setLocale } from '$lib/paraglide/runtime';
+	import { use_system_color_scheme } from '$lib/theme/persisted_theme';
+	import { Tabs, TabItem } from 'flowbite-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 
 	const upload_preview_format_choices: { format_value: upload_preview_format; label: string }[] = [
@@ -21,7 +25,7 @@
 
 	let { data } = $props();
 
-	let selected_tab = $state('upload');
+	let selected_tab = $state('general');
 
 	let thumb_max_edge_px = $state<number>(upload_preview_pipeline_defaults.thumb_max_edge_px);
 	let max_full_edge_px = $state<number>(upload_preview_pipeline_defaults.max_full_edge_px);
@@ -96,6 +100,18 @@
 
 	const field_class =
 		'w-full max-w-md rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100';
+
+	const paraglide_locale_labels: Record<(typeof locales)[number], string> = {
+		en: 'English',
+		de: 'Deutsch'
+	};
+
+	function on_paraglide_locale_change(ev: Event): void {
+		if (!browser) return;
+		const raw = (ev.currentTarget as HTMLSelectElement).value;
+		const locale = assertIsLocale(raw);
+		setLocale(locale);
+	}
 
 	async function save_upload_pipeline_settings(): Promise<void> {
 		save_loading = true;
@@ -306,18 +322,6 @@
 		setting.
 	</p>
 
-	<div
-		class="mt-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
-	>
-		<h2 class="text-sm font-medium text-gray-900 dark:text-white">Appearance</h2>
-		<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-			Choose light or dark mode for the dashboard.
-		</p>
-		<div class="mt-4">
-			<DarkMode />
-		</div>
-	</div>
-
 	{#if data.account_email}
 		<div
 			class="mt-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
@@ -337,6 +341,49 @@
 
 	<div class="mt-8">
 		<Tabs bind:selected={selected_tab} tabStyle="underline" class="flex flex-wrap">
+			<TabItem key="general" title="General">
+				<div class="space-y-8 pt-4">
+					<div>
+						<h2 class="text-sm font-medium text-gray-900 dark:text-white">Language</h2>
+						<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+							Interface language for LensLocker (Paraglide). The page reloads after you change this.
+						</p>
+						<label
+							for="settings-paraglide-locale"
+							class="mt-3 mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+						>
+							Display language
+						</label>
+						<select
+							id="settings-paraglide-locale"
+							class={field_class}
+							value={data.paraglide_locale}
+							onchange={on_paraglide_locale_change}
+						>
+							{#each locales as locale (locale)}
+								<option value={locale}>{paraglide_locale_labels[locale]}</option>
+							{/each}
+						</select>
+					</div>
+					<div>
+						<h2 class="text-sm font-medium text-gray-900 dark:text-white">Appearance</h2>
+						<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+							By default the app follows your system light or dark mode. Use the toggle to pin a
+							look; you can return to the system setting anytime.
+						</p>
+						<div class="mt-4 flex flex-wrap items-center gap-3">
+							<ThemeToggle />
+							<button
+								type="button"
+								class="text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
+								onclick={() => use_system_color_scheme()}
+							>
+								Use system appearance
+							</button>
+						</div>
+					</div>
+				</div>
+			</TabItem>
 			<TabItem key="upload" title="Upload">
 				<div class="space-y-6 pt-4">
 					<div>

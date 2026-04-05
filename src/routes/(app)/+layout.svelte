@@ -20,6 +20,7 @@
 		ChevronDownOutline,
 		UploadOutline
 	} from 'flowbite-svelte-icons';
+	import { m } from '$lib/paraglide/messages.js';
 
 	let { children, data } = $props();
 
@@ -140,7 +141,7 @@
 								href={localizeHref(resolve('/'))}
 								class="min-w-0 flex-1 truncate text-lg font-semibold text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
 							>
-								LensLocker
+								{m.hello_world({ name: 'David' })}
 							</a>
 						{/if}
 						<button
