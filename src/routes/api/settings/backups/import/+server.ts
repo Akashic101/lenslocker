@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { import_settings_backup_from_zip_buffer } from '$lib/server/settings_backup_service';
+import { import_settings_backup_from_zip_buffer } from '$lib/server/services/settings/settings_backup_service';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {

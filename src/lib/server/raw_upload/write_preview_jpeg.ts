@@ -13,7 +13,7 @@ import { get_transformed_root_absolute_path } from '$lib/server/transformed';
 import {
 	get_upload_preview_pipeline_settings,
 	type upload_preview_pipeline_settings
-} from '$lib/server/upload_pipeline_settings';
+} from '$lib/server/services/settings/upload_pipeline_settings';
 import type { upload_preview_format } from '$lib/upload_preview_format';
 import { upload_preview_formats, upload_preview_format_file_ext } from '$lib/upload_preview_format';
 

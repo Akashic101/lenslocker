@@ -2,7 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import {
 	get_dashboard_needs_attention_settings,
 	replace_dashboard_needs_attention_settings
-} from '$lib/server/dashboard_attention_settings';
+} from '$lib/server/services/settings/dashboard_attention_settings';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {

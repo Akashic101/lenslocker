@@ -1,7 +1,6 @@
 import { error, json } from '@sveltejs/kit';
-import { inArray } from 'drizzle-orm';
-import { db } from '$lib/server/db';
-import { raw_image_upload, type RawImageUploadRow } from '$lib/server/db/raw_image_upload.schema';
+import type { RawImageUploadRow } from '$lib/server/db/raw_image_upload.schema';
+import { bulk_patch_raw_uploads_by_ids } from '$lib/server/services/gallery/gallery_service';
 import type { RequestHandler } from './$types';
 
 const uuid_re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -49,7 +48,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		error(400, 'Provide starred and/or archive');
 	}
 
-	await db.update(raw_image_upload).set(patch).where(inArray(raw_image_upload.id, upload_ids));
+	await bulk_patch_raw_uploads_by_ids(upload_ids, patch);
 
 	return json({ updated: upload_ids.length });
 };

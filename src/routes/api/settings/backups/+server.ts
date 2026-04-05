@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import {
 	create_settings_backup_zip,
 	list_settings_backups
-} from '$lib/server/settings_backup_service';
+} from '$lib/server/services/settings/settings_backup_service';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {

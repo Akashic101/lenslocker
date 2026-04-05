@@ -2,7 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import {
 	get_upload_preview_pipeline_settings,
 	replace_upload_preview_pipeline_settings
-} from '$lib/server/upload_pipeline_settings';
+} from '$lib/server/services/settings/upload_pipeline_settings';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {

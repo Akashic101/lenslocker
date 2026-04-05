@@ -1,8 +1,10 @@
 import { error, json } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
-import { db } from '$lib/server/db';
-import { raw_image_upload, type RawImageUploadRow } from '$lib/server/db/raw_image_upload.schema';
+import type { RawImageUploadRow } from '$lib/server/db/raw_image_upload.schema';
 import { parse_upload_meta_patch } from '$lib/server/upload_meta_patch';
+import {
+	select_raw_upload_row_by_id,
+	update_raw_upload_row_by_id
+} from '$lib/server/services/gallery/gallery_service';
 import type { RequestHandler } from './$types';
 
 const uuid_re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -20,11 +22,7 @@ export const GET: RequestHandler = async ({ params }) => {
 	const id = params.id;
 	if (id == null || !uuid_re.test(id)) error(400, 'Invalid id');
 
-	const [row] = await db
-		.select()
-		.from(raw_image_upload)
-		.where(eq(raw_image_upload.id, id))
-		.limit(1);
+	const row = await select_raw_upload_row_by_id(id);
 	if (!row) error(404, 'Not found');
 
 	const { exifr_full_json, ...rest } = row;
@@ -40,11 +38,7 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 	const id = params.id;
 	if (id == null || !uuid_re.test(id)) error(400, 'Invalid id');
 
-	const [existing] = await db
-		.select()
-		.from(raw_image_upload)
-		.where(eq(raw_image_upload.id, id))
-		.limit(1);
+	const existing = await select_raw_upload_row_by_id(id);
 	if (!existing) error(404, 'Not found');
 
 	let body: unknown;
@@ -75,15 +69,11 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 		error(400, parsed.ok === false ? parsed.error : 'Nothing to update');
 	}
 
-	await db.update(raw_image_upload).set(updates).where(eq(raw_image_upload.id, id));
+	await update_raw_upload_row_by_id(id, updates);
 
 	/** Keep upload-previews on disk so the Archived gallery can still list thumbnails. */
 
-	const [row] = await db
-		.select()
-		.from(raw_image_upload)
-		.where(eq(raw_image_upload.id, id))
-		.limit(1);
+	const row = await select_raw_upload_row_by_id(id);
 	if (!row) error(500, 'Update failed');
 
 	const { exifr_full_json, ...rest } = row;

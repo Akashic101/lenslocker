@@ -1,22 +1,7 @@
-import {
-	and,
-	asc,
-	eq,
-	gte,
-	inArray,
-	isNotNull,
-	isNull,
-	lte,
-	max,
-	min,
-	or,
-	sql,
-	type SQL
-} from 'drizzle-orm';
+import { and, eq, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm';
 import { dashboard_attention_settings_depends_key } from '$lib/dashboard_attention_settings_cache';
 import { transformed_media_depends_key } from '$lib/transformed_media_cache';
 import { transformed_media_url } from '$lib/transformed_urls';
-import { db } from '$lib/server/db';
 import { raw_image_upload } from '$lib/server/db/raw_image_upload.schema';
 import { sql_shot_calendar_date } from '$lib/server/gallery_shot_date_sql';
 import {
@@ -28,23 +13,31 @@ import {
 	resolve_upload_preview_thumb_relative_path
 } from '$lib/server/raw_upload/write_preview_jpeg';
 import {
+	dashboard_images_per_page,
+	list_archived_raw_upload_ids,
+	list_upload_ids_matching_filter,
+	load_dashboard_camera_pair_rows,
+	load_dashboard_iso_aggregate,
+	load_dashboard_lens_pair_rows,
+	load_dashboard_shot_date_aggregate,
+	load_dashboard_upload_flag_rows,
+	load_raw_upload_meta_rows_for_ids,
+	type dashboard_gallery_focus_mode
+} from '$lib/server/services/dashboard/dashboard_service';
+import {
 	get_transformed_source_description,
 	list_transformed_media_paths
 } from '$lib/server/transformed';
-import { get_dashboard_needs_attention_settings } from '$lib/server/dashboard_attention_settings';
+import { get_dashboard_needs_attention_settings } from '$lib/server/services/settings/dashboard_attention_settings';
 import { build_needs_attention_where_sql } from '$lib/server/needs_attention_sql';
-import { get_upload_preview_pipeline_settings } from '$lib/server/upload_pipeline_settings';
+import { get_upload_preview_pipeline_settings } from '$lib/server/services/settings/upload_pipeline_settings';
 import type { PageServerLoad } from './$types';
-
-type gallery_focus_mode = 'needs_attention' | 'archived';
-
-const images_per_page = 50;
 
 function trim_param(sp: URLSearchParams, key: string): string {
 	return (sp.get(key) ?? '').trim();
 }
 
-function parse_gallery_focus(sp: URLSearchParams): gallery_focus_mode | null {
+function parse_gallery_focus(sp: URLSearchParams): dashboard_gallery_focus_mode | null {
 	const v = (sp.get('gallery_focus') ?? '').trim();
 	if (v === 'needs_attention' || v === 'archived') return v;
 	return null;
@@ -111,59 +104,19 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 	const [
 		all_paths,
 		upload_flag_rows,
-		iso_stats_row,
-		date_stats_row,
+		iso_agg_row,
+		date_agg_row,
 		camera_pair_rows,
 		lens_pair_rows,
 		upload_pipeline_settings,
 		needs_attention_settings
 	] = await Promise.all([
 		list_transformed_media_paths(),
-		db
-			.select({
-				id: raw_image_upload.id,
-				starred: raw_image_upload.starred,
-				archived_at_ms: raw_image_upload.archived_at_ms
-			})
-			.from(raw_image_upload),
-		db
-			.select({
-				iso_min_db: min(raw_image_upload.iso_speed),
-				iso_max_db: max(raw_image_upload.iso_speed)
-			})
-			.from(raw_image_upload),
-		db
-			.select({
-				date_min_db: sql<string | null>`min(${shot_date})`.mapWith(String),
-				date_max_db: sql<string | null>`max(${shot_date})`.mapWith(String)
-			})
-			.from(raw_image_upload),
-		db
-			.selectDistinct({
-				make: raw_image_upload.make,
-				model: raw_image_upload.model
-			})
-			.from(raw_image_upload)
-			.where(
-				or(
-					sql`trim(coalesce(${raw_image_upload.make}, '')) != ''`,
-					sql`trim(coalesce(${raw_image_upload.model}, '')) != ''`
-				)
-			)
-			.orderBy(asc(raw_image_upload.make), asc(raw_image_upload.model)),
-		db
-			.selectDistinct({
-				lens_make: raw_image_upload.lens_make,
-				lens_model: raw_image_upload.lens_model
-			})
-			.from(raw_image_upload)
-			.where(
-				or(
-					sql`trim(coalesce(${raw_image_upload.lens_make}, '')) != ''`,
-					sql`trim(coalesce(${raw_image_upload.lens_model}, '')) != ''`
-				)
-			)
-			.orderBy(asc(raw_image_upload.lens_make), asc(raw_image_upload.lens_model)),
+		load_dashboard_upload_flag_rows(),
+		load_dashboard_iso_aggregate(),
+		load_dashboard_shot_date_aggregate(),
+		load_dashboard_camera_pair_rows(),
+		load_dashboard_lens_pair_rows(),
 		get_upload_preview_pipeline_settings(),
 		get_dashboard_needs_attention_settings()
 	]);
@@ -186,13 +139,13 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 	}));
 
 	const iso_stats = {
-		min: iso_stats_row[0]?.iso_min_db ?? null,
-		max: iso_stats_row[0]?.iso_max_db ?? null
+		min: iso_agg_row?.iso_min_db ?? null,
+		max: iso_agg_row?.iso_max_db ?? null
 	};
 
 	const date_stats = {
-		min: date_stats_row[0]?.date_min_db ?? null,
-		max: date_stats_row[0]?.date_max_db ?? null
+		min: date_agg_row?.date_min_db ?? null,
+		max: date_agg_row?.date_max_db ?? null
 	};
 
 	/**
@@ -201,10 +154,7 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 	 */
 	let scope_paths: string[];
 	if (gallery_focus === 'archived') {
-		const archived_rows = await db
-			.select({ id: raw_image_upload.id })
-			.from(raw_image_upload)
-			.where(isNotNull(raw_image_upload.archived_at_ms));
+		const archived_rows = await list_archived_raw_upload_ids();
 		const preferred_format = upload_pipeline_settings.upload_preview_format;
 		const resolved = await Promise.all(
 			archived_rows.map((r) => resolve_upload_preview_thumb_relative_path(r.id, preferred_format))
@@ -269,12 +219,8 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 			}
 		}
 
-		const matching_rows = await db
-			.select({ id: raw_image_upload.id })
-			.from(raw_image_upload)
-			.where(and(...parts));
-
-		const id_set = new Set(matching_rows.map((r) => r.id));
+		const matching_ids = await list_upload_ids_matching_filter(and(...parts)!);
+		const id_set = new Set(matching_ids);
 		filtered_paths = scope_paths.filter((p) => {
 			const upload_id = upload_id_from_gallery_preview_path(p);
 			if (upload_id == null) return false;
@@ -287,10 +233,10 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 	const total_count = filtered_paths.length;
 	const raw_page = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
 	const page_number = Number.isFinite(raw_page) && raw_page >= 1 ? raw_page : 1;
-	const total_pages = Math.max(1, Math.ceil(total_count / images_per_page));
+	const total_pages = Math.max(1, Math.ceil(total_count / dashboard_images_per_page));
 	const current_page = Math.min(page_number, total_pages);
-	const start = (current_page - 1) * images_per_page;
-	const slice = filtered_paths.slice(start, start + images_per_page);
+	const start = (current_page - 1) * dashboard_images_per_page;
+	const slice = filtered_paths.slice(start, start + dashboard_images_per_page);
 
 	const preview_upload_ids = slice
 		.map((p) => upload_id_from_gallery_preview_path(p))
@@ -299,29 +245,7 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 	const meta_by_upload_id = new Map<string, ReturnType<typeof build_gallery_meta_rows>>();
 
 	if (preview_upload_ids.length > 0) {
-		const rows = await db
-			.select({
-				id: raw_image_upload.id,
-				make: raw_image_upload.make,
-				model: raw_image_upload.model,
-				lens_make: raw_image_upload.lens_make,
-				lens_model: raw_image_upload.lens_model,
-				image_width: raw_image_upload.image_width,
-				image_height: raw_image_upload.image_height,
-				pixel_x_dimension: raw_image_upload.pixel_x_dimension,
-				pixel_y_dimension: raw_image_upload.pixel_y_dimension,
-				x_resolution: raw_image_upload.x_resolution,
-				y_resolution: raw_image_upload.y_resolution,
-				resolution_unit: raw_image_upload.resolution_unit,
-				datetime_original: raw_image_upload.datetime_original,
-				byte_size: raw_image_upload.byte_size,
-				iso_speed: raw_image_upload.iso_speed,
-				exposure_time_seconds: raw_image_upload.exposure_time_seconds,
-				exposure_time: raw_image_upload.exposure_time,
-				f_number: raw_image_upload.f_number
-			})
-			.from(raw_image_upload)
-			.where(inArray(raw_image_upload.id, preview_upload_ids));
+		const rows = await load_raw_upload_meta_rows_for_ids(preview_upload_ids);
 
 		for (const row of rows) {
 			const caption_rows = build_gallery_meta_rows(row);
@@ -367,7 +291,7 @@ export const load: PageServerLoad = async ({ url, depends }) => {
 			current_page,
 			total_pages,
 			total_count,
-			images_per_page,
+			images_per_page: dashboard_images_per_page,
 			has_previous: current_page > 1,
 			has_next: current_page < total_pages
 		},

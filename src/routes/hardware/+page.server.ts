@@ -7,7 +7,7 @@ import {
 	list_hardware_items_for_page,
 	update_hardware_item_row
 } from '$lib/server/services/hardware/hardware_service';
-import { load_photo_gear_suggestions } from '$lib/server/photo_gear_suggestions';
+import { load_photo_gear_suggestions } from '$lib/server/services/gallery/photo_gear_suggestions';
 import type { Actions, PageServerLoad } from './$types';
 
 function optional_trimmed(form: FormData, key: string): string | null {

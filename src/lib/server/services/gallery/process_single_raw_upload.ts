@@ -1,10 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { eq } from 'drizzle-orm';
-import { db } from '$lib/server/db';
-import { get_upload_preview_pipeline_settings } from '$lib/server/upload_pipeline_settings';
-import { raw_image_upload } from '$lib/server/db/raw_image_upload.schema';
+import { get_upload_preview_pipeline_settings } from '$lib/server/services/settings/upload_pipeline_settings';
+import {
+	insert_raw_upload_row,
+	select_raw_upload_id_by_sha256_hex
+} from '$lib/server/services/gallery/gallery_service';
 import { is_allowed_raw_upload_extension } from '$lib/raw_upload_extensions';
 import { build_metadata_fields } from '$lib/server/raw_upload/metadata_from_exifr';
 import {
@@ -75,17 +76,11 @@ export async function process_single_raw_upload(
 	const buffer = input.buffer;
 	const sha256_hex = createHash('sha256').update(new Uint8Array(buffer)).digest('hex');
 
-	const existing_by_hash = await db
-		.select({ id: raw_image_upload.id })
-		.from(raw_image_upload)
-		.where(eq(raw_image_upload.sha256_hex, sha256_hex))
-		.limit(1);
-
-	const existing_row = existing_by_hash[0];
-	if (existing_row != null) {
+	const existing_id = await select_raw_upload_id_by_sha256_hex(sha256_hex);
+	if (existing_id != null) {
 		return {
 			ok: true,
-			id: existing_row.id,
+			id: existing_id,
 			original_filename: input.original_filename,
 			preview_ok: true,
 			duplicate: true
@@ -131,7 +126,7 @@ export async function process_single_raw_upload(
 	) as typeof row;
 
 	try {
-		await db.insert(raw_image_upload).values(cleaned);
+		await insert_raw_upload_row(cleaned);
 	} catch (e) {
 		console.error(e);
 		return {

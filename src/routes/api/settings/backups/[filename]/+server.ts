@@ -3,7 +3,7 @@ import {
 	delete_settings_backup_file,
 	is_valid_settings_backup_filename,
 	read_settings_backup_file
-} from '$lib/server/settings_backup_service';
+} from '$lib/server/services/settings/settings_backup_service';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params }) => {
