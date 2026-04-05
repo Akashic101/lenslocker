@@ -9,6 +9,7 @@ import {
 } from '$lib/server/db';
 import { app_setting } from '$lib/server/db/app_setting.schema';
 import { hardware_item, type HardwareItemInsert } from '$lib/server/db/hardware.schema';
+import { hardware_allowed_category_set } from '$lib/server/services/hardware/hardware_service';
 import { ensure_settings_backup_root } from '$lib/server/settings_backup_storage';
 
 const backup_sequence_key = 'lenslocker_backup_sequence';
@@ -16,8 +17,6 @@ const backup_filename_re = /^LensLocker-backup-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d+
 const backup_zip_database_filename = 'database.sqlite';
 const supported_backup_schema_versions = new Set([1, 2]);
 const max_settings_backup_import_bytes = 512 * 1024 * 1024;
-
-const allowed_hardware_categories = new Set(['camera', 'lens', 'accessory', 'other']);
 
 export type settings_backup_list_entry = {
 	filename: string;
@@ -262,7 +261,7 @@ function parse_hardware_items_backup_json(raw: string): HardwareItemInsert[] {
 			throw new Error(`Duplicate hardware id: ${rec.id}`);
 		}
 		seen_ids.add(rec.id);
-		if (typeof rec.category !== 'string' || !allowed_hardware_categories.has(rec.category)) {
+		if (typeof rec.category !== 'string' || !hardware_allowed_category_set.has(rec.category)) {
 			throw new Error(`Invalid hardware category for id ${rec.id}`);
 		}
 		const model =

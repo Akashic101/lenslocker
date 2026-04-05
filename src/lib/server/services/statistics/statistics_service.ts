@@ -32,7 +32,7 @@ function ym_to_chart_label(ym: string): string {
 	return new Date(y, mo - 1, 1).toLocaleString('en', { month: 'short', year: 'numeric' });
 }
 
-export type gallery_statistics_v1 = {
+export type statistics_page_data = {
 	kpis: {
 		total: number;
 		total_bytes: number;
@@ -48,7 +48,7 @@ export type gallery_statistics_v1 = {
 	gps: { labels: string[]; series: number[] };
 };
 
-export async function load_gallery_statistics_v1(): Promise<gallery_statistics_v1> {
+export async function load_statistics_page(): Promise<statistics_page_data> {
 	const [kpi_row] = await db
 		.select({
 			total: count(),

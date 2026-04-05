@@ -1,7 +1,7 @@
-import { load_gallery_statistics_v1 } from '$lib/server/gallery_statistics_v1';
+import { load_statistics_page } from '$lib/server/services/statistics/statistics_service';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-	const stats = await load_gallery_statistics_v1();
+	const stats = await load_statistics_page();
 	return { stats };
 };

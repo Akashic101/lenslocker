@@ -1,11 +1,14 @@
 import { fail } from '@sveltejs/kit';
-import { desc, eq } from 'drizzle-orm';
-import { db } from '$lib/server/db';
-import { hardware_item } from '$lib/server/db/hardware.schema';
+import {
+	delete_hardware_item_by_id,
+	get_hardware_item_id_if_exists,
+	hardware_allowed_category_set,
+	insert_hardware_item_row,
+	list_hardware_items_for_page,
+	update_hardware_item_row
+} from '$lib/server/services/hardware/hardware_service';
 import { load_photo_gear_suggestions } from '$lib/server/photo_gear_suggestions';
 import type { Actions, PageServerLoad } from './$types';
-
-const allowed_categories = new Set(['camera', 'lens', 'accessory', 'other']);
 
 function optional_trimmed(form: FormData, key: string): string | null {
 	const v = String(form.get(key) ?? '').trim();
@@ -21,7 +24,7 @@ function optional_date_ms(form: FormData, key: string): number | null {
 
 export const load: PageServerLoad = async () => {
 	const [items, from_photos] = await Promise.all([
-		db.select().from(hardware_item).orderBy(desc(hardware_item.updated_at_ms)),
+		list_hardware_items_for_page(),
 		load_photo_gear_suggestions()
 	]);
 	return { items, from_photos };
@@ -34,7 +37,7 @@ export const actions: Actions = {
 		const category = String(form.get('category') ?? '').trim();
 		const model = String(form.get('model') ?? '').trim();
 
-		if (!allowed_categories.has(category)) {
+		if (!hardware_allowed_category_set.has(category)) {
 			return fail(400, { message: 'Choose a valid category.' });
 		}
 		if (model === '') {
@@ -54,20 +57,16 @@ export const actions: Actions = {
 		};
 
 		if (id === '') {
-			await db.insert(hardware_item).values({
+			await insert_hardware_item_row({
 				...row,
 				created_at_ms: now
 			});
 		} else {
-			const [existing] = await db
-				.select({ id: hardware_item.id })
-				.from(hardware_item)
-				.where(eq(hardware_item.id, id))
-				.limit(1);
-			if (!existing) {
+			const existing_id = await get_hardware_item_id_if_exists(id);
+			if (existing_id == null) {
 				return fail(404, { message: 'Item not found.' });
 			}
-			await db.update(hardware_item).set(row).where(eq(hardware_item.id, id));
+			await update_hardware_item_row(id, row);
 		}
 
 		return { success: true as const };
@@ -79,7 +78,7 @@ export const actions: Actions = {
 		if (id === '') {
 			return fail(400, { message: 'Missing id.' });
 		}
-		await db.delete(hardware_item).where(eq(hardware_item.id, id));
+		await delete_hardware_item_by_id(id);
 		return { success: true as const };
 	}
 };
