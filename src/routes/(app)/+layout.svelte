@@ -11,6 +11,7 @@
 	import { Avatar, Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
 	import {
 		ArchiveOutline,
+		BarsFromLeftOutline,
 		CameraPhotoOutline,
 		ChartMixedOutline,
 		CogOutline,
@@ -23,13 +24,6 @@
 	import { m } from '$lib/paraglide/messages.js';
 
 	let { children, data } = $props();
-
-	/** Refetch sidebar count on client navigations so it matches DB after uploads/archives on other routes. */
-	afterNavigate(({ from }) => {
-		if (from != null) {
-			void invalidate(gallery_active_upload_count_depends_key);
-		}
-	});
 
 	let active_url = $derived(page.url.pathname);
 
@@ -47,6 +41,25 @@
 
 	let sidebar_collapsed = $state(false);
 
+	/** Slide-over drawer on narrow viewports; desktop keeps the persistent rail. */
+	let mobile_nav_open = $state(false);
+
+	/** Used for mobile overlay vs rail and for `nav_rail_collapsed` (0 = unknown / assume desktop). */
+	let shell_inner_width = $state(0);
+
+	const is_shell_mobile = $derived(shell_inner_width > 0 && shell_inner_width < 768);
+
+	/** On mobile the drawer is always full labels, not the icon-only rail. */
+	const nav_rail_collapsed = $derived(is_shell_mobile ? false : sidebar_collapsed);
+
+	const mobile_drawer_transform_class = $derived(
+		is_shell_mobile
+			? mobile_nav_open
+				? 'max-md:translate-x-0'
+				: 'max-md:pointer-events-none max-md:-translate-x-full'
+			: ''
+	);
+
 	/** After sidebar width transition (~200ms), nudge ApexCharts / layout that depends on `resize`. */
 	let sidebar_layout_resize_timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -58,7 +71,15 @@
 		};
 	});
 
+	$effect(() => {
+		if (!is_shell_mobile) mobile_nav_open = false;
+	});
+
 	function toggle_sidebar_collapsed(): void {
+		if (is_shell_mobile) {
+			mobile_nav_open = false;
+			return;
+		}
 		sidebar_collapsed = !sidebar_collapsed;
 		if (browser) {
 			localStorage.setItem(sidebar_collapsed_storage_key, sidebar_collapsed ? '1' : '0');
@@ -70,21 +91,23 @@
 		}
 	}
 
-	const sidebar_item_label_class = $derived(sidebar_collapsed ? 'sr-only' : span_class);
+	const sidebar_item_label_class = $derived(nav_rail_collapsed ? 'sr-only' : span_class);
 
 	const sidebar_item_anchor_class = $derived(
-		sidebar_collapsed ? '!min-h-10 !justify-center' : '!min-h-10'
+		nav_rail_collapsed ? '!min-h-10 !justify-center' : '!min-h-10'
 	);
 
 	/** Fills the app shell (`h-svh`); main column scrolls independently so the rail stays pinned. */
 	const sidebar_shell_class = $derived(
-		sidebar_collapsed
+		(nav_rail_collapsed
 			? 'flex h-full min-h-0 !w-[3.5rem] min-w-[3.5rem] shrink-0 grow-0 flex-col self-stretch border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700'
-			: 'flex h-full min-h-0 !w-64 shrink-0 grow-0 flex-col self-stretch border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700'
+			: 'flex h-full min-h-0 !w-64 shrink-0 grow-0 flex-col self-stretch border-e border-gray-200 pt-6 transition-[width] duration-200 ease-out dark:border-gray-700') +
+			' max-md:!fixed max-md:inset-y-0 max-md:start-0 max-md:z-50 max-md:h-svh max-md:max-h-svh max-md:!w-64 max-md:min-w-64 max-md:shrink-0 max-md:transition-[transform] max-md:duration-200 max-md:ease-out md:!static md:max-h-none md:translate-x-0 ' +
+			mobile_drawer_transform_class
 	);
 
 	const sidebar_inner_div_class = $derived(
-		sidebar_collapsed
+		nav_rail_collapsed
 			? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden !px-1 py-4 bg-gray-50 dark:bg-gray-800'
 			: 'flex h-full min-h-0 flex-1 flex-col overflow-hidden px-3 py-4 bg-gray-50 dark:bg-gray-800'
 	);
@@ -107,9 +130,26 @@
 	const dashboard_all_active = $derived(active_url === '/' && gallery_focus_param === '');
 	const dashboard_attention_active = $derived(gallery_focus_param === 'needs_attention');
 	const dashboard_archived_active = $derived(gallery_focus_param === 'archived');
+
+	/** Refetch sidebar count on client navigations so it matches DB after uploads/archives on other routes. */
+	afterNavigate(({ from }) => {
+		if (from != null) {
+			void invalidate(gallery_active_upload_count_depends_key);
+		}
+		if (is_shell_mobile) mobile_nav_open = false;
+	});
 </script>
 
+<svelte:window bind:innerWidth={shell_inner_width} />
+
 <div class="flex h-svh min-h-0 w-full items-stretch overflow-hidden bg-gray-50 dark:bg-gray-900">
+	{#if mobile_nav_open}
+		<div
+			role="presentation"
+			class="fixed inset-0 z-40 bg-gray-900/60 md:hidden dark:bg-gray-950/70"
+			onclick={() => (mobile_nav_open = false)}
+		></div>
+	{/if}
 	<Sidebar
 		id="app-sidebar"
 		activeUrl={active_url}
@@ -133,10 +173,10 @@
 				<li class="mb-2 list-none">
 					<div
 						class="flex min-h-10 w-full items-center gap-2 px-0.5"
-						class:justify-center={sidebar_collapsed}
-						class:justify-between={!sidebar_collapsed}
+						class:justify-center={nav_rail_collapsed}
+						class:justify-between={!nav_rail_collapsed}
 					>
-						{#if !sidebar_collapsed}
+						{#if !nav_rail_collapsed}
 							<a
 								href={localizeHref(resolve('/'))}
 								class="min-w-0 flex-1 truncate text-lg font-semibold text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
@@ -147,15 +187,15 @@
 						<button
 							type="button"
 							class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-primary-300 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:ring-primary-800"
-							aria-expanded={!sidebar_collapsed}
+							aria-expanded={!nav_rail_collapsed}
 							aria-controls="app-sidebar"
-							aria-label={sidebar_collapsed
+							aria-label={nav_rail_collapsed
 								? m.royal_tidy_lark_layout_aria_expand_sidebar()
 								: m.royal_tidy_lark_layout_aria_collapse_sidebar()}
 							onclick={toggle_sidebar_collapsed}
 						>
 							<ChevronDoubleLeftOutline
-								class="h-5 w-5 transition-transform duration-200 {sidebar_collapsed
+								class="h-5 w-5 transition-transform duration-200 {nav_rail_collapsed
 									? 'rotate-180'
 									: ''}"
 								aria-hidden="true"
@@ -163,7 +203,7 @@
 						</button>
 					</div>
 				</li>
-				{#if sidebar_collapsed}
+				{#if nav_rail_collapsed}
 					<SidebarItem
 						label={m.tidy_best_bumblebee_feast_dashboard()}
 						spanClass={sidebar_item_label_class}
@@ -259,7 +299,7 @@
 					spanClass={sidebar_item_label_class}
 					aClass={sidebar_item_anchor_class}
 					href={upload_url}
-					title={sidebar_collapsed ? m.quaint_grand_snail_amaze_upload() : undefined}
+					title={nav_rail_collapsed ? m.quaint_grand_snail_amaze_upload() : undefined}
 				>
 					{#snippet icon()}
 						<UploadOutline
@@ -272,7 +312,7 @@
 					spanClass={sidebar_item_label_class}
 					aClass={sidebar_item_anchor_class}
 					href={hardware_url}
-					title={sidebar_collapsed ? m.such_tangy_mare_conquer_hardware() : undefined}
+					title={nav_rail_collapsed ? m.such_tangy_mare_conquer_hardware() : undefined}
 				>
 					{#snippet icon()}
 						<CameraPhotoOutline
@@ -285,7 +325,7 @@
 					spanClass={sidebar_item_label_class}
 					aClass={sidebar_item_anchor_class}
 					href={statistics_url}
-					title={sidebar_collapsed ? m.proud_tough_oryx_dare_statistics() : undefined}
+					title={nav_rail_collapsed ? m.proud_tough_oryx_dare_statistics() : undefined}
 				>
 					{#snippet icon()}
 						<ChartMixedOutline
@@ -298,7 +338,7 @@
 					spanClass={sidebar_item_label_class}
 					aClass={sidebar_item_anchor_class}
 					href={settings_url}
-					title={sidebar_collapsed ? m.fuzzy_dull_alpaca_achieve_settings() : undefined}
+					title={nav_rail_collapsed ? m.fuzzy_dull_alpaca_achieve_settings() : undefined}
 				>
 					{#snippet icon()}
 						<CogOutline
@@ -313,9 +353,9 @@
 				<li class="list-none">
 					<div
 						class="flex flex-col gap-2 px-0.5 pt-1 pb-3"
-						class:items-center={sidebar_collapsed}
-						class:items-start={!sidebar_collapsed}
-						class:ps-2={!sidebar_collapsed}
+						class:items-center={nav_rail_collapsed}
+						class:items-start={!nav_rail_collapsed}
+						class:ps-2={!nav_rail_collapsed}
 					>
 						<Avatar
 							cornerStyle="rounded"
@@ -334,6 +374,26 @@
 	</Sidebar>
 
 	<main class="min-h-0 min-w-0 flex-1 overflow-auto p-6 md:p-8">
+		<header
+			class="-mx-6 -mt-6 mb-4 flex items-center gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 md:hidden dark:border-gray-700 dark:bg-gray-900"
+		>
+			<button
+				type="button"
+				class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 focus:ring-2 focus:ring-primary-300 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:ring-primary-800"
+				aria-expanded={mobile_nav_open}
+				aria-controls="app-sidebar"
+				aria-label={m.royal_tidy_lark_layout_aria_expand_sidebar()}
+				onclick={() => (mobile_nav_open = true)}
+			>
+				<BarsFromLeftOutline class="h-6 w-6 shrink-0" aria-hidden="true" />
+			</button>
+			<a
+				href={localizeHref(resolve('/'))}
+				class="min-w-0 truncate text-lg font-semibold text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+			>
+				{m.clever_quiet_eagle_brand_lenslocker()}
+			</a>
+		</header>
 		{@render children()}
 	</main>
 </div>
