@@ -5,6 +5,7 @@
 	import { page } from '$app/state';
 	import { onMount, untrack } from 'svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
+	import GalleryImageGrid from '$lib/components/gallery_image_grid.svelte';
 	import { albums_list_depends_key } from '$lib/cache/albums_cache';
 	import { gallery_active_upload_count_depends_key } from '$lib/cache/gallery_upload_count_cache';
 	import { transformed_media_depends_key } from '$lib/cache/transformed_media_cache';
@@ -15,23 +16,17 @@
 	import { upload_meta_editable_field_list } from '$lib/gallery/upload_meta_editable_fields';
 	import { CloseButton, Modal } from 'flowbite-svelte';
 	import {
-		AdjustmentsHorizontalOutline,
-		AdjustmentsVerticalOutline,
-		CameraPhotoOutline,
 		ColumnOutline,
 		DownloadOutline,
 		ChevronDownOutline,
 		ChevronLeftOutline,
 		CheckOutline,
 		ChevronRightOutline,
-		ClockOutline,
 		ExclamationCircleOutline,
-		EyeOutline,
 		FilterOutline,
 		FilterSolid,
 		FolderOutline,
 		GridOutline,
-		ImageOutline,
 		PenOutline,
 		StarOutline,
 		StarSolid,
@@ -40,19 +35,10 @@
 	} from 'flowbite-svelte-icons';
 	import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
 	import { m } from '$lib/paraglide/messages.js';
+	import type { gallery_grid_item } from '$lib/gallery/gallery_grid_types';
 	import type { PageData } from './$types';
 
 	/* eslint-disable svelte/no-navigation-without-resolve -- localizeHref; /media/transformed/* URLs are not typed routes */
-
-	type gallery_grid_item = {
-		relative_path: string;
-		src: string;
-		full_src: string | null;
-		upload_id: string | null;
-		starred: boolean;
-		alt: string;
-		meta: { rows: { key: string; text: string }[] } | null;
-	};
 
 	type gallery_meta_camera_pair = { make: string; model: string };
 	type gallery_meta_lens_pair = { lens_make: string; lens_model: string };
@@ -282,8 +268,6 @@
 	function on_filter_lens_make_change(): void {
 		filter_lens_model = '';
 	}
-
-	const meta_icon_class = 'mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400';
 
 	let gallery_modal_open = $state(false);
 	let modal_heading = $state('');
@@ -816,7 +800,7 @@
 				throw new Error(text || response.statusText);
 			}
 			const blob = await response.blob();
-			const safe_heading = modal_heading.replace(/[^\w.\-]+/g, '_') || 'photo';
+			const safe_heading = modal_heading.replace(/[^\w.-]+/g, '_') || 'photo';
 			const fallback =
 				kind === 'preview' ? `${safe_heading}_preview.jpg` : safe_heading || 'download';
 			const download_name = parse_filename_from_content_disposition(
@@ -910,27 +894,6 @@
 		if (!modal_has_next || modal_action_loading) return;
 		e.preventDefault();
 		modal_go_delta(1);
-	}
-
-	function meta_row_icon_component(key: string) {
-		switch (key) {
-			case 'camera':
-				return CameraPhotoOutline;
-			case 'lens':
-				return EyeOutline;
-			case 'dimensions':
-				return ImageOutline;
-			case 'datetime':
-				return ClockOutline;
-			case 'resolution':
-				return AdjustmentsHorizontalOutline;
-			case 'file_size':
-				return FolderOutline;
-			case 'exposure':
-				return AdjustmentsVerticalOutline;
-			default:
-				return ImageOutline;
-		}
 	}
 
 	function format_detail_value(value: unknown): string {
@@ -1580,99 +1543,19 @@
 				{/if}
 			</p>
 		{:else}
-			<ul class={gallery_grid_list_class} role="list">
-				{#each gallery_images as item (item.relative_path)}
-					<li
-						class="relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 {gallery_selection_mode &&
-						item.upload_id != null &&
-						gallery_upload_is_selected(item.upload_id)
-							? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-gray-50 dark:ring-offset-gray-900'
-							: ''}"
-					>
-						{#if gallery_selection_mode && item.upload_id != null}
-							<span
-								class="pointer-events-none absolute top-1.5 left-1.5 z-10 flex h-6 w-6 items-center justify-center rounded border-2 border-white bg-black/50 shadow dark:border-gray-800"
-								aria-hidden="true"
-							>
-								{#if gallery_upload_is_selected(item.upload_id)}
-									<CheckOutline class="h-4 w-4 text-white" />
-								{/if}
-							</span>
-						{/if}
-						<button
-							type="button"
-							class="relative block w-full shrink-0 cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none"
-							onclick={(e) => on_gallery_tile_activate(item, e)}
-						>
-							<img
-								src={item.src}
-								alt={item.alt}
-								class="aspect-square w-full object-cover"
-								loading="lazy"
-								decoding="async"
-							/>
-							{#if item.starred}
-								<span
-									class="pointer-events-none absolute top-1 right-1 rounded bg-black/55 p-0.5 text-amber-300"
-									aria-hidden="true"
-								>
-									<StarSolid class="h-3.5 w-3.5" />
-								</span>
-							{/if}
-						</button>
-						{#if gallery_grid_show_meta && item.meta}
-							<button
-								type="button"
-								class="w-full border-t border-gray-200 bg-white/90 px-2 py-2 text-left dark:border-gray-700 dark:bg-gray-950/90"
-								onclick={(e) => on_gallery_tile_activate(item, e)}
-							>
-								<div
-									class="space-y-1"
-									role="group"
-									aria-label={m.calm_gray_martin_aria_photo_details()}
-								>
-									{#each item.meta.rows as row, row_i (`${item.relative_path}-${row.key}-${row_i}`)}
-										{@const Icon = meta_row_icon_component(row.key)}
-										<div
-											class="flex gap-1.5 text-[10px] leading-snug text-gray-700 dark:text-gray-300"
-										>
-											<Icon class={meta_icon_class} aria-hidden="true" />
-											<span class="min-w-0 wrap-break-word">{row.text}</span>
-										</div>
-									{/each}
-								</div>
-							</button>
-						{/if}
-					</li>
-				{/each}
-			</ul>
-
-			{#if gallery_has_more}
-				<div
-					bind:this={gallery_load_more_sentinel}
-					class="h-1 w-full shrink-0"
-					aria-hidden="true"
-				></div>
-			{/if}
-
-			{#if gallery_load_more_in_flight}
-				<p class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400" role="status">
-					{m.small_proud_robin_wait_preparing()}
-				</p>
-			{/if}
-
-			{#if gallery_load_more_error != null}
-				<p class="mt-4 text-center text-sm text-red-600 dark:text-red-400" role="alert">
-					{gallery_load_more_error}
-					<button
-						type="button"
-						class="ms-2 underline"
-						onclick={() => void fetch_next_gallery_batch()}
-					>
-						{m.still_kind_racoon_engage_next()}
-					</button>
-				</p>
-			{/if}
+			<GalleryImageGrid
+				images={gallery_images}
+				grid_list_class={gallery_grid_list_class}
+				show_meta={gallery_grid_show_meta}
+				selection_mode={gallery_selection_mode}
+				upload_is_selected={gallery_upload_is_selected}
+				on_tile_activate={on_gallery_tile_activate}
+				has_more={gallery_has_more}
+				load_more_in_flight={gallery_load_more_in_flight}
+				load_more_error={gallery_load_more_error}
+				on_retry_load_more={() => void fetch_next_gallery_batch()}
+				bind:load_more_sentinel_el={gallery_load_more_sentinel}
+			/>
 		{/if}
 	{/if}
 </div>
