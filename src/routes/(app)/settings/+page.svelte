@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { invalidate, invalidateAll } from '$app/navigation';
 	import { dashboard_attention_settings_depends_key } from '$lib/dashboard_attention_settings_cache';
@@ -304,6 +305,23 @@
 		not regenerated automatically. The gallery resolves modal images by format when you change this
 		setting.
 	</p>
+
+	{#if data.account_email}
+		<div
+			class="mt-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+		>
+			<h2 class="text-sm font-medium text-gray-900 dark:text-white">Account</h2>
+			<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{data.account_email}</p>
+			<form method="post" action="?/sign_out" class="mt-3" use:enhance>
+				<button
+					type="submit"
+					class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+				>
+					Sign out
+				</button>
+			</form>
+		</div>
+	{/if}
 
 	<div class="mt-8">
 		<Tabs bind:selected={selected_tab} tabStyle="underline" class="flex flex-wrap">
