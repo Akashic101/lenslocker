@@ -18,6 +18,8 @@
 		AdjustmentsVerticalOutline,
 		CameraPhotoOutline,
 		ColumnOutline,
+		DownloadOutline,
+		ChevronDownOutline,
 		ChevronLeftOutline,
 		CheckOutline,
 		ChevronRightOutline,
@@ -287,6 +289,9 @@
 	let modal_current_relative_path = $state('');
 	let modal_action_loading = $state(false);
 	let modal_action_error = $state<string | null>(null);
+	let modal_download_menu_open = $state(false);
+	let modal_download_loading = $state(false);
+	let modal_download_error = $state<string | null>(null);
 
 	let gallery_selection_mode = $state(false);
 	let gallery_selected_upload_ids = $state<string[]>([]);
@@ -562,6 +567,13 @@
 		return gallery_images.findIndex((i) => i.relative_path === modal_current_relative_path);
 	});
 
+	const modal_grid_item = $derived(
+		modal_list_index >= 0 ? gallery_images[modal_list_index] : undefined
+	);
+	const modal_can_download_preview = $derived(
+		modal_grid_item?.full_src != null && modal_grid_item.full_src !== ''
+	);
+
 	const modal_has_prev = $derived(modal_list_index > 0);
 	const modal_has_next = $derived(
 		modal_list_index >= 0 && modal_list_index < gallery_images.length - 1
@@ -752,9 +764,67 @@
 			untrack(() => {
 				revoke_modal_object_url();
 				modal_current_relative_path = '';
+				modal_download_menu_open = false;
+				modal_download_error = null;
 			});
 		}
 	});
+
+	function parse_filename_from_content_disposition(
+		header: string | null,
+		fallback: string
+	): string {
+		if (header == null || header === '') return fallback;
+		const star = header.match(/filename\*=UTF-8''([^;]+)/i);
+		if (star?.[1]) {
+			try {
+				return decodeURIComponent(star[1].trim());
+			} catch {
+				return fallback;
+			}
+		}
+		const quoted = header.match(/filename="((?:\\.|[^"\\])*)"/i);
+		if (quoted?.[1]) return quoted[1].replace(/\\(.)/g, '$1');
+		const plain = header.match(/filename=([^;\n]+)/i);
+		if (plain?.[1]) return plain[1].trim().replace(/^["']|["']$/g, '');
+		return fallback;
+	}
+
+	async function modal_trigger_download(kind: 'preview' | 'raw'): Promise<void> {
+		if (!browser || modal_upload_id == null) return;
+		modal_download_menu_open = false;
+		modal_download_loading = true;
+		modal_download_error = null;
+		try {
+			const u = resolve(`/api/gallery/download/${modal_upload_id}?kind=${kind}`);
+			const response = await fetch(u);
+			if (!response.ok) {
+				const text = await response.text();
+				throw new Error(text || response.statusText);
+			}
+			const blob = await response.blob();
+			const safe_heading = modal_heading.replace(/[^\w.\-]+/g, '_') || 'photo';
+			const fallback =
+				kind === 'preview' ? `${safe_heading}_preview.jpg` : safe_heading || 'download';
+			const download_name = parse_filename_from_content_disposition(
+				response.headers.get('Content-Disposition'),
+				fallback
+			);
+			const object_url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = object_url;
+			a.download = download_name;
+			a.rel = 'noopener';
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+			URL.revokeObjectURL(object_url);
+		} catch (e) {
+			modal_download_error = e instanceof Error ? e.message : String(e);
+		} finally {
+			modal_download_loading = false;
+		}
+	}
 
 	async function patch_gallery_upload(body: Record<string, unknown>): Promise<boolean> {
 		if (modal_upload_id == null) return false;
@@ -943,6 +1013,8 @@
 	async function open_gallery_modal(item: gallery_grid_item) {
 		modal_current_relative_path = item.relative_path;
 		modal_action_error = null;
+		modal_download_error = null;
+		modal_download_menu_open = false;
 		revoke_modal_object_url();
 		modal_image_session += 1;
 		const fetch_session = modal_image_session;
@@ -1639,6 +1711,39 @@
 							<TrashBinOutline class="h-5 w-5 shrink-0" />
 						{/if}
 					</button>
+					<details bind:open={modal_download_menu_open} class="relative">
+						<summary
+							class="flex cursor-pointer list-none items-center justify-center gap-0.5 rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden"
+							aria-label={m.quick_polite_gecko_modal_download_aria()}
+						>
+							<DownloadOutline class="h-5 w-5 shrink-0" aria-hidden="true" />
+							<ChevronDownOutline class="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
+							<span class="sr-only">{m.quick_polite_gecko_modal_download_trigger()}</span>
+						</summary>
+						<div
+							class="absolute end-0 top-full z-[60] mt-1 min-w-[11rem] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-800"
+							role="menu"
+						>
+							<button
+								type="button"
+								role="menuitem"
+								class="w-full px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-100 dark:hover:bg-gray-700"
+								disabled={modal_download_loading || !modal_can_download_preview}
+								onclick={() => void modal_trigger_download('preview')}
+							>
+								{m.quick_polite_gecko_modal_download_preview()}
+							</button>
+							<button
+								type="button"
+								role="menuitem"
+								class="w-full px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-100 dark:hover:bg-gray-700"
+								disabled={modal_download_loading}
+								onclick={() => void modal_trigger_download('raw')}
+							>
+								{m.quick_polite_gecko_modal_download_raw()}
+							</button>
+						</div>
+					</details>
 				{/if}
 			</div>
 			<CloseButton
@@ -1660,6 +1765,15 @@
 				role="alert"
 			>
 				{modal_action_error}
+			</p>
+		{/if}
+		{#if modal_download_error != null}
+			<p
+				class="shrink-0 border-b border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
+				role="alert"
+			>
+				{m.quick_polite_gecko_modal_download_failed()}
+				{modal_download_error}
 			</p>
 		{/if}
 		<div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row lg:items-stretch">

@@ -11,6 +11,7 @@
 		type needs_attention_field_catalog_entry
 	} from '$lib/gallery/needs_attention_catalog';
 	import { upload_preview_pipeline_defaults } from '$lib/config/upload_pipeline_defaults';
+	import { albums_list_depends_key } from '$lib/cache/albums_cache';
 	import { upload_pipeline_settings_depends_key } from '$lib/cache/upload_pipeline_settings_cache';
 	import type { upload_preview_format } from '$lib/config/upload_preview_format';
 	import ThemeToggle from '$lib/components/theme_toggle.svelte';
@@ -269,6 +270,8 @@
 			const parsed = JSON.parse(raw) as {
 				app_settings_count?: number;
 				hardware_items_count?: number;
+				albums_count?: number;
+				album_memberships_count?: number;
 				date_stamp?: string;
 				restored_full_database?: boolean;
 			};
@@ -279,18 +282,29 @@
 					? m.plain_tiny_wren_backup_stamp_suffix({ stamp: parsed.date_stamp })
 					: '';
 			const full = parsed.restored_full_database === true;
+			const album_c = parsed.albums_count;
+			const album_link_c = parsed.album_memberships_count;
 			backup_import_ok = full
 				? m.such_proud_puffin_restore_full_db({ stamp_suffix })
-				: m.calm_bright_dotterel_restore_partial({
-						app_count: ac,
-						hardware_count: hc,
-						stamp_suffix
-					});
+				: typeof album_c === 'number' && typeof album_link_c === 'number'
+					? m.calm_bright_dotterel_restore_partial_albums({
+							app_count: ac,
+							hardware_count: hc,
+							album_count: album_c,
+							album_link_count: album_link_c,
+							stamp_suffix
+						})
+					: m.calm_bright_dotterel_restore_partial({
+							app_count: ac,
+							hardware_count: hc,
+							stamp_suffix
+						});
 			if (full) {
 				await invalidateAll();
 			} else {
 				await invalidate(upload_pipeline_settings_depends_key);
 				await invalidate(dashboard_attention_settings_depends_key);
+				await invalidate(albums_list_depends_key);
 				await invalidate(settings_backup_list_depends_key);
 			}
 		} catch (e) {
@@ -699,6 +713,13 @@
 							>database.sqlite</code
 						>{m.level_maroon_nurse_backup_intro_c()}<code
 							class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800">app_setting</code
+						>,
+						<code class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
+							>hardware_item</code
+						>,
+						<code class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800">album</code>,
+						<code class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
+							>album_raw_upload</code
 						>
 						{m.level_maroon_nurse_backup_intro_d()}<code
 							class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"

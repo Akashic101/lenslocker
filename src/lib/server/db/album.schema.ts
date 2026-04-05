@@ -28,3 +28,4 @@ export const album_raw_upload = sqliteTable(
 
 export type AlbumRow = typeof album.$inferSelect;
 export type AlbumInsert = typeof album.$inferInsert;
+export type AlbumRawUploadInsert = typeof album_raw_upload.$inferInsert;

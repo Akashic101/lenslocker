@@ -7,6 +7,12 @@ import {
 	db,
 	replace_sqlite_database_from_backup_buffer
 } from '$lib/server/db';
+import {
+	album,
+	album_raw_upload,
+	type AlbumInsert,
+	type AlbumRawUploadInsert
+} from '$lib/server/db/album.schema';
 import { app_setting } from '$lib/server/db/app_setting.schema';
 import { hardware_item, type HardwareItemInsert } from '$lib/server/db/hardware.schema';
 import { hardware_allowed_category_set } from '$lib/server/services/hardware/hardware_service';
@@ -15,7 +21,8 @@ import { ensure_settings_backup_root } from '$lib/server/settings_backup_storage
 const backup_sequence_key = 'lenslocker_backup_sequence';
 const backup_filename_re = /^LensLocker-backup-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d+\.zip$/;
 const backup_zip_database_filename = 'database.sqlite';
-const supported_backup_schema_versions = new Set([1, 2]);
+const backup_row_uuid_re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const supported_backup_schema_versions = new Set([1, 2, 3]);
 const max_settings_backup_import_bytes = 512 * 1024 * 1024;
 
 export type settings_backup_list_entry = {
@@ -111,6 +118,8 @@ export async function create_settings_backup_zip(): Promise<{
 	const db_snapshot = capture_sqlite_database_for_backup_zip();
 	const settings_rows = await db.select().from(app_setting);
 	const hardware_rows = await db.select().from(hardware_item);
+	const album_rows = await db.select().from(album);
+	const album_member_rows = await db.select().from(album_raw_upload);
 
 	const zip = new JSZip();
 	const created_at_ms = Date.now();
@@ -119,11 +128,17 @@ export async function create_settings_backup_zip(): Promise<{
 		JSON.stringify(
 			{
 				app: 'LensLocker',
-				schema_version: 2,
+				schema_version: 3,
 				created_at_ms,
 				backup_sequence: seq,
 				date_stamp: stamp,
-				includes_database: true
+				includes_database: true,
+				json_sidecars: [
+					'app_settings.json',
+					'hardware_items.json',
+					'albums.json',
+					'album_raw_upload.json'
+				]
 			},
 			null,
 			2
@@ -132,6 +147,8 @@ export async function create_settings_backup_zip(): Promise<{
 	zip.file(backup_zip_database_filename, db_snapshot);
 	zip.file('app_settings.json', JSON.stringify(settings_rows, null, 2));
 	zip.file('hardware_items.json', JSON.stringify(hardware_rows, null, 2));
+	zip.file('albums.json', JSON.stringify(album_rows, null, 2));
+	zip.file('album_raw_upload.json', JSON.stringify(album_member_rows, null, 2));
 
 	const buf = Buffer.from(await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' }));
 	await fs.writeFile(path.join(root, filename), buf);
@@ -290,9 +307,85 @@ function parse_hardware_items_backup_json(raw: string): HardwareItemInsert[] {
 	return out;
 }
 
+function require_backup_uuid(v: unknown, label: string): string {
+	if (typeof v !== 'string' || !backup_row_uuid_re.test(v)) {
+		throw new Error(`Invalid ${label}`);
+	}
+	return v;
+}
+
+function parse_albums_backup_json(raw: string): AlbumInsert[] {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw) as unknown;
+	} catch {
+		throw new Error('albums.json is not valid JSON');
+	}
+	if (!Array.isArray(parsed)) {
+		throw new Error('albums.json must be a JSON array');
+	}
+	const out: AlbumInsert[] = [];
+	const seen_ids = new Set<string>();
+	for (const item of parsed) {
+		if (item === null || typeof item !== 'object') {
+			throw new Error('Invalid row in albums.json');
+		}
+		const rec = item as Record<string, unknown>;
+		const id = require_backup_uuid(rec.id, 'album id');
+		if (seen_ids.has(id)) {
+			throw new Error(`Duplicate album id: ${id}`);
+		}
+		seen_ids.add(id);
+		if (typeof rec.name !== 'string' || rec.name.trim() === '') {
+			throw new Error(`Invalid album name for id ${id}`);
+		}
+		out.push({
+			id,
+			name: rec.name.trim(),
+			created_at_ms: require_import_finite_number(rec.created_at_ms, 'album created_at_ms')
+		});
+	}
+	return out;
+}
+
+function parse_album_raw_upload_backup_json(raw: string): AlbumRawUploadInsert[] {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw) as unknown;
+	} catch {
+		throw new Error('album_raw_upload.json is not valid JSON');
+	}
+	if (!Array.isArray(parsed)) {
+		throw new Error('album_raw_upload.json must be a JSON array');
+	}
+	const out: AlbumRawUploadInsert[] = [];
+	const seen_pairs = new Set<string>();
+	for (const item of parsed) {
+		if (item === null || typeof item !== 'object') {
+			throw new Error('Invalid row in album_raw_upload.json');
+		}
+		const rec = item as Record<string, unknown>;
+		const album_id = require_backup_uuid(rec.album_id, 'album_raw_upload.album_id');
+		const raw_upload_id = require_backup_uuid(rec.raw_upload_id, 'album_raw_upload.raw_upload_id');
+		const pair_key = `${album_id}\0${raw_upload_id}`;
+		if (seen_pairs.has(pair_key)) {
+			throw new Error(`Duplicate album membership: ${album_id} / ${raw_upload_id}`);
+		}
+		seen_pairs.add(pair_key);
+		out.push({
+			album_id,
+			raw_upload_id,
+			added_at_ms: require_import_finite_number(rec.added_at_ms, 'album_raw_upload.added_at_ms')
+		});
+	}
+	return out;
+}
+
 export type settings_backup_import_result = {
 	app_settings_count: number;
 	hardware_items_count: number;
+	albums_count?: number;
+	album_memberships_count?: number;
 	date_stamp?: string;
 	restored_full_database: boolean;
 };
@@ -345,17 +438,21 @@ export async function import_settings_backup_from_zip_buffer(
 		replace_sqlite_database_from_backup_buffer(file_buffer);
 		const app_settings_count = db.select().from(app_setting).all().length;
 		const hardware_items_count = db.select().from(hardware_item).all().length;
+		const albums_count = db.select().from(album).all().length;
+		const album_memberships_count = db.select().from(album_raw_upload).all().length;
 		return {
 			app_settings_count,
 			hardware_items_count,
+			albums_count,
+			album_memberships_count,
 			date_stamp: typeof man.date_stamp === 'string' ? man.date_stamp : undefined,
 			restored_full_database: true
 		};
 	}
 
-	if (manifest_version === 2) {
+	if (manifest_version === 2 || manifest_version === 3) {
 		throw new Error(
-			`This backup declares schema v2 but is missing ${backup_zip_database_filename} (incomplete archive)`
+			`This backup declares schema v${manifest_version} but is missing ${backup_zip_database_filename} (incomplete archive)`
 		);
 	}
 
@@ -370,6 +467,24 @@ export async function import_settings_backup_from_zip_buffer(
 	const app_rows = parse_app_settings_backup_json(await app_entry.async('string'));
 	const hardware_rows = parse_hardware_items_backup_json(await hardware_entry.async('string'));
 
+	const albums_entry = find_zip_file(zip, 'albums.json');
+	const album_ru_entry = find_zip_file(zip, 'album_raw_upload.json');
+	let album_rows_parsed: AlbumInsert[] = [];
+	let album_link_rows_parsed: AlbumRawUploadInsert[] = [];
+	let include_album_sidecar = false;
+	if (albums_entry != null || album_ru_entry != null) {
+		if (albums_entry == null || album_ru_entry == null) {
+			throw new Error(
+				'Zip must contain both albums.json and album_raw_upload.json when either is present'
+			);
+		}
+		include_album_sidecar = true;
+		album_rows_parsed = parse_albums_backup_json(await albums_entry.async('string'));
+		album_link_rows_parsed = parse_album_raw_upload_backup_json(
+			await album_ru_entry.async('string')
+		);
+	}
+
 	db.transaction((tx) => {
 		tx.delete(hardware_item)
 			.where(sql`1 = 1`)
@@ -377,6 +492,14 @@ export async function import_settings_backup_from_zip_buffer(
 		tx.delete(app_setting)
 			.where(sql`1 = 1`)
 			.run();
+		if (include_album_sidecar) {
+			tx.delete(album_raw_upload)
+				.where(sql`1 = 1`)
+				.run();
+			tx.delete(album)
+				.where(sql`1 = 1`)
+				.run();
+		}
 		for (const batch of chunk_array(app_rows, 80)) {
 			if (batch.length > 0) {
 				tx.insert(app_setting).values(batch).run();
@@ -387,11 +510,27 @@ export async function import_settings_backup_from_zip_buffer(
 				tx.insert(hardware_item).values(batch).run();
 			}
 		}
+		for (const batch of chunk_array(album_rows_parsed, 40)) {
+			if (batch.length > 0) {
+				tx.insert(album).values(batch).run();
+			}
+		}
+		for (const batch of chunk_array(album_link_rows_parsed, 80)) {
+			if (batch.length > 0) {
+				tx.insert(album_raw_upload).values(batch).run();
+			}
+		}
 	});
 
 	return {
 		app_settings_count: app_rows.length,
 		hardware_items_count: hardware_rows.length,
+		...(include_album_sidecar
+			? {
+					albums_count: album_rows_parsed.length,
+					album_memberships_count: album_link_rows_parsed.length
+				}
+			: {}),
 		date_stamp: typeof man.date_stamp === 'string' ? man.date_stamp : undefined,
 		restored_full_database: false
 	};
