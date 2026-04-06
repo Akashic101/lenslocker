@@ -37,6 +37,9 @@ jobs:
       - name: Format and ESLint
         run: bun run lint
 
+      - name: Compile Paraglide (gitignored; required for knip to resolve $lib/paraglide)
+        run: bunx @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
+
       - name: knip
         run: bun run knip
 
