@@ -26,7 +26,7 @@ const backup_row_uuid_re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 const supported_backup_schema_versions = new Set([1, 2, 3, 4]);
 const max_settings_backup_import_bytes = 512 * 1024 * 1024;
 
-export type settings_backup_list_entry = {
+type settings_backup_list_entry = {
 	filename: string;
 	size_bytes: number;
 	created_at_ms: number;
@@ -38,7 +38,7 @@ export function is_valid_settings_backup_filename(name: string): boolean {
 }
 
 /** Reads next sequence, persists sequence+1, returns the number used for this backup file. */
-export function take_next_backup_sequence(): number {
+function take_next_backup_sequence(): number {
 	return db.transaction((tx) => {
 		const rows = tx
 			.select()
@@ -454,7 +454,7 @@ function parse_share_links_backup_json(raw: string): ShareLinkInsert[] {
 	return out;
 }
 
-export type settings_backup_import_result = {
+type settings_backup_import_result = {
 	app_settings_count: number;
 	hardware_items_count: number;
 	albums_count?: number;

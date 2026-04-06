@@ -37,6 +37,9 @@ jobs:
       - name: Format and ESLint
         run: bun run lint
 
+      - name: knip
+        run: bun run knip
+
       - name: Unit tests with coverage (≥95% statements/branches/functions/lines)
         run: bun run test:unit -- --run --coverage --project server
 

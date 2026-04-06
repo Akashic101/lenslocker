@@ -4,9 +4,9 @@ import {
 	type upload_meta_editable_field_key
 } from '$lib/gallery/upload_meta_editable_fields';
 
-export const upload_meta_patchable_columns = upload_meta_editable_field_list.map((f) => f.key);
+const upload_meta_patchable_columns = upload_meta_editable_field_list.map((f) => f.key);
 
-export type upload_meta_patchable_key = upload_meta_editable_field_key;
+type upload_meta_patchable_key = upload_meta_editable_field_key;
 
 const patchable_set = new Set<string>(upload_meta_patchable_columns);
 
@@ -46,7 +46,7 @@ function coerce_real(v: unknown): number | null {
 	return Number.isFinite(n) ? n : null;
 }
 
-export type upload_meta_patch_result =
+type upload_meta_patch_result =
 	| { ok: true; patch: Partial<RawImageUploadRow> }
 	| { ok: false; error: string };
 

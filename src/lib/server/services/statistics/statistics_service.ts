@@ -41,7 +41,7 @@ function iso_week_bucket_to_chart_label(bucket: string): string {
 	return `${year_str} W${week_num}`;
 }
 
-export type statistics_page_data = {
+type statistics_page_data = {
 	kpis: {
 		total: number;
 		total_bytes: number;

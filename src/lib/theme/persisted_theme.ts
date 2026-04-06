@@ -1,7 +1,7 @@
 /** Matches flowbite-svelte `DarkMode` so existing saved choices keep working. */
 export const persisted_theme_storage_key = 'THEME_PREFERENCE_KEY';
 
-export type persisted_theme_value = 'dark' | 'light';
+type persisted_theme_value = 'dark' | 'light';
 
 export function read_stored_theme(): persisted_theme_value | null {
 	if (typeof localStorage === 'undefined') return null;

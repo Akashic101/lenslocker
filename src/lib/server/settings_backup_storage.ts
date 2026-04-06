@@ -3,7 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import { env } from '$env/dynamic/private';
 
 /** Absolute directory for LensLocker settings backup zips. */
-export function get_settings_backup_root(): string {
+function get_settings_backup_root(): string {
 	const override = env.LENSLOCKER_BACKUP_ROOT?.trim();
 	if (override) return path.resolve(override);
 	return path.resolve(process.cwd(), 'data', 'backups');

@@ -1,4 +1,4 @@
-import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
+import { access, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import exifr from 'exifr';
 
@@ -54,18 +54,12 @@ const preview_subdir = 'upload-previews';
  */
 const exiftool_raw_preview_tags = ['JpgFromRaw', 'PreviewImage', 'OtherImage', 'ThumbnailImage'];
 
-export function preview_thumb_relative_path(
-	upload_id: string,
-	format: upload_preview_format
-): string {
+function preview_thumb_relative_path(upload_id: string, format: upload_preview_format): string {
 	const ext = upload_preview_format_file_ext(format);
 	return path.posix.join(preview_subdir, `${upload_id}_thumb${ext}`);
 }
 
-export function preview_full_relative_path(
-	upload_id: string,
-	format: upload_preview_format
-): string {
+function preview_full_relative_path(upload_id: string, format: upload_preview_format): string {
 	const ext = upload_preview_format_file_ext(format);
 	return path.posix.join(preview_subdir, `${upload_id}_full${ext}`);
 }
@@ -116,29 +110,6 @@ export async function resolve_upload_preview_thumb_relative_path(
 		}
 	}
 	return null;
-}
-
-/** Removes grid + modal previews for an upload (all supported extensions; ignores missing files). */
-export async function delete_upload_preview_jpegs(upload_id: string): Promise<void> {
-	const root = path.resolve(get_transformed_root_absolute_path());
-	for (const fmt of upload_preview_formats) {
-		for (const rel of [
-			preview_thumb_relative_path(upload_id, fmt),
-			preview_full_relative_path(upload_id, fmt)
-		]) {
-			const abs = path.resolve(root, ...rel.split(path.posix.sep));
-			if (!abs.startsWith(root + path.sep) && abs !== root) continue;
-			try {
-				await unlink(abs);
-			} catch (e) {
-				const code =
-					e && typeof e === 'object' && 'code' in e ? (e as NodeJS.ErrnoException).code : undefined;
-				if (code !== 'ENOENT') {
-					console.error(`${log_prefix} unlink failed (${rel}):`, e);
-				}
-			}
-		}
-	}
 }
 
 function to_buffer(input: ArrayBuffer | Uint8Array): Buffer {
@@ -403,7 +374,7 @@ async function write_thumb_and_full_jpegs(
 	await writeFile(full_abs, full_buf);
 }
 
-export type write_preview_jpeg_options = {
+type write_preview_jpeg_options = {
 	/** Saved upload file on disk; required for ExifTool to read large embedded JPEGs from RAW. */
 	source_absolute_path?: string | null;
 	/** EXIF orientation 1–8 from metadata when `exifr.rotation` on the buffer is inconclusive. */

@@ -17,14 +17,14 @@ import {
 } from '$lib/server/raw_upload/paths';
 import { write_preview_jpeg_for_upload } from '$lib/server/raw_upload/write_preview_jpeg';
 
-export type process_raw_upload_input = {
+type process_raw_upload_input = {
 	original_filename: string;
 	byte_size: number;
 	mime_type: string | null;
 	buffer: ArrayBuffer;
 };
 
-export type process_raw_upload_ok = {
+type process_raw_upload_ok = {
 	ok: true;
 	id: string;
 	original_filename: string;
@@ -34,12 +34,12 @@ export type process_raw_upload_ok = {
 	duplicate?: boolean;
 };
 
-export type process_raw_upload_err = {
+type process_raw_upload_err = {
 	ok: false;
 	message: string;
 };
 
-export type process_raw_upload_result = process_raw_upload_ok | process_raw_upload_err;
+type process_raw_upload_result = process_raw_upload_ok | process_raw_upload_err;
 
 /**
  * Store one RAW-like file, persist EXIF metadata to SQLite, and generate JPEG previews.

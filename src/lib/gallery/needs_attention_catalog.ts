@@ -20,8 +20,6 @@ export const needs_attention_special_field_keys = [
 	'exposure_both_missing'
 ] as const;
 
-export type needs_attention_special_field_key = (typeof needs_attention_special_field_keys)[number];
-
 const editable_label_by_key = new Map<string, string>(
 	upload_meta_editable_field_list.map((field) => [field.key, field.label])
 );

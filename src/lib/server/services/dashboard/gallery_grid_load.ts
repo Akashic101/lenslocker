@@ -39,10 +39,9 @@ import {
 import { db } from '$lib/server/db';
 
 export { dashboard_images_per_page };
-export type { album_summary_row };
 
 /** URL `sort=` values; default `date_desc` when absent or invalid. */
-export type gallery_sort_key =
+type gallery_sort_key =
 	| 'date_desc'
 	| 'date_asc'
 	| 'iso_desc'
@@ -59,7 +58,7 @@ const gallery_sort_allowed = new Set<gallery_sort_key>([
 	'size_asc'
 ]);
 
-export function parse_gallery_sort(sp: URLSearchParams): gallery_sort_key {
+function parse_gallery_sort(sp: URLSearchParams): gallery_sort_key {
 	const v = (sp.get('sort') ?? '').trim() as gallery_sort_key;
 	if (gallery_sort_allowed.has(v)) return v;
 	return 'date_desc';
@@ -206,7 +205,7 @@ async function sort_gallery_paths(paths: string[], sort: gallery_sort_key): Prom
 	return copy;
 }
 
-export type gallery_grid_image_row = {
+type gallery_grid_image_row = {
 	relative_path: string;
 	src: string;
 	full_src: string | null;
@@ -220,7 +219,7 @@ function trim_param(sp: URLSearchParams, key: string): string {
 	return (sp.get(key) ?? '').trim();
 }
 
-export function parse_gallery_focus(sp: URLSearchParams): dashboard_gallery_focus_mode | null {
+function parse_gallery_focus(sp: URLSearchParams): dashboard_gallery_focus_mode | null {
 	const v = (sp.get('gallery_focus') ?? '').trim();
 	if (v === 'needs_attention' || v === 'archived' || v === 'albums' || v === 'album') {
 		return v;
@@ -228,7 +227,7 @@ export function parse_gallery_focus(sp: URLSearchParams): dashboard_gallery_focu
 	return null;
 }
 
-export function build_gallery_filter_query(sp: URLSearchParams): string {
+function build_gallery_filter_query(sp: URLSearchParams): string {
 	const keys = [
 		'camera_make',
 		'camera_model',

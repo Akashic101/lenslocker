@@ -54,7 +54,7 @@ export async function insert_raw_upload_row(row: RawImageUploadInsert): Promise<
 	await db.insert(raw_image_upload).values(row);
 }
 
-export type photo_gear_suggestions = {
+type photo_gear_suggestions = {
 	camera_makes: string[];
 	camera_models: string[];
 	/** Pairs from EXIF (for filtering model list by selected make). */

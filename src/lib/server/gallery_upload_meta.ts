@@ -21,7 +21,7 @@ export function upload_id_from_transformed_preview_path(
 	return full_match?.[1] ?? null;
 }
 
-export type gallery_upload_meta_input = {
+type gallery_upload_meta_input = {
 	make: string | null;
 	model: string | null;
 	lens_make: string | null;
@@ -41,9 +41,9 @@ export type gallery_upload_meta_input = {
 	f_number: number | null;
 };
 
-export type gallery_meta_row = { key: gallery_meta_row_key; text: string };
+type gallery_meta_row = { key: gallery_meta_row_key; text: string };
 
-export type gallery_meta_row_key =
+type gallery_meta_row_key =
 	| 'camera'
 	| 'lens'
 	| 'dimensions'

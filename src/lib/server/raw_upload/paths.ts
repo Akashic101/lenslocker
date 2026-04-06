@@ -8,7 +8,7 @@ export function get_raw_upload_root(): string {
 	return path.resolve(process.cwd(), 'data', 'uploads', 'raw');
 }
 
-export type raw_upload_exif_date_fields = {
+type raw_upload_exif_date_fields = {
 	datetime_original?: string | null;
 	datetime_digitized?: string | null;
 	datetime_created?: string | null;

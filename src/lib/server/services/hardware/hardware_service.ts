@@ -31,7 +31,7 @@ export async function insert_hardware_item_row(values: HardwareItemInsert): Prom
 }
 
 /** Fields allowed on update (identity and `created_at_ms` are immutable). */
-export type hardware_item_update_payload = Omit<HardwareItemInsert, 'id' | 'created_at_ms'>;
+type hardware_item_update_payload = Omit<HardwareItemInsert, 'id' | 'created_at_ms'>;
 
 export async function update_hardware_item_row(
 	id: string,

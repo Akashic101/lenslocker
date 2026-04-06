@@ -17,7 +17,7 @@ import { list_raw_upload_ids_in_album } from '$lib/server/services/album/album_s
 import { get_upload_preview_pipeline_settings } from '$lib/server/services/settings/upload_pipeline_settings';
 import { load_raw_upload_meta_rows_for_ids } from '$lib/server/services/dashboard/dashboard_service';
 
-export type share_link_kind = 'album' | 'raw_upload';
+type share_link_kind = 'album' | 'raw_upload';
 
 function new_share_token(): string {
 	return randomBytes(24).toString('base64url');
@@ -72,7 +72,7 @@ export async function create_share_link(input: {
 	return inserted[0]!;
 }
 
-export function share_link_is_expired(row: ShareLinkRow): boolean {
+function share_link_is_expired(row: ShareLinkRow): boolean {
 	if (row.expires_at_ms == null) return false;
 	return Date.now() > row.expires_at_ms;
 }
@@ -85,7 +85,7 @@ export async function get_valid_share_by_token(token: string): Promise<ShareLink
 	return row;
 }
 
-export type share_page_token_status =
+type share_page_token_status =
 	| { kind: 'valid'; row: ShareLinkRow }
 	| { kind: 'expired' }
 	| { kind: 'not_found' };
@@ -110,7 +110,7 @@ export async function delete_share_link_for_user(
 	return result.changes > 0;
 }
 
-export type share_link_list_item = {
+type share_link_list_item = {
 	id: string;
 	token: string;
 	expires_at_ms: number | null;
