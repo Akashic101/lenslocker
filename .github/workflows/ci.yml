@@ -15,6 +15,9 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Required so `vite build` / SvelteKit postbuild can load server modules that open SQLite.
+      DATABASE_URL: ':memory:'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
