@@ -138,6 +138,44 @@
 		};
 	}
 
+	function build_shots_by_capture_week_chart_options(s: gallery_stats): ApexOptions {
+		return {
+			chart: {
+				type: 'bar',
+				width: '100%',
+				height: 360,
+				fontFamily: 'inherit',
+				toolbar: { show: false },
+				redrawOnWindowResize: true,
+				redrawOnParentResize: true
+			},
+			plotOptions: { bar: { borderRadius: 4, columnWidth: '72%' } },
+			series: [
+				{
+					name: m.bold_misty_crow_ring_photos_per_capture_week(),
+					data: s.shots_by_capture_week.series
+				}
+			],
+			xaxis: {
+				categories: s.shots_by_capture_week.labels,
+				labels: {
+					rotate: -45,
+					hideOverlappingLabels: true,
+					style: { colors: '#6b7280' }
+				}
+			},
+			yaxis: { labels: { style: { colors: '#6b7280' } } },
+			colors: ['#14b8a6'],
+			dataLabels: { enabled: false },
+			grid: { borderColor: '#e5e7eb', strokeDashArray: 4 },
+			tooltip: {
+				y: {
+					formatter: (val: number) => m.weary_stout_robin_chart_tip_photos({ val: String(val) })
+				}
+			}
+		};
+	}
+
 	function build_top_cameras_chart_options(s: gallery_stats): ApexOptions {
 		const n = Math.max(s.top_cameras.labels.length, 1);
 		return {
@@ -204,6 +242,9 @@
 	const uploads_by_month_chart_options = $derived.by(
 		(): ApexOptions => build_uploads_by_month_chart_options(stats)
 	);
+	const shots_by_capture_week_chart_options = $derived.by(
+		(): ApexOptions => build_shots_by_capture_week_chart_options(stats)
+	);
 	const top_cameras_chart_options = $derived.by(
 		(): ApexOptions => build_top_cameras_chart_options(stats)
 	);
@@ -212,6 +253,7 @@
 	const show_charts = $derived(stats.kpis.total > 0);
 	const show_camera_chart = $derived(stats.top_cameras.labels.length > 0);
 	const show_month_chart = $derived(stats.uploads_by_month.labels.length > 0);
+	const show_shot_week_chart = $derived(stats.shots_by_capture_week.labels.length > 0);
 
 	const kpi_card_class =
 		'rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800';
@@ -332,6 +374,23 @@
 				{:else}
 					<p class="text-sm text-gray-500 dark:text-gray-400">
 						{m.chunky_least_pig_persist_no_monthly_upload_data_to_plot()}.
+					</p>
+				{/if}
+			</div>
+
+			<div class={chart_card_class + ' lg:col-span-2'}>
+				<h2 class={chart_title_class}>{m.swift_kind_goose_lift_photos_by_capture_week()}</h2>
+				<p class={chart_subtitle_class}>{m.tidy_bright_hawk_nest_iso_week_from_exif()}</p>
+				{#if show_shot_week_chart}
+					<div class={chart_host_class}>
+						<Chart
+							options={shots_by_capture_week_chart_options}
+							class="min-h-[360px] w-full max-w-full"
+						/>
+					</div>
+				{:else}
+					<p class="text-sm text-gray-500 dark:text-gray-400">
+						{m.empty_wise_eagle_skip_no_shot_week_chart()}.
 					</p>
 				{/if}
 			</div>

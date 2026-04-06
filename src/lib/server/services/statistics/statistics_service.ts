@@ -1,6 +1,7 @@
 import { sql, count, desc, asc, gte } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { raw_image_upload } from '$lib/server/db/raw_image_upload.schema';
+import { sql_shot_calendar_date } from '$lib/server/gallery_shot_date_sql';
 
 const thirty_six_months_ms = Math.round(36 * 30.44 * 24 * 60 * 60 * 1000);
 
@@ -32,6 +33,14 @@ function ym_to_chart_label(ym: string): string {
 	return new Date(y, mo - 1, 1).toLocaleString('en', { month: 'short', year: 'numeric' });
 }
 
+function iso_week_bucket_to_chart_label(bucket: string): string {
+	const match_result = bucket.match(/^(\d{4})-W(\d{2})$/);
+	if (!match_result) return bucket;
+	const year_str = match_result[1];
+	const week_num = Number(match_result[2]);
+	return `${year_str} W${week_num}`;
+}
+
 export type statistics_page_data = {
 	kpis: {
 		total: number;
@@ -43,6 +52,8 @@ export type statistics_page_data = {
 	/** Mutually exclusive: in-gallery unstarred, in-gallery starred, archived (any star). */
 	gallery_archived_starred: { labels: string[]; series: number[] };
 	uploads_by_month: { labels: string[]; series: number[] };
+	/** ISO week buckets (`YYYY-Www`) from EXIF shot calendar date; photos without a date omitted. */
+	shots_by_capture_week: { labels: string[]; series: number[] };
 	top_cameras: { labels: string[]; series: number[] };
 	iso_buckets: { labels: string[]; series: number[] };
 	gps: { labels: string[]; series: number[] };
@@ -119,6 +130,29 @@ export async function load_statistics_page(): Promise<statistics_page_data> {
 	const uploads_by_month = {
 		labels: month_rows.map((r) => ym_to_chart_label(String(r.ym))),
 		series: month_rows.map((r) => Number(r.c))
+	};
+
+	const shot_cal = sql_shot_calendar_date();
+	const iso_week_bucket = sql<string>`strftime('%G-W%V', date(${shot_cal}))`;
+
+	let shot_week_rows = await db
+		.select({
+			iso_week: iso_week_bucket,
+			c: count()
+		})
+		.from(raw_image_upload)
+		.where(sql`${shot_cal} IS NOT NULL`)
+		.groupBy(iso_week_bucket)
+		.having(sql`${iso_week_bucket} IS NOT NULL`)
+		.orderBy(asc(iso_week_bucket));
+
+	if (shot_week_rows.length > 52) {
+		shot_week_rows = shot_week_rows.slice(-52);
+	}
+
+	const shots_by_capture_week = {
+		labels: shot_week_rows.map((r) => iso_week_bucket_to_chart_label(String(r.iso_week))),
+		series: shot_week_rows.map((r) => Number(r.c))
 	};
 
 	const camera_rows = await db
@@ -212,6 +246,7 @@ export async function load_statistics_page(): Promise<statistics_page_data> {
 		kpis: { total, total_bytes, active, archived, starred },
 		gallery_archived_starred,
 		uploads_by_month,
+		shots_by_capture_week,
 		top_cameras,
 		iso_buckets,
 		gps
