@@ -1,4 +1,5 @@
 <script lang="ts">
+	/* eslint-disable svelte/no-navigation-without-resolve -- external OpenStreetMap link in toolbar */
 	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
 	import { invalidate } from '$app/navigation';
@@ -16,7 +17,11 @@
 	import { upload_meta_editable_field_list } from '$lib/gallery/upload_meta_editable_fields';
 	import GallerySharePanel from '$lib/components/gallery_share_panel.svelte';
 	import { Modal } from 'flowbite-svelte';
-	import { ExclamationCircleOutline, ShareNodesOutline } from 'flowbite-svelte-icons';
+	import {
+		ExclamationCircleOutline,
+		MapPinOutline,
+		ShareNodesOutline
+	} from 'flowbite-svelte-icons';
 	import { untrack } from 'svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -94,6 +99,24 @@
 		'gps_latitude',
 		'gps_longitude'
 	]);
+
+	function parse_gps_component(value: unknown): number | null {
+		if (value === null || value === undefined) return null;
+		if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+		if (typeof value === 'string' && value.trim() !== '') {
+			const n = Number(value);
+			return Number.isFinite(n) ? n : null;
+		}
+		return null;
+	}
+
+	const modal_openstreetmap_href = $derived.by(() => {
+		if (modal_detail == null) return null;
+		const lat = parse_gps_component(modal_detail.gps_latitude);
+		const lon = parse_gps_component(modal_detail.gps_longitude);
+		if (lat == null || lon == null) return null;
+		return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}&zoom=16`;
+	});
 
 	function reset_preview_zoom_pan(): void {
 		preview_scale = 1;
@@ -563,6 +586,18 @@
 						>
 							<ShareNodesOutline class="h-5 w-5 shrink-0" />
 						</button>
+					{/if}
+					{#if modal_openstreetmap_href != null}
+						<a
+							href={modal_openstreetmap_href}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+							aria-label={m.vivid_calm_puffin_open_location_osm()}
+							title={m.vivid_calm_puffin_open_location_osm()}
+						>
+							<MapPinOutline class="h-5 w-5 shrink-0" aria-hidden="true" />
+						</a>
 					{/if}
 					<GalleryDetailModalHeaderActions
 						prev_disabled={!modal_has_prev || modal_action_loading}
