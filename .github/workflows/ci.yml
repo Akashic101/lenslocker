@@ -16,8 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      # Required so `vite build` / SvelteKit postbuild can load server modules that open SQLite.
+      # Server modules run during `vite build` / SvelteKit postbuild; match what a real deploy sets.
       DATABASE_URL: ':memory:'
+      # `auth.ts` uses ORIGIN for Better Auth `baseURL` when not in dev; empty breaks redirects and logs warnings.
+      ORIGIN: http://127.0.0.1:3000
+      # Required by Better Auth at init; value is only for CI, not a real secret.
+      BETTER_AUTH_SECRET: ci-only-placeholder-not-for-production-min-32-chars-long
     steps:
       - name: Checkout
         uses: actions/checkout@v4
