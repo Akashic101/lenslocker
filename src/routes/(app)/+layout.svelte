@@ -7,7 +7,6 @@
 	import { gallery_active_upload_count_depends_key } from '$lib/cache/gallery_upload_count_cache';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import { onMount } from 'svelte';
-	import { slide } from 'svelte/transition';
 	import { Avatar, Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
 	import {
 		ArchiveOutline,
@@ -149,6 +148,8 @@
 			void invalidate(gallery_active_upload_count_depends_key);
 		}
 		if (is_shell_mobile) mobile_nav_open = false;
+		/** Avoid `transition:slide` teardown racing route swaps (Svelte can throw `node.remove is not a function`). */
+		if (page.url.pathname !== '/') dashboard_menu_open = false;
 	});
 </script>
 
@@ -276,11 +277,7 @@
 							</button>
 						</div>
 						{#if dashboard_menu_open}
-							<ul
-								id="dashboard-submenu"
-								class="space-y-0 py-2"
-								transition:slide={{ duration: 150 }}
-							>
+							<ul id="dashboard-submenu" class="space-y-0 py-2">
 								<SidebarItem
 									label={m.funny_grand_mink_coax_review()}
 									spanClass={span_class}
