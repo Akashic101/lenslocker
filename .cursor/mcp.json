@@ -4,8 +4,8 @@
 			"url": "https://mcp.svelte.dev/mcp"
 		},
 		"tailwindcss-server": {
-		  "command": "npx",
-		  "args": ["-y", "tailwindcss-mcp-server"]
+			"command": "npx",
+			"args": ["-y", "tailwindcss-mcp-server"]
 		}
 	}
 }

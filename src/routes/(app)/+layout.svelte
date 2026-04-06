@@ -1,6 +1,6 @@
 <script lang="ts">
 	/* eslint-disable svelte/no-navigation-without-resolve -- sidebar hrefs use localizeHref(resolve(...)) */
-	import { browser } from '$app/environment';
+	import { browser, dev } from '$app/environment';
 	import { afterNavigate, invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
@@ -193,7 +193,13 @@
 								href={localizeHref(resolve('/'))}
 								class="min-w-0 flex-1 truncate text-lg font-semibold text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
 							>
-								{m.clever_quiet_eagle_brand_lenslocker()}
+								{#if dev}
+									<span class="inline-block rotate-180 text-xl font-bold"
+										>{m.clever_quiet_eagle_brand_lenslocker()}</span
+									>
+								{:else}
+									{m.clever_quiet_eagle_brand_lenslocker()}
+								{/if}
 							</a>
 						{/if}
 						<button
@@ -416,7 +422,13 @@
 				href={localizeHref(resolve('/'))}
 				class="min-w-0 truncate text-lg font-semibold text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
 			>
-				{m.clever_quiet_eagle_brand_lenslocker()}
+				{#if dev}
+					<span class="inline-block rotate-180 text-xl font-bold"
+						>{m.clever_quiet_eagle_brand_lenslocker()}</span
+					>
+				{:else}
+					{m.clever_quiet_eagle_brand_lenslocker()}
+				{/if}
 			</a>
 		</header>
 		{@render children()}
