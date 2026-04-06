@@ -438,7 +438,7 @@ export async function write_preview_jpeg_for_upload(
 		if (is_raw_like_filename(original_filename)) {
 			/**
 			 * One “master” raster from the RAW: prefer the largest of (a) Sharp/libraw decode,
-			 * (b) ExifTool JpgFromRaw / PreviewImage / …, (c) legacy exifr IFD1 thumb if no path.
+			 * (b) ExifTool JpgFromRaw / PreviewImage / …, (c) exifr IFD1 thumb if no path.
 			 */
 			const candidates: Buffer[] = [];
 			const from_sharp = await try_encode_master_jpeg(buf, upload_id, original_filename, pipeline);

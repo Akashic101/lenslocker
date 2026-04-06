@@ -139,19 +139,45 @@ bun run auth:schema && bun run db:push
 
 Typical commands:
 
-| Command             | Use                                                          |
-| ------------------- | ------------------------------------------------------------ |
-| `bun run dev`       | Development server with HMR.                                 |
-| `bun run build`     | Production build.                                            |
-| `bun run start`     | Run the production server (`node build` via package script). |
-| `bun run check`     | Svelte check + TypeScript.                                   |
-| `bun run lint`      | Prettier + ESLint.                                           |
-| `bun run format`    | Auto-format with Prettier.                                   |
-| `bun run test`      | Unit tests (Vitest).                                         |
-| `bun run db:push`   | Apply Drizzle schema to SQLite (dev/prod).                   |
-| `bun run db:studio` | Open Drizzle Studio (inspect DB).                            |
+| Command                 | Use                                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `bun run dev`           | Development server with HMR.                                                                                          |
+| `bun run build`         | Production build.                                                                                                     |
+| `bun run start`         | Run the production server (`node build` via package script).                                                          |
+| `bun run check`         | Svelte check + TypeScript.                                                                                            |
+| `bun run lint`          | Prettier + ESLint.                                                                                                    |
+| `bun run format`        | Auto-format with Prettier.                                                                                            |
+| `bun run test`          | Unit tests (Vitest, server project, run mode).                                                                        |
+| `bun run test:coverage` | Same with **v8 coverage** (`coverage/` + `coverage/lcov.info`). Uses `--project server` so Playwright is not started. |
+| `bun run test:unit`     | Vitest in watch mode (all projects).                                                                                  |
+| `bun run db:push`       | Apply Drizzle schema to SQLite (dev/prod).                                                                            |
+| `bun run db:studio`     | Open Drizzle Studio (inspect DB).                                                                                     |
 
 Other libraries in daily use include **TypeScript**, **Tailwind CSS**, **Paraglide** (inlang), and **Flowbite**. The sections below focus on the three pieces that hold the app together: the UI framework, the database layer, and authentication.
+
+---
+
+## Contributing
+
+Pull requests are welcome. Keep changes **focused** on a single concern, match existing patterns (TypeScript, formatting, naming), and run **`bun run lint`**, **`bun run check`**, and **`bun run test`** locally before you open a PR.
+
+### Test coverage
+
+Vitest (with the **server** project) enforces **at least 95%** coverage for **statements**, **branches**, **functions**, and **lines** on the files included in the report (`src/lib/**/*.ts`, excluding tests, generated Paraglide output, and `src/lib/server/**`). Thresholds live in [`vite.config.ts`](vite.config.ts). Check locally with:
+
+```sh
+bun run test:coverage
+```
+
+### Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on **pushes** and **pull requests** to **`main`** (and can be triggered manually). It installs with a **frozen lockfile**, runs **`bun run lint`** (Prettier + ESLint), **`bun run test:unit -- --run --coverage --project server`** (same gates as above), then **`bun run build`**. PRs should stay green on that workflow.
+
+### Use of AI
+
+Using **AI coding assistants** (Cursor, Copilot, chat tools, and similar) is **acceptable**. You must **say so in the PR description** (or clearly in commit messages when it materially shaped the change) so reviewers know how the patch was produced.
+
+You remain responsible for correctness, security, and fit with this codebase. **Obvious slop**—generic filler, unreviewed hallucinations, noisy refactors, or copy-paste that does not match project style—**will not be accepted.**
 
 ---
 
@@ -228,4 +254,5 @@ Use this for **configuration and catalog portability** between instances; pair i
 
 ## Usage of AI
 
-This project is not slop. AI was used sparingly in this project which was developed using the Cursor IDE but mainly typed by hand. Cursor was only used to write boilerplate, fix some nasty bugs if they block development or as a resource-option to better understand svelte, drizzle and better-auth. If you want to improve this project you are allowed to use AI but please be sensible and look over the code that you made the AI write. Obvious slop will be not accepted.
+This project is not slop. AI was used sparingly in this project which was developed using the Cursor IDE but mainly typed by hand. Cursor was only used to write boilerplate, fix some nasty bugs if they block development or as a resource-option to better understand svelte, drizzle and better-auth or get a second pair of eyes on optimizing the code. During testing pictures shot on a Sony A6000 and Sony A7 R3 where used for testing. If photos shot on other cameras fail during upload or create any other issues please create an issue for that.
+

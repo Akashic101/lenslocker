@@ -43,7 +43,7 @@ export type process_raw_upload_result = process_raw_upload_ok | process_raw_uplo
 
 /**
  * Store one RAW-like file, persist EXIF metadata to SQLite, and generate JPEG previews.
- * Shared by the legacy form action and the JSON API for batch uploads.
+ * Shared by the form action and the JSON API for batch uploads.
  */
 function format_max_upload_label(max_bytes: number): string {
 	const mb = max_bytes / (1024 * 1024);

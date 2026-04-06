@@ -352,27 +352,8 @@ export function filter_valid_needs_attention_field_keys(keys: readonly string[])
 	return out;
 }
 
-export function legacy_dashboard_flags_to_field_keys(record: Record<string, unknown>): string[] {
-	const bool = (v: unknown): boolean => v === true;
-	const keys: string[] = [];
-	if (bool(record.flag_gps)) keys.push('gps_either_missing');
-	if (bool(record.flag_camera)) keys.push('camera_body_incomplete');
-	if (bool(record.flag_lens)) keys.push('lens_incomplete');
-	if (bool(record.flag_date)) keys.push('shot_date_calendar_missing');
-	if (bool(record.flag_iso)) keys.push('iso_speed');
-	if (bool(record.flag_f_number)) keys.push('f_number');
-	if (bool(record.flag_focal_length)) keys.push('focal_length');
-	if (bool(record.flag_exposure_time)) keys.push('exposure_both_missing');
-	return keys;
-}
-
-function is_legacy_flag_object(parsed: unknown): parsed is Record<string, unknown> {
-	if (parsed == null || typeof parsed !== 'object') return false;
-	return 'flag_gps' in (parsed as object);
-}
-
 /**
- * Parse stored JSON from `app_setting`: new shape, legacy booleans, or defaults.
+ * Parse stored JSON from `app_setting`: `required_field_keys` array or defaults.
  */
 export function parse_dashboard_needs_attention_stored_json(parsed: unknown): {
 	required_field_keys: string[];
@@ -383,15 +364,12 @@ export function parse_dashboard_needs_attention_stored_json(parsed: unknown): {
 			const filtered = filter_valid_needs_attention_field_keys(o.required_field_keys as string[]);
 			return { required_field_keys: filtered };
 		}
-		if (is_legacy_flag_object(parsed)) {
-			return { required_field_keys: legacy_dashboard_flags_to_field_keys(parsed) };
-		}
 	}
 	return { required_field_keys: [...dashboard_needs_attention_default_keys] };
 }
 
 /**
- * Normalize a settings PUT body: accepts `required_field_keys` or legacy `flag_*` object.
+ * Normalize a settings PUT body: accepts `required_field_keys` or defaults.
  */
 export function normalize_dashboard_needs_attention_request_body(body: unknown): {
 	required_field_keys: string[];
@@ -406,9 +384,6 @@ export function normalize_dashboard_needs_attention_request_body(body: unknown):
 				o.required_field_keys as string[]
 			)
 		};
-	}
-	if (is_legacy_flag_object(body)) {
-		return { required_field_keys: legacy_dashboard_flags_to_field_keys(o) };
 	}
 	return { required_field_keys: [...dashboard_needs_attention_default_keys] };
 }
