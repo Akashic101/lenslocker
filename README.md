@@ -255,4 +255,3 @@ Use this for **configuration and catalog portability** between instances; pair i
 ## Usage of AI
 
 This project is not slop. AI was used sparingly in this project which was developed using the Cursor IDE but mainly typed by hand. Cursor was only used to write boilerplate, fix some nasty bugs if they block development or as a resource-option to better understand svelte, drizzle and better-auth or get a second pair of eyes on optimizing the code. During testing pictures shot on a Sony A6000 and Sony A7 R3 where used for testing. If photos shot on other cameras fail during upload or create any other issues please create an issue for that.
-
