@@ -116,7 +116,7 @@
 				<span class="sr-only">{m.tame_sleepy_ibex_download_button_sr()}</span>
 			</summary>
 			<div
-				class="absolute end-0 top-full z-[60] mt-1 min-w-[11rem] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-800"
+				class="absolute inset-e-0 top-full z-60 mt-1 min-w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-800"
 				role="menu"
 			>
 				<button
