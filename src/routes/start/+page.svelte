@@ -48,65 +48,65 @@
 				<form class="flex flex-col gap-4" method="post" action="?/sign_up_email" use:enhance>
 					<input type="hidden" name="redirectTo" value={form?.redirect_to ?? data.redirect_to} />
 					<div>
-						<Label class="mb-2 block">{m.plain_social_robin_start_label_name()}</Label>
+						<Label class="mb-2 block">{m.foggy_keen_mink_auth_field_name()}</Label>
 						<Input
 							type="text"
 							name="name"
 							autocomplete="name"
 							required
-							placeholder={m.plain_social_robin_start_placeholder_name()}
+							placeholder={m.warm_soft_carp_auth_ph_name()}
 						/>
 					</div>
 					<div>
-						<Label class="mb-2 block">{m.plain_social_robin_start_label_email()}</Label>
+						<Label class="mb-2 block">{m.crisp_sunny_ant_auth_field_email()}</Label>
 						<Input
 							type="email"
 							name="email"
 							autocomplete="email"
 							required
-							placeholder={m.plain_social_robin_start_placeholder_email()}
+							placeholder={m.sour_grassy_elk_auth_ph_email()}
 						/>
 					</div>
 					<div>
-						<Label class="mb-2 block">{m.plain_social_robin_start_label_password()}</Label>
+						<Label class="mb-2 block">{m.bold_stale_cod_auth_field_password()}</Label>
 						<Input
 							type="password"
 							name="password"
 							autocomplete="new-password"
 							required
 							minlength={8}
-							placeholder={m.plain_social_robin_start_placeholder_password_signup()}
+							placeholder={m.vast_odd_mink_auth_ph_pw_new()}
 						/>
 					</div>
 					<Button type="submit" class="w-full" color="primary"
-						>{m.plain_social_robin_start_submit_create_account()}</Button
+						>{m.jolly_tiny_newt_auth_submit_register()}</Button
 					>
 				</form>
 			{:else}
 				<form class="flex flex-col gap-4" method="post" action="?/sign_in_email" use:enhance>
 					<input type="hidden" name="redirectTo" value={form?.redirect_to ?? data.redirect_to} />
 					<div>
-						<Label class="mb-2 block">{m.plain_social_robin_start_label_email()}</Label>
+						<Label class="mb-2 block">{m.crisp_sunny_ant_auth_field_email()}</Label>
 						<Input
 							type="email"
 							name="email"
 							autocomplete="email"
 							required
-							placeholder={m.plain_social_robin_start_placeholder_email()}
+							placeholder={m.sour_grassy_elk_auth_ph_email()}
 						/>
 					</div>
 					<div>
-						<Label class="mb-2 block">{m.plain_social_robin_start_label_password()}</Label>
+						<Label class="mb-2 block">{m.bold_stale_cod_auth_field_password()}</Label>
 						<Input
 							type="password"
 							name="password"
 							autocomplete="current-password"
 							required
-							placeholder={m.plain_social_robin_start_placeholder_password_signin()}
+							placeholder={m.deep_lofty_hare_auth_ph_pw_in()}
 						/>
 					</div>
 					<Button type="submit" class="w-full" color="primary"
-						>{m.plain_social_robin_start_submit_sign_in()}</Button
+						>{m.calm_proof_gull_auth_submit_login()}</Button
 					>
 				</form>
 			{/if}

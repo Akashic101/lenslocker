@@ -51,7 +51,7 @@
 							value: { show: true },
 							total: {
 								show: true,
-								label: m.lofty_clear_stork_stats_chart_total(),
+								label: m.zesty_polite_goat_chart_sum_label(),
 								formatter: () => String(s.kpis.total)
 							}
 						}
@@ -61,8 +61,7 @@
 			stroke: { width: 0 },
 			tooltip: {
 				y: {
-					formatter: (val: number) =>
-						m.lofty_clear_stork_stats_tooltip_y_photos({ val: String(val) })
+					formatter: (val: number) => m.weary_stout_robin_chart_tip_photos({ val: String(val) })
 				}
 			}
 		};
@@ -92,7 +91,7 @@
 							show: true,
 							total: {
 								show: true,
-								label: m.lofty_clear_stork_stats_chart_total(),
+								label: m.zesty_polite_goat_chart_sum_label(),
 								formatter: () => String(s.kpis.total)
 							}
 						}
@@ -102,8 +101,7 @@
 			stroke: { width: 0 },
 			tooltip: {
 				y: {
-					formatter: (val: number) =>
-						m.lofty_clear_stork_stats_tooltip_y_photos({ val: String(val) })
+					formatter: (val: number) => m.weary_stout_robin_chart_tip_photos({ val: String(val) })
 				}
 			}
 		};
@@ -122,7 +120,7 @@
 			},
 			plotOptions: { bar: { borderRadius: 4, columnWidth: '72%' } },
 			series: [
-				{ name: m.lofty_clear_stork_stats_series_uploads(), data: s.uploads_by_month.series }
+				{ name: m.bumpy_mellow_octopus_monthly_uploads_caption(), data: s.uploads_by_month.series }
 			],
 			xaxis: {
 				categories: s.uploads_by_month.labels,
@@ -134,8 +132,7 @@
 			grid: { borderColor: '#e5e7eb', strokeDashArray: 4 },
 			tooltip: {
 				y: {
-					formatter: (val: number) =>
-						m.lofty_clear_stork_stats_tooltip_y_uploads({ val: String(val) })
+					formatter: (val: number) => m.proof_grassy_swan_chart_tip_uploads({ val: String(val) })
 				}
 			}
 		};
@@ -154,7 +151,7 @@
 				redrawOnParentResize: true
 			},
 			plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '78%' } },
-			series: [{ name: m.lofty_clear_stork_stats_series_photos(), data: s.top_cameras.series }],
+			series: [{ name: m.funky_quaint_dune_camera_series_caption(), data: s.top_cameras.series }],
 			xaxis: {
 				categories: s.top_cameras.labels,
 				labels: { style: { colors: '#6b7280' } }
@@ -165,8 +162,7 @@
 			grid: { borderColor: '#e5e7eb', strokeDashArray: 4 },
 			tooltip: {
 				y: {
-					formatter: (val: number) =>
-						m.lofty_clear_stork_stats_tooltip_y_photos({ val: String(val) })
+					formatter: (val: number) => m.weary_stout_robin_chart_tip_photos({ val: String(val) })
 				}
 			}
 		};
@@ -184,7 +180,7 @@
 				redrawOnParentResize: true
 			},
 			plotOptions: { bar: { borderRadius: 4, columnWidth: '72%' } },
-			series: [{ name: m.lofty_clear_stork_stats_series_photos(), data: s.iso_buckets.series }],
+			series: [{ name: m.funky_quaint_dune_camera_series_caption(), data: s.iso_buckets.series }],
 			xaxis: {
 				categories: s.iso_buckets.labels,
 				labels: { style: { colors: '#6b7280' } }
@@ -195,8 +191,7 @@
 			grid: { borderColor: '#e5e7eb', strokeDashArray: 4 },
 			tooltip: {
 				y: {
-					formatter: (val: number) =>
-						m.lofty_clear_stork_stats_tooltip_y_photos({ val: String(val) })
+					formatter: (val: number) => m.weary_stout_robin_chart_tip_photos({ val: String(val) })
 				}
 			}
 		};

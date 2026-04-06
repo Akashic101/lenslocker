@@ -25,7 +25,7 @@
 	<CloseButton
 		class="shrink-0"
 		name=""
-		ariaLabel={m.brisk_tidy_finch_aria_close()}
+		ariaLabel={m.zany_tiny_wren_close_modal_hint()}
 		onclick={on_close}
 	/>
 </div>

@@ -11,20 +11,22 @@
 	import { transformed_media_depends_key } from '$lib/cache/transformed_media_cache';
 	import { needs_attention_label_for_key } from '$lib/gallery/needs_attention_catalog';
 	import GalleryAddToAlbumModal from '$lib/components/gallery_add_to_album_modal.svelte';
+	import GallerySharePanel from '$lib/components/gallery_share_panel.svelte';
 	import {
 		CheckOutline,
 		ColumnOutline,
 		FilterOutline,
 		FilterSolid,
 		FolderOutline,
-		GridOutline
+		GridOutline,
+		ShareNodesOutline
 	} from 'flowbite-svelte-icons';
 	import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { gallery_grid_item } from '$lib/gallery/gallery_grid_types';
 	import type { PageData } from './$types';
 	import GalleryBulkActionsBar from '$lib/components/gallery_bulk_actions_bar.svelte';
-	import GalleryDetailModal from '$lib/components/gallery_detail_modal.svelte';
+	import GalleryDetailModal from '$lib/components/gallery_detail_modal/gallery_detail_modal.svelte';
 	import { app_form_field_class } from '$lib/ui/form_classes';
 
 	/* eslint-disable svelte/no-navigation-without-resolve -- localizeHref; /media/transformed/* URLs are not typed routes */
@@ -265,6 +267,8 @@
 	let hub_new_album_name = $state('');
 	let hub_create_loading = $state(false);
 	let hub_create_error = $state<string | null>(null);
+
+	let album_share_panel_open = $state(false);
 
 	/** Plain `let`: must not be `$state` or assigning inside `$effect` retriggers the effect forever. */
 	let gallery_list_track_prev: string | null = null;
@@ -528,23 +532,35 @@
 					<label
 						for="gallery-sort-select"
 						class="text-[10px] font-medium text-gray-500 dark:text-gray-400"
-						>{m.frank_sound_emu_gallery_sort_label()}</label
+						>{m.icy_odd_snipe_gallery_sort_ui_label()}</label
 					>
 					<select
 						id="gallery-sort-select"
 						class="{app_form_field_class} py-1.5 text-sm"
-						aria-label={m.frank_sound_emu_gallery_sort_aria()}
+						aria-label={m.brown_brave_kudu_gallery_sort_aria()}
 						value={data.gallery_filters.sort}
 						onchange={on_gallery_sort_change}
 					>
-						<option value="date_desc">{m.frank_sound_emu_gallery_sort_date_desc()}</option>
-						<option value="date_asc">{m.frank_sound_emu_gallery_sort_date_asc()}</option>
-						<option value="iso_desc">{m.frank_sound_emu_gallery_sort_iso_desc()}</option>
-						<option value="iso_asc">{m.frank_sound_emu_gallery_sort_iso_asc()}</option>
-						<option value="size_desc">{m.frank_sound_emu_gallery_sort_size_desc()}</option>
-						<option value="size_asc">{m.frank_sound_emu_gallery_sort_size_asc()}</option>
+						<option value="date_desc">{m.suave_quiet_fox_sort_date_new_first()}</option>
+						<option value="date_asc">{m.posh_soft_frog_sort_date_old_first()}</option>
+						<option value="iso_desc">{m.grand_sunny_mite_sort_iso_high_low()}</option>
+						<option value="iso_asc">{m.plush_muted_puffin_sort_iso_low_high()}</option>
+						<option value="size_desc">{m.spry_lofty_bass_sort_size_big_first()}</option>
+						<option value="size_asc">{m.tiny_grassy_lark_sort_size_small_first()}</option>
 					</select>
 				</div>
+				{#if data.gallery_filters.gallery_focus === 'album' && data.current_album != null}
+					<button
+						type="button"
+						class="{gallery_header_icon_button_class} gap-1.5 px-2"
+						aria-label={m.dull_lofty_crane_share_action_hint()}
+						onclick={() => {
+							album_share_panel_open = true;
+						}}
+					>
+						<ShareNodesOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+					</button>
+				{/if}
 				<button
 					type="button"
 					class={gallery_header_icon_button_class}
@@ -946,6 +962,14 @@
 	needs_attention_ui={modal_needs_attention_ui}
 	needs_attention_required_keys={needs_attention_required_key_set}
 />
+
+{#if data.gallery_filters.gallery_focus === 'album' && data.current_album != null}
+	<GallerySharePanel
+		bind:open={album_share_panel_open}
+		kind="album"
+		album_id={data.current_album.id}
+	/>
+{/if}
 
 <GalleryAddToAlbumModal
 	bind:open={album_modal_open}

@@ -13,6 +13,7 @@ import {
 	type AlbumInsert,
 	type AlbumRawUploadInsert
 } from '$lib/server/db/album.schema';
+import { share_link, type ShareLinkInsert } from '$lib/server/db/share_link.schema';
 import { app_setting } from '$lib/server/db/app_setting.schema';
 import { hardware_item, type HardwareItemInsert } from '$lib/server/db/hardware.schema';
 import { hardware_allowed_category_set } from '$lib/server/services/hardware/hardware_service';
@@ -22,7 +23,7 @@ const backup_sequence_key = 'lenslocker_backup_sequence';
 const backup_filename_re = /^LensLocker-backup-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d+\.zip$/;
 const backup_zip_database_filename = 'database.sqlite';
 const backup_row_uuid_re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const supported_backup_schema_versions = new Set([1, 2, 3]);
+const supported_backup_schema_versions = new Set([1, 2, 3, 4]);
 const max_settings_backup_import_bytes = 512 * 1024 * 1024;
 
 export type settings_backup_list_entry = {
@@ -120,6 +121,7 @@ export async function create_settings_backup_zip(): Promise<{
 	const hardware_rows = await db.select().from(hardware_item);
 	const album_rows = await db.select().from(album);
 	const album_member_rows = await db.select().from(album_raw_upload);
+	const share_link_rows = await db.select().from(share_link);
 
 	const zip = new JSZip();
 	const created_at_ms = Date.now();
@@ -128,7 +130,7 @@ export async function create_settings_backup_zip(): Promise<{
 		JSON.stringify(
 			{
 				app: 'LensLocker',
-				schema_version: 3,
+				schema_version: 4,
 				created_at_ms,
 				backup_sequence: seq,
 				date_stamp: stamp,
@@ -137,7 +139,8 @@ export async function create_settings_backup_zip(): Promise<{
 					'app_settings.json',
 					'hardware_items.json',
 					'albums.json',
-					'album_raw_upload.json'
+					'album_raw_upload.json',
+					'share_links.json'
 				]
 			},
 			null,
@@ -149,6 +152,7 @@ export async function create_settings_backup_zip(): Promise<{
 	zip.file('hardware_items.json', JSON.stringify(hardware_rows, null, 2));
 	zip.file('albums.json', JSON.stringify(album_rows, null, 2));
 	zip.file('album_raw_upload.json', JSON.stringify(album_member_rows, null, 2));
+	zip.file('share_links.json', JSON.stringify(share_link_rows, null, 2));
 
 	const buf = Buffer.from(await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' }));
 	await fs.writeFile(path.join(root, filename), buf);
@@ -381,11 +385,81 @@ function parse_album_raw_upload_backup_json(raw: string): AlbumRawUploadInsert[]
 	return out;
 }
 
+function parse_share_links_backup_json(raw: string): ShareLinkInsert[] {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw) as unknown;
+	} catch {
+		throw new Error('share_links.json is not valid JSON');
+	}
+	if (!Array.isArray(parsed)) {
+		throw new Error('share_links.json must be a JSON array');
+	}
+	const out: ShareLinkInsert[] = [];
+	const seen_ids = new Set<string>();
+	const seen_tokens = new Set<string>();
+	for (const item of parsed) {
+		if (item === null || typeof item !== 'object') {
+			throw new Error('Invalid row in share_links.json');
+		}
+		const rec = item as Record<string, unknown>;
+		const id = require_backup_uuid(rec.id, 'share_link id');
+		if (seen_ids.has(id)) {
+			throw new Error(`Duplicate share_link id: ${id}`);
+		}
+		seen_ids.add(id);
+		if (typeof rec.token !== 'string' || rec.token.trim() === '') {
+			throw new Error('Invalid share_link token');
+		}
+		const token = rec.token.trim();
+		if (seen_tokens.has(token)) {
+			throw new Error(`Duplicate share_link token: ${token}`);
+		}
+		seen_tokens.add(token);
+		const kind =
+			rec.kind === 'album' || rec.kind === 'raw_upload'
+				? (rec.kind as 'album' | 'raw_upload')
+				: null;
+		if (kind == null) {
+			throw new Error('Invalid share_link kind');
+		}
+		const album_id = optional_import_string(rec.album_id);
+		const raw_upload_id = optional_import_string(rec.raw_upload_id);
+		if (kind === 'album' && (album_id == null || raw_upload_id != null)) {
+			throw new Error(`Invalid album share_link row: ${id}`);
+		}
+		if (kind === 'raw_upload' && (raw_upload_id == null || album_id != null)) {
+			throw new Error(`Invalid raw_upload share_link row: ${id}`);
+		}
+		let expires_at_ms: number | null = null;
+		if (rec.expires_at_ms != null && rec.expires_at_ms !== undefined) {
+			expires_at_ms = require_import_finite_number(rec.expires_at_ms, 'expires_at_ms');
+		}
+		const created_by_user_id =
+			typeof rec.created_by_user_id === 'string' ? rec.created_by_user_id.trim() : '';
+		if (!backup_row_uuid_re.test(created_by_user_id)) {
+			throw new Error('Invalid share_link created_by_user_id');
+		}
+		out.push({
+			id,
+			token,
+			kind,
+			album_id,
+			raw_upload_id,
+			expires_at_ms,
+			created_at_ms: require_import_finite_number(rec.created_at_ms, 'created_at_ms'),
+			created_by_user_id
+		});
+	}
+	return out;
+}
+
 export type settings_backup_import_result = {
 	app_settings_count: number;
 	hardware_items_count: number;
 	albums_count?: number;
 	album_memberships_count?: number;
+	share_links_count?: number;
 	date_stamp?: string;
 	restored_full_database: boolean;
 };
@@ -440,11 +514,13 @@ export async function import_settings_backup_from_zip_buffer(
 		const hardware_items_count = db.select().from(hardware_item).all().length;
 		const albums_count = db.select().from(album).all().length;
 		const album_memberships_count = db.select().from(album_raw_upload).all().length;
+		const share_links_count = db.select().from(share_link).all().length;
 		return {
 			app_settings_count,
 			hardware_items_count,
 			albums_count,
 			album_memberships_count,
+			share_links_count,
 			date_stamp: typeof man.date_stamp === 'string' ? man.date_stamp : undefined,
 			restored_full_database: true
 		};
@@ -455,7 +531,6 @@ export async function import_settings_backup_from_zip_buffer(
 			`This backup declares schema v${manifest_version} but is missing ${backup_zip_database_filename} (incomplete archive)`
 		);
 	}
-
 	const app_entry = find_zip_file(zip, 'app_settings.json');
 	const hardware_entry = find_zip_file(zip, 'hardware_items.json');
 	if (!app_entry || !hardware_entry) {
@@ -471,6 +546,7 @@ export async function import_settings_backup_from_zip_buffer(
 	const album_ru_entry = find_zip_file(zip, 'album_raw_upload.json');
 	let album_rows_parsed: AlbumInsert[] = [];
 	let album_link_rows_parsed: AlbumRawUploadInsert[] = [];
+	let share_link_rows_parsed: ShareLinkInsert[] = [];
 	let include_album_sidecar = false;
 	if (albums_entry != null || album_ru_entry != null) {
 		if (albums_entry == null || album_ru_entry == null) {
@@ -485,7 +561,15 @@ export async function import_settings_backup_from_zip_buffer(
 		);
 	}
 
+	const share_links_entry = find_zip_file(zip, 'share_links.json');
+	if (share_links_entry != null) {
+		share_link_rows_parsed = parse_share_links_backup_json(await share_links_entry.async('string'));
+	}
+
 	db.transaction((tx) => {
+		tx.delete(share_link)
+			.where(sql`1 = 1`)
+			.run();
 		tx.delete(hardware_item)
 			.where(sql`1 = 1`)
 			.run();
@@ -520,6 +604,11 @@ export async function import_settings_backup_from_zip_buffer(
 				tx.insert(album_raw_upload).values(batch).run();
 			}
 		}
+		for (const batch of chunk_array(share_link_rows_parsed, 40)) {
+			if (batch.length > 0) {
+				tx.insert(share_link).values(batch).run();
+			}
+		}
 	});
 
 	return {
@@ -530,6 +619,9 @@ export async function import_settings_backup_from_zip_buffer(
 					albums_count: album_rows_parsed.length,
 					album_memberships_count: album_link_rows_parsed.length
 				}
+			: {}),
+		...(share_link_rows_parsed.length > 0
+			? { share_links_count: share_link_rows_parsed.length }
 			: {}),
 		date_stamp: typeof man.date_stamp === 'string' ? man.date_stamp : undefined,
 		restored_full_database: false

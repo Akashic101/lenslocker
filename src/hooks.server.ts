@@ -48,6 +48,18 @@ const handle_require_auth: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
+	/** Public share page + token-scoped media/meta only (`/api/share/list` and other non-token routes stay protected). */
+	const method = event.request.method;
+	if (
+		path.startsWith('/share') ||
+		(path.startsWith('/api/share/') &&
+			!path.startsWith('/api/share/link/') &&
+			!path.startsWith('/api/share/list') &&
+			(method === 'GET' || method === 'HEAD'))
+	) {
+		return resolve(event);
+	}
+
 	if (path.startsWith('/api/auth')) {
 		return resolve(event);
 	}

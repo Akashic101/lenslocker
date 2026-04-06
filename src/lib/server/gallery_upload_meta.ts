@@ -2,9 +2,23 @@
 const upload_preview_thumb_pattern =
 	/^upload-previews\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_thumb\.(?:jpe?g|webp|avif|png)$/i;
 
+/** Modal full preview: `upload-previews/<uuid>_full.{ext}`. */
+const upload_preview_full_pattern =
+	/^upload-previews\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_full\.(?:jpe?g|webp|avif|png)$/i;
+
 export function upload_id_from_gallery_preview_path(relative_posix_path: string): string | null {
 	const thumb_match = relative_posix_path.match(upload_preview_thumb_pattern);
 	return thumb_match?.[1] ?? null;
+}
+
+/** Thumb or full under `upload-previews/` (e.g. share media gate). */
+export function upload_id_from_transformed_preview_path(
+	relative_posix_path: string
+): string | null {
+	const thumb = upload_id_from_gallery_preview_path(relative_posix_path);
+	if (thumb != null) return thumb;
+	const full_match = relative_posix_path.match(upload_preview_full_pattern);
+	return full_match?.[1] ?? null;
 }
 
 export type gallery_upload_meta_input = {

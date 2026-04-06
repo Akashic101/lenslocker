@@ -202,8 +202,8 @@
 							aria-expanded={!nav_rail_collapsed}
 							aria-controls="app-sidebar"
 							aria-label={nav_rail_collapsed
-								? m.royal_tidy_lark_layout_aria_expand_sidebar()
-								: m.royal_tidy_lark_layout_aria_collapse_sidebar()}
+								? m.eager_broad_puffin_sidebar_open_hint()
+								: m.moody_tiny_shrimp_sidebar_narrow_hint()}
 							onclick={toggle_sidebar_collapsed}
 						>
 							<ChevronDoubleLeftOutline
@@ -221,7 +221,7 @@
 						spanClass={sidebar_item_label_class}
 						aClass={sidebar_item_anchor_class}
 						href={dashboard_all_href}
-						title={m.royal_tidy_lark_layout_title_dashboard_collapsed()}
+						title={m.merry_stale_skate_dashboard_collapsed_title()}
 					>
 						{#snippet icon()}
 							<SearchOutline
@@ -257,8 +257,8 @@
 								aria-expanded={dashboard_menu_open}
 								aria-controls="dashboard-submenu"
 								aria-label={dashboard_menu_open
-									? m.royal_tidy_lark_layout_aria_hide_dashboard_views()
-									: m.royal_tidy_lark_layout_aria_show_dashboard_views()}
+									? m.loud_antsy_ray_hide_dashboard_shortcuts()
+									: m.quiet_cute_bee_show_dashboard_shortcuts()}
 								onclick={() => (dashboard_menu_open = !dashboard_menu_open)}
 							>
 								<ChevronDownOutline
@@ -281,7 +281,7 @@
 									aClass={sidebar_item_anchor_class}
 									href={dashboard_needs_attention_href}
 									active={dashboard_attention_active}
-									title={m.royal_tidy_lark_layout_title_review_needs_attention()}
+									title={m.steep_royal_impala_needs_attention_title()}
 								>
 									{#snippet icon()}
 										<ExclamationCircleOutline
@@ -407,7 +407,7 @@
 				class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 focus:ring-2 focus:ring-primary-300 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:ring-primary-800"
 				aria-expanded={mobile_nav_open}
 				aria-controls="app-sidebar"
-				aria-label={m.royal_tidy_lark_layout_aria_expand_sidebar()}
+				aria-label={m.eager_broad_puffin_sidebar_open_hint()}
 				onclick={() => (mobile_nav_open = true)}
 			>
 				<BarsFromLeftOutline class="h-6 w-6 shrink-0" aria-hidden="true" />

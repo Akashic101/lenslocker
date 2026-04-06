@@ -9,7 +9,11 @@ declare global {
 			session?: Session;
 		}
 
-		// interface Error {}
+		interface Error {
+			message: string;
+			/** Public share route: which error UI to show */
+			code?: 'share_link_expired' | 'share_link_invalid';
+		}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}

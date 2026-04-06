@@ -14,19 +14,25 @@
 	import type { gallery_grid_item } from '$lib/gallery/gallery_grid_types';
 	import type { gallery_modal_detail_view_row } from '$lib/gallery/gallery_modal_detail_view_row';
 	import { upload_meta_editable_field_list } from '$lib/gallery/upload_meta_editable_fields';
+	import GallerySharePanel from '$lib/components/gallery_share_panel.svelte';
 	import { Modal } from 'flowbite-svelte';
-	import { ExclamationCircleOutline } from 'flowbite-svelte-icons';
+	import { ExclamationCircleOutline, ShareNodesOutline } from 'flowbite-svelte-icons';
 	import { untrack } from 'svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	let {
 		images,
 		needs_attention_ui,
-		needs_attention_required_keys
+		needs_attention_required_keys,
+		read_only = false,
+		share_token = null
 	}: {
 		images: gallery_grid_item[];
 		needs_attention_ui: boolean;
 		needs_attention_required_keys: ReadonlySet<string>;
+		/** Public `/share/[token]` view: no edits, no share-to-create. */
+		read_only?: boolean;
+		share_token?: string | null;
 	} = $props();
 
 	let modal_open = $state(false);
@@ -47,6 +53,7 @@
 	let modal_download_menu_open = $state(false);
 	let modal_download_loading = $state(false);
 	let modal_download_error = $state<string | null>(null);
+	let share_panel_open = $state(false);
 
 	const modal_list_index = $derived.by(() => {
 		if (modal_current_relative_path === '') return -1;
@@ -205,6 +212,7 @@
 	}
 
 	async function save_meta_edits(): Promise<void> {
+		if (read_only) return;
 		if (modal_upload_id == null) return;
 		meta_save_loading = true;
 		meta_save_error = null;
@@ -271,6 +279,7 @@
 	}
 
 	async function modal_trigger_download(kind: 'preview' | 'raw'): Promise<void> {
+		if (read_only) return;
 		if (!browser || modal_upload_id == null) return;
 		modal_download_menu_open = false;
 		modal_download_loading = true;
@@ -307,6 +316,7 @@
 	}
 
 	async function patch_gallery_upload(body: Record<string, unknown>): Promise<boolean> {
+		if (read_only) return false;
 		if (modal_upload_id == null) return false;
 		modal_action_loading = true;
 		modal_action_error = null;
@@ -339,12 +349,14 @@
 	}
 
 	async function toggle_modal_star(): Promise<void> {
+		if (read_only) return;
 		if (modal_detail == null || modal_upload_id == null) return;
 		const next = !(Number(modal_detail.starred) === 1);
 		await patch_gallery_upload({ starred: next });
 	}
 
 	async function toggle_modal_archive(): Promise<void> {
+		if (read_only) return;
 		const want_archive = !modal_detail_archived;
 		await patch_gallery_upload({ archive: want_archive });
 	}
@@ -493,7 +505,11 @@
 
 		modal_detail_loading = true;
 		try {
-			const response = await fetch(resolve(`/api/gallery/upload-meta/${item.upload_id}`));
+			const meta_path =
+				read_only && share_token != null
+					? `/api/share/${encodeURIComponent(share_token)}/upload-meta/${item.upload_id}`
+					: resolve(`/api/gallery/upload-meta/${item.upload_id}`);
+			const response = await fetch(meta_path);
 			if (!response.ok) {
 				const text = await response.text();
 				throw new Error(text || response.statusText);
@@ -535,28 +551,43 @@
 			}}
 		>
 			{#snippet toolbar()}
-				<GalleryDetailModalHeaderActions
-					prev_disabled={!modal_has_prev || modal_action_loading}
-					next_disabled={!modal_has_next || modal_action_loading}
-					show_upload_actions={modal_upload_id != null}
-					toggle_star_disabled={modal_detail_loading ||
-						modal_action_loading ||
-						modal_detail == null}
-					toggle_archive_disabled={modal_detail_loading ||
-						modal_action_loading ||
-						modal_detail == null}
-					detail_starred={modal_detail_starred}
-					detail_archived={modal_detail_archived}
-					download_preview_disabled={modal_download_loading || !modal_can_download_preview}
-					download_raw_disabled={modal_download_loading}
-					bind:download_menu_open={modal_download_menu_open}
-					on_prev={() => modal_go_delta(-1)}
-					on_next={() => modal_go_delta(1)}
-					on_toggle_star={() => void toggle_modal_star()}
-					on_toggle_archive={() => void toggle_modal_archive()}
-					on_download_preview={() => void modal_trigger_download('preview')}
-					on_download_raw={() => void modal_trigger_download('raw')}
-				/>
+				<div class="flex shrink-0 items-center gap-0.5">
+					{#if !read_only && modal_upload_id != null}
+						<button
+							type="button"
+							class="rounded-lg p-2 text-gray-600 hover:bg-gray-100 disabled:pointer-events-none disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-800"
+							aria-label={m.dull_lofty_crane_share_action_hint()}
+							onclick={() => {
+								share_panel_open = true;
+							}}
+						>
+							<ShareNodesOutline class="h-5 w-5 shrink-0" />
+						</button>
+					{/if}
+					<GalleryDetailModalHeaderActions
+						prev_disabled={!modal_has_prev || modal_action_loading}
+						next_disabled={!modal_has_next || modal_action_loading}
+						show_upload_actions={modal_upload_id != null}
+						read_only_visitor={read_only}
+						toggle_star_disabled={modal_detail_loading ||
+							modal_action_loading ||
+							modal_detail == null}
+						toggle_archive_disabled={modal_detail_loading ||
+							modal_action_loading ||
+							modal_detail == null}
+						detail_starred={modal_detail_starred}
+						detail_archived={modal_detail_archived}
+						download_preview_disabled={modal_download_loading || !modal_can_download_preview}
+						download_raw_disabled={modal_download_loading}
+						bind:download_menu_open={modal_download_menu_open}
+						on_prev={() => modal_go_delta(-1)}
+						on_next={() => modal_go_delta(1)}
+						on_toggle_star={() => void toggle_modal_star()}
+						on_toggle_archive={() => void toggle_modal_archive()}
+						on_download_preview={() => void modal_trigger_download('preview')}
+						on_download_raw={() => void modal_trigger_download('raw')}
+					/>
+				</div>
 			{/snippet}
 		</GalleryDetailModalHeader>
 	{/snippet}
@@ -568,7 +599,7 @@
 		{/if}
 		{#if modal_download_error != null}
 			<GalleryDetailModalAlertBar
-				prefix={m.quick_polite_gecko_modal_download_failed()}
+				prefix={m.drab_round_impala_download_error_prefix()}
 				message={modal_download_error}
 			/>
 		{/if}
@@ -634,20 +665,22 @@
 					</p>
 				{/snippet}
 				{#snippet detail_body()}
-					<GalleryDetailModalMetaActions
-						meta_editing={modal_meta_editing}
-						{meta_save_loading}
-						on_begin_edit={() => {
-							fill_meta_edit_from_detail();
-							modal_meta_editing = true;
-						}}
-						on_cancel_edit={() => {
-							modal_meta_editing = false;
-							meta_save_error = null;
-						}}
-						on_save={() => void save_meta_edits()}
-					/>
-					{#if meta_save_error != null && modal_meta_editing}
+					{#if !read_only}
+						<GalleryDetailModalMetaActions
+							meta_editing={modal_meta_editing}
+							{meta_save_loading}
+							on_begin_edit={() => {
+								fill_meta_edit_from_detail();
+								modal_meta_editing = true;
+							}}
+							on_cancel_edit={() => {
+								modal_meta_editing = false;
+								meta_save_error = null;
+							}}
+							on_save={() => void save_meta_edits()}
+						/>
+					{/if}
+					{#if !read_only && meta_save_error != null && modal_meta_editing}
 						<p class="shrink-0 px-1 py-1 text-[11px] text-red-600 sm:px-2 dark:text-red-400">
 							{meta_save_error}
 						</p>
@@ -655,7 +688,7 @@
 					<div
 						class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-1 py-3 sm:px-2"
 					>
-						{#if modal_meta_editing}
+						{#if !read_only && modal_meta_editing}
 							<form
 								class="space-y-3"
 								onsubmit={(e) => {
@@ -712,3 +745,11 @@
 		</div>
 	</div>
 </Modal>
+
+{#if !read_only}
+	<GallerySharePanel
+		bind:open={share_panel_open}
+		kind="raw_upload"
+		raw_upload_id={modal_upload_id}
+	/>
+{/if}
