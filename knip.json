@@ -1,22 +1,4 @@
 {
 	"$schema": "https://unpkg.com/knip@6/schema.json",
-	"ignoreIssues": {
-		"src/lib/paraglide/**": [
-			"binaries",
-			"catalog",
-			"dependencies",
-			"devDependencies",
-			"duplicates",
-			"enumMembers",
-			"exports",
-			"files",
-			"namespaceMembers",
-			"nsExports",
-			"nsTypes",
-			"optionalPeerDependencies",
-			"types",
-			"unlisted",
-			"unresolved"
-		]
-	}
+	"ignore": ["src/paraglide/**"]
 }
