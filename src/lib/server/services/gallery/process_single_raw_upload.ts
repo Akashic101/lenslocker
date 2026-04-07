@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import type { RawImageUploadInsert } from '$lib/server/db/raw_image_upload.schema';
 import { get_upload_preview_pipeline_settings } from '$lib/server/services/settings/upload_pipeline_settings';
 import {
 	insert_raw_upload_row,
@@ -125,7 +126,7 @@ export async function process_single_raw_upload(
 	};
 	const cleaned = Object.fromEntries(
 		Object.entries(row).filter(([, v]) => v !== undefined)
-	) as typeof row;
+	) as RawImageUploadInsert;
 
 	try {
 		await insert_raw_upload_row(cleaned);
