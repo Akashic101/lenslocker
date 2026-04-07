@@ -120,6 +120,14 @@ function looks_like_jpeg(buf: Buffer): boolean {
 	return buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
 }
 
+/** Many RAWs (e.g. Sony ARW) are TIFF containers; Sharp often cannot decode the full file buffer here. */
+function looks_like_tiff_container(buf: Buffer): boolean {
+	if (buf.length < 4) return false;
+	const le = buf[0] === 0x49 && buf[1] === 0x49 && buf[2] === 0x2a && buf[3] === 0x00;
+	const be = buf[0] === 0x4d && buf[1] === 0x4d && buf[2] === 0x00 && buf[3] === 0x2a;
+	return le || be;
+}
+
 function original_is_jpeg_filename(original_filename: string): boolean {
 	const ext = path.extname(original_filename).toLowerCase();
 	return ext === '.jpg' || ext === '.jpeg';
@@ -225,7 +233,8 @@ async function try_encode_master_jpeg(
 
 	for (const { name, run } of attempts) {
 		try {
-			return await run();
+			const out = await run();
+			return out;
 		} catch (err) {
 			log_preview_error(
 				`sharp attempt "${name}" failed (upload_id=${upload_id} file=${original_filename})`,
@@ -406,16 +415,31 @@ export async function write_preview_jpeg_for_upload(
 		const rotation_hints = await resolve_rotation_hints(buf, opts?.exif_orientation);
 		let master_jpeg: Buffer | null = null;
 
+		const source_path = opts?.source_absolute_path ?? null;
+		const skip_full_file_sharp_for_tiff_raw =
+			is_raw_like_filename(original_filename) &&
+			looks_like_tiff_container(buf) &&
+			source_path != null &&
+			source_path !== '';
+
 		if (is_raw_like_filename(original_filename)) {
 			/**
 			 * One “master” raster from the RAW: prefer the largest of (a) Sharp/libraw decode,
 			 * (b) ExifTool JpgFromRaw / PreviewImage / …, (c) exifr IFD1 thumb if no path.
 			 */
 			const candidates: Buffer[] = [];
-			const from_sharp = await try_encode_master_jpeg(buf, upload_id, original_filename, pipeline);
-			if (from_sharp) candidates.push(from_sharp);
+			if (!skip_full_file_sharp_for_tiff_raw) {
+				const from_sharp = await try_encode_master_jpeg(
+					buf,
+					upload_id,
+					original_filename,
+					pipeline
+				);
+				if (from_sharp) candidates.push(from_sharp);
+			} else {
+				// (intentionally skipping full-buffer Sharp for TIFF-container RAWs when ExifTool path exists)
+			}
 
-			const source_path = opts?.source_absolute_path;
 			if (source_path != null && source_path !== '') {
 				const from_exiftool = await collect_exiftool_raw_jpeg_candidates(
 					source_path,
@@ -441,7 +465,7 @@ export async function write_preview_jpeg_for_upload(
 			master_jpeg = await try_encode_master_jpeg(buf, upload_id, original_filename, pipeline);
 		}
 
-		if (master_jpeg == null) {
+		if (master_jpeg == null && !skip_full_file_sharp_for_tiff_raw) {
 			master_jpeg = await try_encode_master_jpeg(buf, upload_id, original_filename, pipeline);
 		}
 
@@ -499,7 +523,6 @@ export async function write_preview_jpeg_for_upload(
 		}
 
 		await write_thumb_and_full_jpegs(dir, upload_id, master_jpeg, rotation_hints, pipeline);
-
 		return {
 			ok: true,
 			thumb_relative_path: preview_thumb_relative_path(upload_id, pipeline.upload_preview_format),
