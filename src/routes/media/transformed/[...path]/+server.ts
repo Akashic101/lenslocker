@@ -25,7 +25,18 @@ function content_type_for_file(file_path: string): string {
 	return content_type_by_extension[ext] ?? 'application/octet-stream';
 }
 
-export const GET: RequestHandler = async ({ params }) => {
+function is_upload_preview_thumb(relative_path: string): boolean {
+	return /(^|\/)upload-previews\/[^/]+_thumb\.(?:jpe?g|webp|avif|png)$/i.test(
+		relative_path.replace(/\\/g, '/')
+	);
+}
+
+function build_etag(size: number, mtime_ms: number): string {
+	// Weak ETag: good enough for cache revalidation without reading file contents.
+	return `W/"${size}-${Math.trunc(mtime_ms)}"`;
+}
+
+export const GET: RequestHandler = async ({ params, request }) => {
 	const path_param = params.path;
 	if (!path_param) error(404, 'Not found');
 
@@ -35,6 +46,8 @@ export const GET: RequestHandler = async ({ params }) => {
 	} catch {
 		error(400, 'Bad path');
 	}
+
+	const relative_path = decoded_segments.join('/');
 
 	const root = path.resolve(get_transformed_root_absolute_path());
 	const absolute_file = path.resolve(root, ...decoded_segments);
@@ -54,13 +67,31 @@ export const GET: RequestHandler = async ({ params }) => {
 
 	if (!file_stats.isFile()) error(404, 'Not found');
 
+	const etag = build_etag(file_stats.size, file_stats.mtimeMs);
+	if (request.headers.get('if-none-match') === etag) {
+		return new Response(null, {
+			status: 304,
+			headers: {
+				ETag: etag
+			}
+		});
+	}
+
 	const node_stream = createReadStream(absolute_file);
 	const web_stream = Readable.toWeb(node_stream);
+
+	const cache_control = is_upload_preview_thumb(relative_path)
+		? // Thumbnails are derived and safe to cache aggressively.
+			'public, max-age=31536000, immutable'
+		: // Default for other transformed media.
+			'public, max-age=300';
 
 	return new Response(web_stream as ReadableStream<Uint8Array>, {
 		headers: {
 			'Content-Type': content_type_for_file(absolute_file),
-			'Cache-Control': 'public, max-age=300'
+			'Cache-Control': cache_control,
+			ETag: etag,
+			'Last-Modified': new Date(file_stats.mtimeMs).toUTCString()
 		}
 	});
 };

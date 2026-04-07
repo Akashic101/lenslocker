@@ -276,6 +276,15 @@
 	/** Merged grid: initial chunk from the server plus batches from `/api/gallery/grid-slice`. */
 	let gallery_images = $state<gallery_grid_item[]>([]);
 
+	const preload_image_src_list = $derived.by(() => {
+		const limit = 8;
+		const out: string[] = [];
+		for (const item of gallery_images.slice(0, limit)) {
+			if (item?.src) out.push(item.src);
+		}
+		return out;
+	});
+
 	let gallery_detail_modal = $state<
 		{ open_for_grid_item: (item: gallery_grid_item) => void } | undefined
 	>();
@@ -512,6 +521,9 @@
 
 <svelte:head>
 	<title>{m.tidy_best_bumblebee_feast_dashboard()}</title>
+	{#each preload_image_src_list as preload_href (preload_href)}
+		<link rel="preload" as="image" href={preload_href} fetchpriority="high" />
+	{/each}
 </svelte:head>
 
 <div class="mx-auto max-w-7xl">

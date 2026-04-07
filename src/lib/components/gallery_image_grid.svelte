@@ -35,7 +35,8 @@
 </script>
 
 <ul class={grid_list_class} role="list">
-	{#each images as item (item.relative_path)}
+	{#each images as item, item_i (item.relative_path)}
+		{@const is_priority = item_i < 8}
 		<li
 			class="relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 {selection_mode &&
 			item.upload_id != null &&
@@ -57,6 +58,7 @@
 				src={item.src}
 				alt={item.alt}
 				starred={item.starred}
+				{is_priority}
 				on_tile_click={(e) => on_tile_activate(item, e)}
 			/>
 			{#if show_meta && item.meta}
