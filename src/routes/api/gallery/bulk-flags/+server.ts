@@ -1,15 +1,17 @@
 import { error, json } from '@sveltejs/kit';
 import type { RawImageUploadRow } from '$lib/server/db/raw_image_upload.schema';
 import { bulk_patch_raw_uploads_by_ids } from '$lib/server/services/gallery/gallery_service';
+import { require_current_user_id } from '$lib/server/authz/current_user';
 import type { RequestHandler } from './$types';
 
 const uuid_re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const max_upload_ids_per_request = 200;
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+	const user_id = require_current_user_id(event);
 	let body: unknown;
 	try {
-		body = await request.json();
+		body = await event.request.json();
 	} catch {
 		error(400, 'Invalid JSON');
 	}
@@ -48,7 +50,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		error(400, 'Provide starred and/or archive');
 	}
 
-	await bulk_patch_raw_uploads_by_ids(upload_ids, patch);
+	await bulk_patch_raw_uploads_by_ids(user_id, upload_ids, patch);
 
 	return json({ updated: upload_ids.length });
 };

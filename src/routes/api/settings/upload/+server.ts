@@ -5,11 +5,15 @@ import {
 } from '$lib/server/services/settings/upload_pipeline_settings';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async () => {
-	return json(await get_upload_preview_pipeline_settings());
+export const GET: RequestHandler = async ({ locals }) => {
+	const user = locals.user;
+	if (user == null) error(401, 'Unauthorized');
+	return json(await get_upload_preview_pipeline_settings(user.id));
 };
 
-export const PUT: RequestHandler = async ({ request }) => {
+export const PUT: RequestHandler = async ({ request, locals }) => {
+	const user = locals.user;
+	if (user == null) error(401, 'Unauthorized');
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -19,6 +23,6 @@ export const PUT: RequestHandler = async ({ request }) => {
 	if (body == null || typeof body !== 'object') {
 		error(400, 'Expected a JSON object');
 	}
-	const saved = await replace_upload_preview_pipeline_settings(body);
+	const saved = await replace_upload_preview_pipeline_settings(user.id, body);
 	return json(saved);
 };

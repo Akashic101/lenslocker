@@ -5,16 +5,18 @@ import {
 	get_album_by_id,
 	is_album_id_format
 } from '$lib/server/services/album/album_service';
+import { require_current_user_id } from '$lib/server/authz/current_user';
 import type { RequestHandler } from './$types';
 
 const uuid_re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const max_upload_ids_per_request = 200;
 const max_album_name_len = 200;
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+	const user_id = require_current_user_id(event);
 	let body: unknown;
 	try {
-		body = await request.json();
+		body = await event.request.json();
 	} catch {
 		error(400, 'Invalid JSON');
 	}
@@ -57,20 +59,20 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (name.length === 0 || name.length > max_album_name_len) {
 			error(400, 'Invalid album name');
 		}
-		target_album_id = await create_album(name);
+		target_album_id = await create_album(user_id, name);
 	} else {
 		const aid = String(album_id_raw).trim();
 		if (!is_album_id_format(aid)) {
 			error(400, 'Invalid album_id');
 		}
-		const row = await get_album_by_id(aid);
+		const row = await get_album_by_id(aid, user_id);
 		if (row == null) {
 			error(404, 'Album not found');
 		}
 		target_album_id = aid;
 	}
 
-	await add_raw_uploads_to_album(target_album_id, upload_ids);
+	await add_raw_uploads_to_album(user_id, target_album_id, upload_ids);
 
 	return json({ album_id: target_album_id });
 };

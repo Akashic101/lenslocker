@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import JSZip from 'jszip';
+import { env } from '$env/dynamic/private';
 import {
 	capture_sqlite_database_for_backup_zip,
 	db,
@@ -38,12 +39,12 @@ export function is_valid_settings_backup_filename(name: string): boolean {
 }
 
 /** Reads next sequence, persists sequence+1, returns the number used for this backup file. */
-function take_next_backup_sequence(): number {
+function take_next_backup_sequence(user_id: string): number {
 	return db.transaction((tx) => {
 		const rows = tx
 			.select()
 			.from(app_setting)
-			.where(eq(app_setting.key, backup_sequence_key))
+			.where(and(eq(app_setting.user_id, user_id), eq(app_setting.key, backup_sequence_key)))
 			.limit(1)
 			.all();
 		const assigned =
@@ -60,11 +61,11 @@ function take_next_backup_sequence(): number {
 		const next_stored = assigned + 1;
 		const value_json = JSON.stringify({ next: next_stored });
 		if (rows.length === 0) {
-			tx.insert(app_setting).values({ key: backup_sequence_key, value_json }).run();
+			tx.insert(app_setting).values({ user_id, key: backup_sequence_key, value_json }).run();
 		} else {
 			tx.update(app_setting)
 				.set({ value_json })
-				.where(eq(app_setting.key, backup_sequence_key))
+				.where(and(eq(app_setting.user_id, user_id), eq(app_setting.key, backup_sequence_key)))
 				.run();
 		}
 		return assigned;
@@ -107,12 +108,17 @@ export async function list_settings_backups(): Promise<settings_backup_list_entr
 	return out;
 }
 
-export async function create_settings_backup_zip(): Promise<{
+export async function create_settings_backup_zip(user_id: string): Promise<{
 	filename: string;
 	size_bytes: number;
 }> {
+	if (env.LENSLOCKER_DANGEROUS_ALLOW_FULL_DB_BACKUP !== '1') {
+		throw new Error(
+			'Settings ZIP backups are disabled in multi-user mode. Set LENSLOCKER_DANGEROUS_ALLOW_FULL_DB_BACKUP=1 to enable full-database export (not recommended).'
+		);
+	}
 	const root = await ensure_settings_backup_root();
-	const seq = take_next_backup_sequence();
+	const seq = take_next_backup_sequence(user_id);
 	const stamp = format_backup_date_stamp(new Date());
 	const filename = `LensLocker-backup-${stamp}-${seq}.zip`;
 
@@ -258,7 +264,7 @@ function require_import_finite_number(v: unknown, label: string): number {
 	return v;
 }
 
-function parse_hardware_items_backup_json(raw: string): HardwareItemInsert[] {
+function parse_hardware_items_backup_json(user_id: string, raw: string): HardwareItemInsert[] {
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(raw) as unknown;
@@ -297,6 +303,7 @@ function parse_hardware_items_backup_json(raw: string): HardwareItemInsert[] {
 		}
 		out.push({
 			id: rec.id,
+			user_id,
 			category: rec.category,
 			make: optional_import_string(rec.make),
 			model,
@@ -318,7 +325,7 @@ function require_backup_uuid(v: unknown, label: string): string {
 	return v;
 }
 
-function parse_albums_backup_json(raw: string): AlbumInsert[] {
+function parse_albums_backup_json(user_id: string, raw: string): AlbumInsert[] {
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(raw) as unknown;
@@ -345,6 +352,7 @@ function parse_albums_backup_json(raw: string): AlbumInsert[] {
 		}
 		out.push({
 			id,
+			user_id,
 			name: rec.name.trim(),
 			created_at_ms: require_import_finite_number(rec.created_at_ms, 'album created_at_ms')
 		});
@@ -466,8 +474,14 @@ type settings_backup_import_result = {
 
 /** Replaces all `app_setting` and `hardware_item` rows with contents of a LensLocker backup zip. */
 export async function import_settings_backup_from_zip_buffer(
+	user_id: string,
 	buf: Buffer
 ): Promise<settings_backup_import_result> {
+	if (env.LENSLOCKER_DANGEROUS_ALLOW_FULL_DB_BACKUP !== '1') {
+		throw new Error(
+			'Settings ZIP import is disabled in multi-user mode. Set LENSLOCKER_DANGEROUS_ALLOW_FULL_DB_BACKUP=1 to enable full-database restore (not recommended).'
+		);
+	}
 	if (buf.length === 0) {
 		throw new Error('Empty file');
 	}
@@ -540,7 +554,10 @@ export async function import_settings_backup_from_zip_buffer(
 	}
 
 	const app_rows = parse_app_settings_backup_json(await app_entry.async('string'));
-	const hardware_rows = parse_hardware_items_backup_json(await hardware_entry.async('string'));
+	const hardware_rows = parse_hardware_items_backup_json(
+		user_id,
+		await hardware_entry.async('string')
+	);
 
 	const albums_entry = find_zip_file(zip, 'albums.json');
 	const album_ru_entry = find_zip_file(zip, 'album_raw_upload.json');
@@ -555,7 +572,7 @@ export async function import_settings_backup_from_zip_buffer(
 			);
 		}
 		include_album_sidecar = true;
-		album_rows_parsed = parse_albums_backup_json(await albums_entry.async('string'));
+		album_rows_parsed = parse_albums_backup_json(user_id, await albums_entry.async('string'));
 		album_link_rows_parsed = parse_album_raw_upload_backup_json(
 			await album_ru_entry.async('string')
 		);
@@ -586,7 +603,9 @@ export async function import_settings_backup_from_zip_buffer(
 		}
 		for (const batch of chunk_array(app_rows, 80)) {
 			if (batch.length > 0) {
-				tx.insert(app_setting).values(batch).run();
+				tx.insert(app_setting)
+					.values(batch.map((r) => ({ user_id, key: r.key, value_json: r.value_json })))
+					.run();
 			}
 		}
 		for (const batch of chunk_array(hardware_rows, 40)) {

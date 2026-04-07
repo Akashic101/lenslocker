@@ -3,6 +3,11 @@ import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { error } from '@sveltejs/kit';
+import { upload_id_from_transformed_preview_path } from '$lib/server/gallery_upload_meta';
+import {
+	require_current_user_id,
+	require_owned_raw_upload_row
+} from '$lib/server/authz/current_user';
 import { get_transformed_root_absolute_path } from '$lib/server/transformed';
 import type { RequestHandler } from './$types';
 
@@ -36,7 +41,8 @@ function build_etag(size: number, mtime_ms: number): string {
 	return `W/"${size}-${Math.trunc(mtime_ms)}"`;
 }
 
-export const GET: RequestHandler = async ({ params, request }) => {
+export const GET: RequestHandler = async (event) => {
+	const { params, request } = event;
 	const path_param = params.path;
 	if (!path_param) error(404, 'Not found');
 
@@ -48,6 +54,15 @@ export const GET: RequestHandler = async ({ params, request }) => {
 	}
 
 	const relative_path = decoded_segments.join('/');
+
+	const relative_posix_path = decoded_segments.join('/');
+
+	// If the request targets an upload preview (thumb/full), enforce ownership.
+	const upload_id = upload_id_from_transformed_preview_path(relative_posix_path);
+	if (upload_id != null) {
+		const user_id = require_current_user_id(event);
+		await require_owned_raw_upload_row({ raw_upload_id: upload_id, user_id });
+	}
 
 	const root = path.resolve(get_transformed_root_absolute_path());
 	const absolute_file = path.resolve(root, ...decoded_segments);

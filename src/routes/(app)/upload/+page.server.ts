@@ -1,11 +1,14 @@
 import { upload_pipeline_settings_depends_key } from '$lib/cache/upload_pipeline_settings_cache';
 import { get_upload_preview_pipeline_settings } from '$lib/server/services/settings/upload_pipeline_settings';
+import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ url, depends }) => {
+export const load: PageServerLoad = async ({ url, depends, locals }) => {
 	depends(upload_pipeline_settings_depends_key);
+	const user = locals.user;
+	if (user == null) error(401, 'Unauthorized');
 	return {
 		just_uploaded: url.searchParams.get('uploaded') === '1',
-		upload_pipeline_settings: await get_upload_preview_pipeline_settings()
+		upload_pipeline_settings: await get_upload_preview_pipeline_settings(user.id)
 	};
 };

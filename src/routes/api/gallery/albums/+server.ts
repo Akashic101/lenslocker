@@ -1,13 +1,15 @@
 import { error, json } from '@sveltejs/kit';
 import { create_album } from '$lib/server/services/album/album_service';
+import { require_current_user_id } from '$lib/server/authz/current_user';
 import type { RequestHandler } from './$types';
 
 const max_album_name_len = 200;
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+	const user_id = require_current_user_id(event);
 	let body: unknown;
 	try {
-		body = await request.json();
+		body = await event.request.json();
 	} catch {
 		error(400, 'Invalid JSON');
 	}
@@ -23,6 +25,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		error(400, 'Invalid name');
 	}
 
-	const id = await create_album(name);
+	const id = await create_album(user_id, name);
 	return json({ id });
 };

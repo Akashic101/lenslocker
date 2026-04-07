@@ -225,8 +225,15 @@
 		try {
 			const response = await fetch(resolve('/api/settings/backups'), { method: 'POST' });
 			if (!response.ok) {
-				const text = await response.text();
-				throw new Error(text || response.statusText);
+				const raw = await response.text();
+				let msg = raw || response.statusText;
+				try {
+					const j = JSON.parse(raw) as { message?: string };
+					if (typeof j.message === 'string' && j.message !== '') msg = j.message;
+				} catch {
+					/* keep msg */
+				}
+				throw new Error(msg);
 			}
 			backup_create_ok = true;
 			await invalidate(settings_backup_list_depends_key);
@@ -396,6 +403,7 @@
 			<h2 class="text-sm font-medium text-gray-900 dark:text-white">
 				{m.plain_polite_penguin_heading_account()}
 			</h2>
+			<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{data.user_label}</p>
 			<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{data.account_email}</p>
 			<form method="post" action="?/sign_out" class="mt-3" use:enhance>
 				<button
@@ -694,26 +702,7 @@
 			<TabItem key="backup" title={m.calm_steady_elk_tab_backup()}>
 				<div class="space-y-6 pt-4">
 					<p class="text-sm text-gray-600 dark:text-gray-400">
-						{m.level_maroon_nurse_backup_intro_a()}<strong
-							>{m.level_maroon_nurse_backup_intro_sqlite()}</strong
-						>{m.level_maroon_nurse_backup_intro_b()}<code
-							class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
-							>database.sqlite</code
-						>{m.level_maroon_nurse_backup_intro_c()}<code
-							class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800">app_setting</code
-						>,
-						<code class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
-							>hardware_item</code
-						>,
-						<code class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800">album</code>,
-						<code class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
-							>album_raw_upload</code
-						>
-						{m.level_maroon_nurse_backup_intro_d()}<code
-							class="rounded bg-gray-100 px-1 font-mono text-xs dark:bg-gray-800"
-							>LensLocker-backup-yyyy-mm-dd-hh-mm-&lt;n&gt;.zip</code
-						>{m.level_maroon_nurse_backup_intro_e()}<strong>&lt;n&gt;</strong
-						>{m.level_maroon_nurse_backup_intro_f()}
+						{m.level_maroon_nurse_backup_intro()}
 					</p>
 					<div class="flex flex-wrap gap-3">
 						<button

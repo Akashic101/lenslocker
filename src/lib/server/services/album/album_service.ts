@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { album, album_raw_upload } from '$lib/server/db/album.schema';
 
@@ -15,7 +15,7 @@ export type album_summary_row = {
 	image_count: number;
 };
 
-export async function list_album_summaries(): Promise<album_summary_row[]> {
+export async function list_album_summaries(user_id: string): Promise<album_summary_row[]> {
 	const rows = await db
 		.select({
 			id: album.id,
@@ -25,6 +25,7 @@ export async function list_album_summaries(): Promise<album_summary_row[]> {
 		})
 		.from(album)
 		.leftJoin(album_raw_upload, eq(album_raw_upload.album_id, album.id))
+		.where(eq(album.user_id, user_id))
 		.groupBy(album.id)
 		.orderBy(album.name);
 
@@ -36,31 +37,41 @@ export async function list_album_summaries(): Promise<album_summary_row[]> {
 	}));
 }
 
-export async function get_album_by_id(album_id: string) {
-	const [row] = await db.select().from(album).where(eq(album.id, album_id)).limit(1);
+export async function get_album_by_id(album_id: string, user_id: string) {
+	const [row] = await db
+		.select()
+		.from(album)
+		.where(and(eq(album.id, album_id), eq(album.user_id, user_id)))
+		.limit(1);
 	return row ?? null;
 }
 
-export async function create_album(name_trimmed: string): Promise<string> {
+export async function create_album(user_id: string, name_trimmed: string): Promise<string> {
 	const now = Date.now();
 	const id = crypto.randomUUID();
 	await db.insert(album).values({
 		id,
+		user_id,
 		name: name_trimmed,
 		created_at_ms: now
 	});
 	return id;
 }
 
-export async function list_raw_upload_ids_in_album(album_id: string): Promise<string[]> {
+export async function list_raw_upload_ids_in_album(
+	user_id: string,
+	album_id: string
+): Promise<string[]> {
 	const rows = await db
 		.select({ raw_upload_id: album_raw_upload.raw_upload_id })
 		.from(album_raw_upload)
-		.where(eq(album_raw_upload.album_id, album_id));
+		.innerJoin(album, eq(album.id, album_raw_upload.album_id))
+		.where(and(eq(album_raw_upload.album_id, album_id), eq(album.user_id, user_id)));
 	return rows.map((r) => r.raw_upload_id);
 }
 
 export async function add_raw_uploads_to_album(
+	user_id: string,
 	album_id: string,
 	raw_upload_ids: string[]
 ): Promise<void> {
@@ -72,6 +83,13 @@ export async function add_raw_uploads_to_album(
 	if (unique.length === 0) return;
 
 	db.transaction((tx) => {
+		const album_rows = tx
+			.select({ id: album.id })
+			.from(album)
+			.where(and(eq(album.id, album_id), eq(album.user_id, user_id)))
+			.limit(1)
+			.all();
+		if (album_rows.length === 0) return;
 		for (const raw_upload_id of unique) {
 			tx.insert(album_raw_upload)
 				.values({ album_id, raw_upload_id, added_at_ms: now })

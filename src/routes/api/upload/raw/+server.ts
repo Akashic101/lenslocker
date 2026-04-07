@@ -4,10 +4,12 @@ import {
 	raw_upload_extension_rejected_message
 } from '$lib/gallery/raw_upload_extensions';
 import { process_single_raw_upload } from '$lib/server/services/gallery/process_single_raw_upload';
+import { require_current_user_id } from '$lib/server/authz/current_user';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request }) => {
-	const form = await request.formData();
+export const POST: RequestHandler = async (event) => {
+	const user_id = require_current_user_id(event);
+	const form = await event.request.formData();
 	const entry = form.get('raw_file');
 
 	if (!entry || !(entry instanceof File)) {
@@ -25,7 +27,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	const buffer = await entry.arrayBuffer();
-	const result = await process_single_raw_upload({
+	const result = await process_single_raw_upload(user_id, {
 		original_filename: entry.name,
 		byte_size: entry.size,
 		mime_type: entry.type || null,

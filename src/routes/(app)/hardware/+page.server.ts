@@ -8,6 +8,7 @@ import {
 	update_hardware_item_row
 } from '$lib/server/services/hardware/hardware_service';
 import { load_photo_gear_suggestions } from '$lib/server/services/gallery/photo_gear_suggestions';
+import { require_current_user_id } from '$lib/server/authz/current_user';
 import type { Actions, PageServerLoad } from './$types';
 
 function optional_trimmed(form: FormData, key: string): string | null {
@@ -22,17 +23,19 @@ function optional_date_ms(form: FormData, key: string): number | null {
 	return Number.isFinite(parsed) ? parsed : null;
 }
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async (event) => {
+	const user_id = require_current_user_id(event);
 	const [items, from_photos] = await Promise.all([
-		list_hardware_items_for_page(),
-		load_photo_gear_suggestions()
+		list_hardware_items_for_page(user_id),
+		load_photo_gear_suggestions(user_id)
 	]);
 	return { items, from_photos };
 };
 
 export const actions: Actions = {
-	save: async ({ request }) => {
-		const form = await request.formData();
+	save: async (event) => {
+		const user_id = require_current_user_id(event);
+		const form = await event.request.formData();
 		const id = String(form.get('id') ?? '').trim();
 		const category = String(form.get('category') ?? '').trim();
 		const model = String(form.get('model') ?? '').trim();
@@ -58,27 +61,29 @@ export const actions: Actions = {
 
 		if (id === '') {
 			await insert_hardware_item_row({
+				user_id,
 				...row,
 				created_at_ms: now
 			});
 		} else {
-			const existing_id = await get_hardware_item_id_if_exists(id);
+			const existing_id = await get_hardware_item_id_if_exists(user_id, id);
 			if (existing_id == null) {
 				return fail(404, { message: 'Item not found.' });
 			}
-			await update_hardware_item_row(id, row);
+			await update_hardware_item_row(user_id, id, { ...row, user_id });
 		}
 
 		return { success: true as const };
 	},
 
-	delete: async ({ request }) => {
-		const form = await request.formData();
+	delete: async (event) => {
+		const user_id = require_current_user_id(event);
+		const form = await event.request.formData();
 		const id = String(form.get('id') ?? '').trim();
 		if (id === '') {
 			return fail(400, { message: 'Missing id.' });
 		}
-		await delete_hardware_item_by_id(id);
+		await delete_hardware_item_by_id(user_id, id);
 		return { success: true as const };
 	}
 };

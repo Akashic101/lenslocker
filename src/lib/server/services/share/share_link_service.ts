@@ -38,7 +38,7 @@ export async function create_share_link(input: {
 		const rows = await db
 			.select({ id: album.id })
 			.from(album)
-			.where(eq(album.id, album_id))
+			.where(and(eq(album.id, album_id), eq(album.user_id, created_by_user_id)))
 			.limit(1);
 		if (rows.length === 0) throw new Error('Album not found');
 	} else {
@@ -48,7 +48,12 @@ export async function create_share_link(input: {
 		const rows = await db
 			.select({ id: raw_image_upload.id })
 			.from(raw_image_upload)
-			.where(eq(raw_image_upload.id, raw_upload_id))
+			.where(
+				and(
+					eq(raw_image_upload.id, raw_upload_id),
+					eq(raw_image_upload.user_id, created_by_user_id)
+				)
+			)
 			.limit(1);
 		if (rows.length === 0) throw new Error('Upload not found');
 	}
@@ -164,7 +169,7 @@ export async function share_allowed_upload_ids(row: ShareLinkRow): Promise<Set<s
 		return new Set([row.raw_upload_id]);
 	}
 	if (row.kind === 'album' && row.album_id) {
-		const ids = await list_raw_upload_ids_in_album(row.album_id);
+		const ids = await list_raw_upload_ids_in_album(row.created_by_user_id, row.album_id);
 		return new Set(ids);
 	}
 	return new Set();
@@ -192,18 +197,25 @@ export async function load_share_gallery_items(
 	title: string;
 	images: gallery_grid_item[];
 }> {
-	const { upload_preview_format } = await get_upload_preview_pipeline_settings();
+	const { upload_preview_format } = await get_upload_preview_pipeline_settings(
+		row.created_by_user_id
+	);
 
 	if (row.kind === 'album' && row.album_id) {
 		const a = await db.select().from(album).where(eq(album.id, row.album_id)).limit(1);
 		const name = a[0]?.name ?? 'Album';
-		const upload_ids = await list_raw_upload_ids_in_album(row.album_id);
+		const upload_ids = await list_raw_upload_ids_in_album(row.created_by_user_id, row.album_id);
 		const thumb_paths = await Promise.all(
 			upload_ids.map((id) => resolve_upload_preview_thumb_relative_path(id, upload_preview_format))
 		);
 		const relative_paths = thumb_paths.filter((p): p is string => p != null);
 		relative_paths.sort((x, y) => x.localeCompare(y));
-		const images = await build_share_grid_items(token, relative_paths, upload_preview_format);
+		const images = await build_share_grid_items(
+			token,
+			row.created_by_user_id,
+			relative_paths,
+			upload_preview_format
+		);
 		return { title: name, images };
 	}
 
@@ -221,7 +233,12 @@ export async function load_share_gallery_items(
 		if (thumb == null) {
 			return { title, images: [] };
 		}
-		const images = await build_share_grid_items(token, [thumb], upload_preview_format);
+		const images = await build_share_grid_items(
+			token,
+			row.created_by_user_id,
+			[thumb],
+			upload_preview_format
+		);
 		return { title, images };
 	}
 
@@ -230,6 +247,7 @@ export async function load_share_gallery_items(
 
 async function build_share_grid_items(
 	token: string,
+	owner_user_id: string,
 	relative_thumb_paths: string[],
 	upload_preview_format: import('$lib/config/upload_preview_format').upload_preview_format
 ): Promise<gallery_grid_item[]> {
@@ -239,7 +257,7 @@ async function build_share_grid_items(
 
 	const meta_by_upload_id = new Map<string, ReturnType<typeof build_gallery_meta_rows>>();
 	if (preview_upload_ids.length > 0) {
-		const rows = await load_raw_upload_meta_rows_for_ids(preview_upload_ids);
+		const rows = await load_raw_upload_meta_rows_for_ids(owner_user_id, preview_upload_ids);
 		for (const row of rows) {
 			const caption_rows = build_gallery_meta_rows(row);
 			if (caption_rows.length > 0) meta_by_upload_id.set(row.id, caption_rows);

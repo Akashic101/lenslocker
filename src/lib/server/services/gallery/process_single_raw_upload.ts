@@ -53,9 +53,10 @@ function format_max_upload_label(max_bytes: number): string {
 }
 
 export async function process_single_raw_upload(
+	user_id: string,
 	input: process_raw_upload_input
 ): Promise<process_raw_upload_result> {
-	const pipeline = await get_upload_preview_pipeline_settings();
+	const pipeline = await get_upload_preview_pipeline_settings(user_id);
 
 	if (input.byte_size === 0) {
 		return { ok: false, message: 'The file is empty.' };
@@ -78,7 +79,7 @@ export async function process_single_raw_upload(
 	const buffer = input.buffer;
 	const sha256_hex = createHash('sha256').update(new Uint8Array(buffer)).digest('hex');
 
-	const existing_id = await select_raw_upload_id_by_sha256_hex(sha256_hex);
+	const existing_id = await select_raw_upload_id_by_sha256_hex(user_id, sha256_hex);
 	if (existing_id != null) {
 		return {
 			ok: true,
@@ -114,6 +115,7 @@ export async function process_single_raw_upload(
 
 	const row = {
 		id,
+		user_id,
 		original_filename: input.original_filename,
 		stored_filename,
 		relative_storage_path,
@@ -142,6 +144,7 @@ export async function process_single_raw_upload(
 		new Uint8Array(buffer),
 		input.original_filename,
 		{
+			user_id,
 			source_absolute_path: absolute_path,
 			exif_orientation: metadata.orientation ?? null,
 			pipeline

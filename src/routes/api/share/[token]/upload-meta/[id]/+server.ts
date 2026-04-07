@@ -28,7 +28,7 @@ export const GET: RequestHandler = async ({ params }) => {
 	const allowed = await share_allowed_upload_ids(share);
 	if (!allowed.has(id)) error(403, 'Forbidden');
 
-	const row = await select_raw_upload_row_by_id(id);
+	const row = await select_raw_upload_row_by_id(share.created_by_user_id, id);
 	if (!row) error(404, 'Not found');
 
 	const { exifr_full_json, ...rest } = row;

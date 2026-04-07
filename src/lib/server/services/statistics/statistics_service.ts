@@ -1,4 +1,4 @@
-import { sql, count, desc, asc, gte } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { raw_image_upload } from '$lib/server/db/raw_image_upload.schema';
 import { sql_shot_calendar_date } from '$lib/server/gallery_shot_date_sql';
@@ -59,7 +59,7 @@ type statistics_page_data = {
 	gps: { labels: string[]; series: number[] };
 };
 
-export async function load_statistics_page(): Promise<statistics_page_data> {
+export async function load_statistics_page(user_id: string): Promise<statistics_page_data> {
 	const [kpi_row] = await db
 		.select({
 			total: count(),
@@ -85,7 +85,8 @@ export async function load_statistics_page(): Promise<statistics_page_data> {
 					Number
 				)
 		})
-		.from(raw_image_upload);
+		.from(raw_image_upload)
+		.where(eq(raw_image_upload.user_id, user_id));
 
 	const total = Number(kpi_row?.total ?? 0);
 	const total_bytes = Number(kpi_row?.total_bytes ?? 0);
@@ -108,7 +109,12 @@ export async function load_statistics_page(): Promise<statistics_page_data> {
 			c: count()
 		})
 		.from(raw_image_upload)
-		.where(gte(raw_image_upload.uploaded_at_ms, Date.now() - thirty_six_months_ms))
+		.where(
+			and(
+				eq(raw_image_upload.user_id, user_id),
+				gte(raw_image_upload.uploaded_at_ms, Date.now() - thirty_six_months_ms)
+			)
+		)
 		.groupBy(ym_expr)
 		.orderBy(asc(ym_expr));
 
@@ -119,6 +125,7 @@ export async function load_statistics_page(): Promise<statistics_page_data> {
 				c: count()
 			})
 			.from(raw_image_upload)
+			.where(eq(raw_image_upload.user_id, user_id))
 			.groupBy(ym_expr)
 			.orderBy(asc(ym_expr));
 	}
@@ -141,7 +148,7 @@ export async function load_statistics_page(): Promise<statistics_page_data> {
 			c: count()
 		})
 		.from(raw_image_upload)
-		.where(sql`${shot_cal} IS NOT NULL`)
+		.where(and(eq(raw_image_upload.user_id, user_id), sql`${shot_cal} IS NOT NULL`))
 		.groupBy(iso_week_bucket)
 		.having(sql`${iso_week_bucket} IS NOT NULL`)
 		.orderBy(asc(iso_week_bucket));
@@ -162,6 +169,7 @@ export async function load_statistics_page(): Promise<statistics_page_data> {
 			c: count()
 		})
 		.from(raw_image_upload)
+		.where(eq(raw_image_upload.user_id, user_id))
 		.groupBy(raw_image_upload.make, raw_image_upload.model)
 		.orderBy(desc(count()))
 		.limit(10);
@@ -206,7 +214,8 @@ export async function load_statistics_page(): Promise<statistics_page_data> {
 					Number
 				)
 		})
-		.from(raw_image_upload);
+		.from(raw_image_upload)
+		.where(eq(raw_image_upload.user_id, user_id));
 
 	const iso_counts = iso_row ?? {
 		unknown: 0,
@@ -235,7 +244,8 @@ export async function load_statistics_page(): Promise<statistics_page_data> {
 					Number
 				)
 		})
-		.from(raw_image_upload);
+		.from(raw_image_upload)
+		.where(eq(raw_image_upload.user_id, user_id));
 
 	const gps = {
 		labels: ['Geotagged', 'No GPS'],

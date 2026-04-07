@@ -3,14 +3,17 @@ import {
 	dashboard_images_per_page,
 	load_gallery_dashboard
 } from '$lib/server/services/dashboard/gallery_grid_load';
+import { require_current_user_id } from '$lib/server/authz/current_user';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async (event) => {
+	const user_id = require_current_user_id(event);
+	const { url } = event;
 	const raw = url.searchParams.get('offset');
 	const parsed = raw == null ? 0 : Number.parseInt(raw, 10);
 	const offset = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 
-	const payload = await load_gallery_dashboard(url, offset, dashboard_images_per_page);
+	const payload = await load_gallery_dashboard(url, offset, dashboard_images_per_page, user_id);
 
 	return json({
 		images: payload.images,

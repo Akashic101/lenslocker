@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
 	upload_preview_pipeline_defaults,
 	type upload_preview_pipeline_settings
@@ -36,11 +36,13 @@ function clamp_upload_preview_pipeline_settings(input: unknown): upload_preview_
 	};
 }
 
-export async function get_upload_preview_pipeline_settings(): Promise<upload_preview_pipeline_settings> {
+export async function get_upload_preview_pipeline_settings(
+	user_id: string
+): Promise<upload_preview_pipeline_settings> {
 	const rows = await db
 		.select()
 		.from(app_setting)
-		.where(eq(app_setting.key, upload_pipeline_setting_key))
+		.where(and(eq(app_setting.user_id, user_id), eq(app_setting.key, upload_pipeline_setting_key)))
 		.limit(1);
 	if (rows.length === 0) {
 		return { ...upload_preview_pipeline_defaults };
@@ -53,15 +55,16 @@ export async function get_upload_preview_pipeline_settings(): Promise<upload_pre
 }
 
 export async function replace_upload_preview_pipeline_settings(
+	user_id: string,
 	next: unknown
 ): Promise<upload_preview_pipeline_settings> {
 	const merged = clamp_upload_preview_pipeline_settings(next);
 	const value_json = JSON.stringify(merged);
 	await db
 		.insert(app_setting)
-		.values({ key: upload_pipeline_setting_key, value_json })
+		.values({ user_id, key: upload_pipeline_setting_key, value_json })
 		.onConflictDoUpdate({
-			target: app_setting.key,
+			target: [app_setting.user_id, app_setting.key],
 			set: { value_json }
 		});
 	return merged;
