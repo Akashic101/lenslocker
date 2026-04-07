@@ -23,6 +23,7 @@
 	} from 'flowbite-svelte-icons';
 	import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
 	import { m } from '$lib/paraglide/messages.js';
+	import { raw_upload_batch_activity } from '$lib/gallery/raw_upload_batch_activity.svelte';
 	import type { gallery_grid_item } from '$lib/gallery/gallery_grid_types';
 	import type { PageData } from './$types';
 	import GalleryBulkActionsBar from '$lib/components/gallery_bulk_actions_bar.svelte';
@@ -104,6 +105,7 @@
 
 	function on_gallery_sort_change(ev: Event): void {
 		if (!browser) return;
+		if (raw_upload_batch_activity.in_progress) return;
 		const sel = ev.currentTarget as HTMLSelectElement;
 		const next = sel.value;
 		if (next === data.gallery_filters.sort) return;
@@ -114,6 +116,7 @@
 	}
 
 	function on_filters_toggle_click(): void {
+		if (raw_upload_batch_activity.in_progress) return;
 		filters_panel_user_open = !filters_panel_user_open;
 	}
 
@@ -364,6 +367,7 @@
 	}
 
 	function set_gallery_selection_mode(next: boolean): void {
+		if (next && raw_upload_batch_activity.in_progress) return;
 		gallery_selection_mode = next;
 		if (!next) {
 			gallery_selected_upload_ids = [];
@@ -510,6 +514,9 @@
 	}
 
 	function gallery_filters_toggle_aria_label(panel_open: boolean): string {
+		if (raw_upload_batch_activity.in_progress) {
+			return m.humble_plain_gull_gallery_controls_locked_during_upload();
+		}
 		const n = gallery_exif_star_filter_count;
 		const suffix = n > 0 ? m.salty_bold_mare_filters_active_suffix({ count: n }) : '';
 		if (panel_open) {
@@ -517,6 +524,12 @@
 		}
 		return `${m.salty_bold_mare_filters_show()}${suffix}`;
 	}
+
+	$effect(() => {
+		if (!raw_upload_batch_activity.in_progress) return;
+		filters_panel_user_open = false;
+		if (gallery_selection_mode) set_gallery_selection_mode(false);
+	});
 </script>
 
 <svelte:head>
@@ -548,8 +561,14 @@
 					>
 					<select
 						id="gallery-sort-select"
-						class="{app_form_field_class} py-1.5 text-sm"
-						aria-label={m.brown_brave_kudu_gallery_sort_aria()}
+						class="{app_form_field_class} py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+						disabled={raw_upload_batch_activity.in_progress}
+						title={raw_upload_batch_activity.in_progress
+							? m.humble_plain_gull_gallery_controls_locked_during_upload()
+							: undefined}
+						aria-label={raw_upload_batch_activity.in_progress
+							? m.humble_plain_gull_gallery_controls_locked_during_upload()
+							: m.brown_brave_kudu_gallery_sort_aria()}
 						value={data.gallery_filters.sort}
 						onchange={on_gallery_sort_change}
 					>
@@ -592,18 +611,28 @@
 					type="button"
 					class="{gallery_header_icon_button_class} {gallery_selection_mode
 						? 'border-primary-500 ring-2 ring-primary-200 dark:border-primary-500 dark:ring-primary-900'
-						: ''}"
+						: ''} disabled:cursor-not-allowed disabled:opacity-50"
+					disabled={raw_upload_batch_activity.in_progress}
+					title={raw_upload_batch_activity.in_progress
+						? m.humble_plain_gull_gallery_controls_locked_during_upload()
+						: undefined}
 					aria-pressed={gallery_selection_mode}
-					aria-label={gallery_selection_mode
-						? m.fierce_tiny_lark_aria_exit_multiselect()
-						: m.fierce_tiny_lark_aria_enter_multiselect()}
+					aria-label={raw_upload_batch_activity.in_progress
+						? m.humble_plain_gull_gallery_controls_locked_during_upload()
+						: gallery_selection_mode
+							? m.fierce_tiny_lark_aria_exit_multiselect()
+							: m.fierce_tiny_lark_aria_enter_multiselect()}
 					onclick={() => set_gallery_selection_mode(!gallery_selection_mode)}
 				>
 					<CheckOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
 				</button>
 				<button
 					type="button"
-					class="{gallery_header_icon_button_class} relative"
+					class="{gallery_header_icon_button_class} relative disabled:cursor-not-allowed disabled:opacity-50"
+					disabled={raw_upload_batch_activity.in_progress}
+					title={raw_upload_batch_activity.in_progress
+						? m.humble_plain_gull_gallery_controls_locked_during_upload()
+						: undefined}
 					aria-expanded={filters_panel_user_open}
 					aria-controls="gallery-filters-panel"
 					aria-label={gallery_filters_toggle_aria_label(filters_panel_user_open)}

@@ -21,6 +21,7 @@
 		ChevronDownOutline,
 		UploadOutline
 	} from 'flowbite-svelte-icons';
+	import { raw_upload_batch_activity } from '$lib/gallery/raw_upload_batch_activity.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	let { children, data } = $props();
@@ -141,6 +142,8 @@
 	const dashboard_albums_active = $derived(
 		gallery_focus_param === 'albums' || gallery_focus_param === 'album'
 	);
+
+	const upload_nav_active = $derived(page.url.pathname.endsWith('/upload'));
 
 	/** Refetch sidebar count on client navigations so it matches DB after uploads/archives on other routes. */
 	afterNavigate(({ from }) => {
@@ -322,19 +325,40 @@
 						{/if}
 					</li>
 				{/if}
-				<SidebarItem
-					label={m.quaint_grand_snail_amaze_upload()}
-					spanClass={sidebar_item_label_class}
-					aClass={sidebar_item_anchor_class}
-					href={upload_url}
-					title={nav_rail_collapsed ? m.quaint_grand_snail_amaze_upload() : undefined}
-				>
-					{#snippet icon()}
-						<UploadOutline
-							class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
-						/>
-					{/snippet}
-				</SidebarItem>
+				<li class="list-none">
+					<a
+						href={upload_url}
+						aria-current={upload_nav_active ? 'page' : undefined}
+						class="group flex min-h-10 min-w-0 items-center p-2 text-base font-normal text-gray-900 no-underline transition duration-75 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 {upload_nav_active
+							? 'bg-gray-100 dark:bg-gray-700'
+							: ''} {sidebar_item_anchor_class}"
+						title={raw_upload_batch_activity.in_progress
+							? `${m.quaint_grand_snail_amaze_upload()} — ${Math.round(raw_upload_batch_activity.overall_percent)}%`
+							: m.quaint_grand_snail_amaze_upload()}
+					>
+						<span class="relative inline-flex shrink-0">
+							<UploadOutline
+								class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
+							/>
+							{#if raw_upload_batch_activity.in_progress && nav_rail_collapsed}
+								<span
+									class="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded bg-primary-600 px-0.5 text-[9px] leading-none font-semibold text-white tabular-nums dark:bg-primary-500"
+									aria-hidden="true"
+								>
+									{Math.round(raw_upload_batch_activity.overall_percent)}
+								</span>
+							{/if}
+						</span>
+						<span class={sidebar_item_label_class}>{m.quaint_grand_snail_amaze_upload()}</span>
+						{#if raw_upload_batch_activity.in_progress && !nav_rail_collapsed}
+							<span
+								class="ms-3 inline-flex min-w-8 shrink-0 items-center justify-center rounded-full bg-primary-200 px-2 py-0.5 text-xs font-medium text-primary-900 tabular-nums dark:bg-primary-200 dark:text-primary-900"
+							>
+								{Math.round(raw_upload_batch_activity.overall_percent)}%
+							</span>
+						{/if}
+					</a>
+				</li>
 				<SidebarItem
 					label={m.such_tangy_mare_conquer_hardware()}
 					spanClass={sidebar_item_label_class}
