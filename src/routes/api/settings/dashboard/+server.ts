@@ -5,15 +5,11 @@ import {
 } from '$lib/server/services/settings/dashboard_attention_settings';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ locals }) => {
-	const user = locals.user;
-	if (user == null) error(401, 'Unauthorized');
-	return json(await get_dashboard_needs_attention_settings(user.id));
+export const GET: RequestHandler = async () => {
+	return json(await get_dashboard_needs_attention_settings());
 };
 
-export const PUT: RequestHandler = async ({ request, locals }) => {
-	const user = locals.user;
-	if (user == null) error(401, 'Unauthorized');
+export const PUT: RequestHandler = async ({ request }) => {
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -23,6 +19,6 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 	if (body == null || typeof body !== 'object') {
 		error(400, 'Expected a JSON object');
 	}
-	const saved = await replace_dashboard_needs_attention_settings(user.id, body);
+	const saved = await replace_dashboard_needs_attention_settings(body);
 	return json(saved);
 };

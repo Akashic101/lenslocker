@@ -373,12 +373,7 @@ function build_gallery_dashboard_return(params: {
  * Resolves filtered gallery paths and dashboard metadata for the URL, then hydrates one slice
  * (meta + full preview paths) for grid tiles.
  */
-export async function load_gallery_dashboard(
-	url: URL,
-	offset: number,
-	limit: number,
-	user_id: string
-) {
+export async function load_gallery_dashboard(url: URL, offset: number, limit: number) {
 	const safe_limit = Math.min(Math.max(1, limit), 100);
 	const safe_offset = Math.max(0, offset);
 
@@ -418,6 +413,7 @@ export async function load_gallery_dashboard(
 
 	const gallery_sort = parse_gallery_sort(url.searchParams);
 	const shot_date = sql_shot_calendar_date();
+
 	if (gallery_focus === 'albums') {
 		const [
 			iso_agg_row,
@@ -427,12 +423,12 @@ export async function load_gallery_dashboard(
 			needs_attention_settings,
 			albums
 		] = await Promise.all([
-			load_dashboard_iso_aggregate(user_id),
-			load_dashboard_shot_date_aggregate(user_id),
-			load_dashboard_camera_pair_rows(user_id),
-			load_dashboard_lens_pair_rows(user_id),
-			get_dashboard_needs_attention_settings(user_id),
-			list_album_summaries(user_id)
+			load_dashboard_iso_aggregate(),
+			load_dashboard_shot_date_aggregate(),
+			load_dashboard_camera_pair_rows(),
+			load_dashboard_lens_pair_rows(),
+			get_dashboard_needs_attention_settings(),
+			list_album_summaries()
 		]);
 
 		return build_gallery_dashboard_return({
@@ -477,14 +473,14 @@ export async function load_gallery_dashboard(
 		albums
 	] = await Promise.all([
 		list_transformed_media_paths(),
-		load_dashboard_upload_flag_rows(user_id),
-		load_dashboard_iso_aggregate(user_id),
-		load_dashboard_shot_date_aggregate(user_id),
-		load_dashboard_camera_pair_rows(user_id),
-		load_dashboard_lens_pair_rows(user_id),
-		get_upload_preview_pipeline_settings(user_id),
-		get_dashboard_needs_attention_settings(user_id),
-		list_album_summaries(user_id)
+		load_dashboard_upload_flag_rows(),
+		load_dashboard_iso_aggregate(),
+		load_dashboard_shot_date_aggregate(),
+		load_dashboard_camera_pair_rows(),
+		load_dashboard_lens_pair_rows(),
+		get_upload_preview_pipeline_settings(),
+		get_dashboard_needs_attention_settings(),
+		list_album_summaries()
 	]);
 
 	const upload_flags = new Map(
@@ -502,12 +498,12 @@ export async function load_gallery_dashboard(
 		if (album_id_for_row == null) {
 			scope_paths = [];
 		} else {
-			const album_row = await get_album_by_id(album_id_for_row, user_id);
+			const album_row = await get_album_by_id(album_id_for_row);
 			if (album_row == null) {
 				scope_paths = [];
 			} else {
 				current_album = { id: album_row.id, name: album_row.name };
-				album_member_ids = await list_raw_upload_ids_in_album(user_id, album_id_for_row);
+				album_member_ids = await list_raw_upload_ids_in_album(album_id_for_row);
 				const preferred_format = upload_pipeline_settings.upload_preview_format;
 				const resolved = await Promise.all(
 					album_member_ids.map((id) =>
@@ -519,7 +515,7 @@ export async function load_gallery_dashboard(
 			}
 		}
 	} else if (gallery_focus === 'archived') {
-		const archived_rows = await list_archived_raw_upload_ids(user_id);
+		const archived_rows = await list_archived_raw_upload_ids();
 		const preferred_format = upload_pipeline_settings.upload_preview_format;
 		const resolved = await Promise.all(
 			archived_rows.map((r) => resolve_upload_preview_thumb_relative_path(r.id, preferred_format))
@@ -529,10 +525,10 @@ export async function load_gallery_dashboard(
 	} else {
 		scope_paths = all_paths.filter((p) => {
 			const upload_id = upload_id_from_gallery_preview_path(p);
-			if (upload_id == null) return false;
+			if (upload_id == null) return gallery_focus == null;
 
 			const f = upload_flags.get(upload_id);
-			if (f == null) return false;
+			if (f == null) return gallery_focus == null;
 			return f.archived_at_ms == null;
 		});
 	}
@@ -579,7 +575,7 @@ export async function load_gallery_dashboard(
 				}
 			}
 
-			const matching_ids = await list_upload_ids_matching_filter(user_id, and(...parts)!);
+			const matching_ids = await list_upload_ids_matching_filter(and(...parts)!);
 			const id_set = new Set(matching_ids);
 			filtered_paths = scope_paths.filter((p) => {
 				const upload_id = upload_id_from_gallery_preview_path(p);
@@ -632,7 +628,7 @@ export async function load_gallery_dashboard(
 			}
 		}
 
-		const matching_ids = await list_upload_ids_matching_filter(user_id, and(...parts)!);
+		const matching_ids = await list_upload_ids_matching_filter(and(...parts)!);
 		const id_set = new Set(matching_ids);
 		filtered_paths = scope_paths.filter((p) => {
 			const upload_id = upload_id_from_gallery_preview_path(p);
@@ -655,7 +651,7 @@ export async function load_gallery_dashboard(
 	const meta_by_upload_id = new Map<string, ReturnType<typeof build_gallery_meta_rows>>();
 
 	if (preview_upload_ids.length > 0) {
-		const rows = await load_raw_upload_meta_rows_for_ids(user_id, preview_upload_ids);
+		const rows = await load_raw_upload_meta_rows_for_ids(preview_upload_ids);
 
 		for (const row of rows) {
 			const caption_rows = build_gallery_meta_rows(row);
@@ -675,15 +671,15 @@ export async function load_gallery_dashboard(
 	const images = slice.map((relative_path) => {
 		const upload_id = upload_id_from_gallery_preview_path(relative_path);
 		const caption_rows = upload_id ? meta_by_upload_id.get(upload_id) : undefined;
+		const full_relative = upload_id
+			? (full_preview_relative_by_upload_id.get(upload_id) ?? null)
+			: null;
 		const flags = upload_id ? upload_flags.get(upload_id) : undefined;
 		const starred = flags != null && flags.starred === 1;
 		return {
 			relative_path,
-			src:
-				upload_id != null
-					? `/api/media/thumb/${encodeURIComponent(upload_id)}`
-					: transformed_media_url(relative_path),
-			full_src: upload_id != null ? `/api/media/full/${encodeURIComponent(upload_id)}` : null,
+			src: transformed_media_url(relative_path),
+			full_src: full_relative ? transformed_media_url(full_relative) : null,
 			upload_id,
 			starred,
 			alt: relative_path,

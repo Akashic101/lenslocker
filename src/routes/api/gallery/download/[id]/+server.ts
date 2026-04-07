@@ -5,10 +5,7 @@ import { Readable } from 'node:stream';
 import { error } from '@sveltejs/kit';
 import { resolve_upload_preview_full_relative_path } from '$lib/server/raw_upload/write_preview_jpeg';
 import { get_raw_upload_root } from '$lib/server/raw_upload/paths';
-import {
-	require_current_user_id,
-	require_owned_raw_upload_row
-} from '$lib/server/authz/current_user';
+import { select_raw_upload_row_by_id } from '$lib/server/services/gallery/gallery_service';
 import { get_upload_preview_pipeline_settings } from '$lib/server/services/settings/upload_pipeline_settings';
 import { get_transformed_root_absolute_path } from '$lib/server/transformed';
 import type { RequestHandler } from './$types';
@@ -50,8 +47,7 @@ function preview_download_basename(row: { original_filename: string }, rel_full:
 	return `${safe_stem || 'photo'}_preview${preview_ext}`;
 }
 
-export const GET: RequestHandler = async (event) => {
-	const { params, url } = event;
+export const GET: RequestHandler = async ({ params, url }) => {
 	const id = params.id;
 	if (id == null || !uuid_re.test(id)) error(400, 'Invalid id');
 
@@ -60,8 +56,8 @@ export const GET: RequestHandler = async (event) => {
 		error(400, 'kind must be preview or raw');
 	}
 
-	const user_id = require_current_user_id(event);
-	const row = await require_owned_raw_upload_row({ raw_upload_id: id, user_id });
+	const row = await select_raw_upload_row_by_id(id);
+	if (!row) error(404, 'Not found');
 
 	if (kind_raw === 'raw') {
 		const root = path.resolve(get_raw_upload_root());
@@ -102,7 +98,7 @@ export const GET: RequestHandler = async (event) => {
 		});
 	}
 
-	const pipeline = await get_upload_preview_pipeline_settings(user_id);
+	const pipeline = await get_upload_preview_pipeline_settings();
 	const rel_full = await resolve_upload_preview_full_relative_path(
 		id,
 		pipeline.upload_preview_format

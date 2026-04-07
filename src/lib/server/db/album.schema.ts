@@ -1,24 +1,16 @@
-import { index, integer, sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core';
+import { integer, sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core';
 import { raw_image_upload } from './raw_image_upload.schema';
-import { user } from './auth.schema';
 
 /**
  * Virtual albums: DB-only groupings of uploads. Files on disk are not moved.
  */
-export const album = sqliteTable(
-	'album',
-	{
-		id: text('id')
-			.primaryKey()
-			.$defaultFn(() => crypto.randomUUID()),
-		user_id: text('user_id')
-			.notNull()
-			.references(() => user.id, { onDelete: 'cascade' }),
-		name: text('name').notNull(),
-		created_at_ms: integer('created_at_ms', { mode: 'number' }).notNull()
-	},
-	(t) => [index('album_user_id_idx').on(t.user_id)]
-);
+export const album = sqliteTable('album', {
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	name: text('name').notNull(),
+	created_at_ms: integer('created_at_ms', { mode: 'number' }).notNull()
+});
 
 export const album_raw_upload = sqliteTable(
 	'album_raw_upload',

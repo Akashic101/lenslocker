@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, max, min, or, sql, type SQL } from 'drizzle-orm';
+import { asc, inArray, isNotNull, max, min, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { raw_image_upload } from '$lib/server/db/raw_image_upload.schema';
 import { sql_shot_calendar_date } from '$lib/server/gallery_shot_date_sql';
@@ -8,41 +8,38 @@ export const dashboard_images_per_page = 50;
 
 export type dashboard_gallery_focus_mode = 'needs_attention' | 'archived' | 'albums' | 'album';
 
-export async function load_dashboard_upload_flag_rows(user_id: string) {
+export async function load_dashboard_upload_flag_rows() {
 	return db
 		.select({
 			id: raw_image_upload.id,
 			starred: raw_image_upload.starred,
 			archived_at_ms: raw_image_upload.archived_at_ms
 		})
-		.from(raw_image_upload)
-		.where(eq(raw_image_upload.user_id, user_id));
+		.from(raw_image_upload);
 }
 
-export async function load_dashboard_iso_aggregate(user_id: string) {
+export async function load_dashboard_iso_aggregate() {
 	const [row] = await db
 		.select({
 			iso_min_db: min(raw_image_upload.iso_speed),
 			iso_max_db: max(raw_image_upload.iso_speed)
 		})
-		.from(raw_image_upload)
-		.where(eq(raw_image_upload.user_id, user_id));
+		.from(raw_image_upload);
 	return row;
 }
 
-export async function load_dashboard_shot_date_aggregate(user_id: string) {
+export async function load_dashboard_shot_date_aggregate() {
 	const shot_date = sql_shot_calendar_date();
 	const [row] = await db
 		.select({
 			date_min_db: sql<string | null>`min(${shot_date})`.mapWith(String),
 			date_max_db: sql<string | null>`max(${shot_date})`.mapWith(String)
 		})
-		.from(raw_image_upload)
-		.where(eq(raw_image_upload.user_id, user_id));
+		.from(raw_image_upload);
 	return row;
 }
 
-export async function load_dashboard_camera_pair_rows(user_id: string) {
+export async function load_dashboard_camera_pair_rows() {
 	return db
 		.selectDistinct({
 			make: raw_image_upload.make,
@@ -50,18 +47,15 @@ export async function load_dashboard_camera_pair_rows(user_id: string) {
 		})
 		.from(raw_image_upload)
 		.where(
-			and(
-				eq(raw_image_upload.user_id, user_id),
-				or(
-					sql`trim(coalesce(${raw_image_upload.make}, '')) != ''`,
-					sql`trim(coalesce(${raw_image_upload.model}, '')) != ''`
-				)
+			or(
+				sql`trim(coalesce(${raw_image_upload.make}, '')) != ''`,
+				sql`trim(coalesce(${raw_image_upload.model}, '')) != ''`
 			)
 		)
 		.orderBy(asc(raw_image_upload.make), asc(raw_image_upload.model));
 }
 
-export async function load_dashboard_lens_pair_rows(user_id: string) {
+export async function load_dashboard_lens_pair_rows() {
 	return db
 		.selectDistinct({
 			lens_make: raw_image_upload.lens_make,
@@ -69,34 +63,31 @@ export async function load_dashboard_lens_pair_rows(user_id: string) {
 		})
 		.from(raw_image_upload)
 		.where(
-			and(
-				eq(raw_image_upload.user_id, user_id),
-				or(
-					sql`trim(coalesce(${raw_image_upload.lens_make}, '')) != ''`,
-					sql`trim(coalesce(${raw_image_upload.lens_model}, '')) != ''`
-				)
+			or(
+				sql`trim(coalesce(${raw_image_upload.lens_make}, '')) != ''`,
+				sql`trim(coalesce(${raw_image_upload.lens_model}, '')) != ''`
 			)
 		)
 		.orderBy(asc(raw_image_upload.lens_make), asc(raw_image_upload.lens_model));
 }
 
-export async function list_archived_raw_upload_ids(user_id: string) {
+export async function list_archived_raw_upload_ids() {
 	return db
 		.select({ id: raw_image_upload.id })
 		.from(raw_image_upload)
-		.where(and(eq(raw_image_upload.user_id, user_id), isNotNull(raw_image_upload.archived_at_ms)));
+		.where(isNotNull(raw_image_upload.archived_at_ms));
 }
 
-export async function list_upload_ids_matching_filter(user_id: string, where_expr: SQL) {
+export async function list_upload_ids_matching_filter(where_expr: SQL) {
 	const rows = await db
 		.select({ id: raw_image_upload.id })
 		.from(raw_image_upload)
-		.where(and(eq(raw_image_upload.user_id, user_id), where_expr));
+		.where(where_expr);
 	return rows.map((r) => r.id);
 }
 
 /** Columns needed for `build_gallery_meta_rows` under each grid tile. */
-export async function load_raw_upload_meta_rows_for_ids(user_id: string, upload_ids: string[]) {
+export async function load_raw_upload_meta_rows_for_ids(upload_ids: string[]) {
 	if (upload_ids.length === 0) return [];
 	return db
 		.select({
@@ -120,5 +111,5 @@ export async function load_raw_upload_meta_rows_for_ids(user_id: string, upload_
 			f_number: raw_image_upload.f_number
 		})
 		.from(raw_image_upload)
-		.where(and(eq(raw_image_upload.user_id, user_id), inArray(raw_image_upload.id, upload_ids)));
+		.where(inArray(raw_image_upload.id, upload_ids));
 }

@@ -3,7 +3,6 @@ import { m } from '$lib/paraglide/messages.js';
 import { extractLocaleFromRequest } from '$lib/paraglide/runtime';
 import { count_non_archived_raw_uploads } from '$lib/server/services/gallery/gallery_service';
 import type { LayoutServerLoad } from './$types';
-import { error } from '@sveltejs/kit';
 
 type user_for_initials = { name?: string | null; email?: string | null };
 
@@ -34,9 +33,7 @@ function derive_user_initials(user: user_for_initials | undefined): string {
 export const load: LayoutServerLoad = async ({ depends, locals, request }) => {
 	depends(gallery_active_upload_count_depends_key);
 
-	const user = locals.user;
-	if (user == null) error(401, 'Unauthorized');
-	const gallery_active_upload_count = await count_non_archived_raw_uploads(user.id);
+	const gallery_active_upload_count = await count_non_archived_raw_uploads();
 	const locale = extractLocaleFromRequest(request);
 	const brand_fallback = m.clever_quiet_eagle_brand_lenslocker({}, { locale });
 

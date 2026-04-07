@@ -5,15 +5,12 @@ import {
 	dashboard_images_per_page,
 	load_gallery_dashboard
 } from '$lib/server/services/dashboard/gallery_grid_load';
-import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ url, depends, locals }) => {
+export const load: PageServerLoad = async ({ url, depends }) => {
 	depends(transformed_media_depends_key);
 	depends(dashboard_attention_settings_depends_key);
 	depends(albums_list_depends_key);
 
-	const user = locals.user;
-	if (user == null) error(401, 'Unauthorized');
-	return load_gallery_dashboard(url, 0, dashboard_images_per_page, user.id);
+	return load_gallery_dashboard(url, 0, dashboard_images_per_page);
 };

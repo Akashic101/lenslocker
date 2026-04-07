@@ -1,7 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import type { RawImageUploadRow } from '$lib/server/db/raw_image_upload.schema';
 import { parse_upload_meta_patch } from '$lib/server/upload_meta_patch';
-import { require_current_user_id } from '$lib/server/authz/current_user';
 import {
 	select_raw_upload_row_by_id,
 	update_raw_upload_row_by_id
@@ -19,13 +18,11 @@ function parse_exifr_json(raw: string | null): unknown | null {
 	}
 }
 
-export const GET: RequestHandler = async (event) => {
-	const user_id = require_current_user_id(event);
-	const { params } = event;
+export const GET: RequestHandler = async ({ params }) => {
 	const id = params.id;
 	if (id == null || !uuid_re.test(id)) error(400, 'Invalid id');
 
-	const row = await select_raw_upload_row_by_id(user_id, id);
+	const row = await select_raw_upload_row_by_id(id);
 	if (!row) error(404, 'Not found');
 
 	const { exifr_full_json, ...rest } = row;
@@ -37,18 +34,16 @@ export const GET: RequestHandler = async (event) => {
 	});
 };
 
-export const PATCH: RequestHandler = async (event) => {
-	const user_id = require_current_user_id(event);
-	const { params } = event;
+export const PATCH: RequestHandler = async ({ params, request }) => {
 	const id = params.id;
 	if (id == null || !uuid_re.test(id)) error(400, 'Invalid id');
 
-	const existing = await select_raw_upload_row_by_id(user_id, id);
+	const existing = await select_raw_upload_row_by_id(id);
 	if (!existing) error(404, 'Not found');
 
 	let body: unknown;
 	try {
-		body = await event.request.json();
+		body = await request.json();
 	} catch {
 		error(400, 'Invalid JSON');
 	}
@@ -74,11 +69,11 @@ export const PATCH: RequestHandler = async (event) => {
 		error(400, parsed.ok === false ? parsed.error : 'Nothing to update');
 	}
 
-	await update_raw_upload_row_by_id(user_id, id, updates);
+	await update_raw_upload_row_by_id(id, updates);
 
 	/** Keep upload-previews on disk so the Archived gallery can still list thumbnails. */
 
-	const row = await select_raw_upload_row_by_id(user_id, id);
+	const row = await select_raw_upload_row_by_id(id);
 	if (!row) error(500, 'Update failed');
 
 	const { exifr_full_json, ...rest } = row;

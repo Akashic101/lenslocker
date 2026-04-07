@@ -13,13 +13,9 @@ export const load: PageServerLoad = async ({ depends, locals, request }) => {
 	depends(upload_pipeline_settings_depends_key);
 	depends(dashboard_attention_settings_depends_key);
 	depends(settings_backup_list_depends_key);
-	const user = locals.user;
-	if (user == null) {
-		throw redirect(303, '/start');
-	}
 	const [upload_pipeline_settings, needs_attention_settings, settings_backups] = await Promise.all([
-		get_upload_preview_pipeline_settings(user.id),
-		get_dashboard_needs_attention_settings(user.id),
+		get_upload_preview_pipeline_settings(),
+		get_dashboard_needs_attention_settings(),
 		list_settings_backups()
 	]);
 	return {

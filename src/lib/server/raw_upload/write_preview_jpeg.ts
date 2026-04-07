@@ -375,8 +375,6 @@ async function write_thumb_and_full_jpegs(
 }
 
 type write_preview_jpeg_options = {
-	/** Owner; required when `pipeline` is omitted (settings are per-user). */
-	user_id?: string;
 	/** Saved upload file on disk; required for ExifTool to read large embedded JPEGs from RAW. */
 	source_absolute_path?: string | null;
 	/** EXIF orientation 1–8 from metadata when `exifr.rotation` on the buffer is inconclusive. */
@@ -398,18 +396,7 @@ export async function write_preview_jpeg_for_upload(
 	| { ok: false; message: string }
 > {
 	try {
-		const pipeline =
-			opts?.pipeline ??
-			(() => {
-				const user_id = opts?.user_id;
-				if (user_id == null || user_id === '') {
-					throw new Error(
-						'write_preview_jpeg_for_upload requires opts.user_id when pipeline is omitted'
-					);
-				}
-				return get_upload_preview_pipeline_settings(user_id);
-			})();
-		const resolved_pipeline = pipeline instanceof Promise ? await pipeline : pipeline;
+		const pipeline = opts?.pipeline ?? (await get_upload_preview_pipeline_settings());
 
 		const root = get_transformed_root_absolute_path();
 		const dir = path.join(root, preview_subdir);
@@ -425,12 +412,7 @@ export async function write_preview_jpeg_for_upload(
 			 * (b) ExifTool JpgFromRaw / PreviewImage / …, (c) exifr IFD1 thumb if no path.
 			 */
 			const candidates: Buffer[] = [];
-			const from_sharp = await try_encode_master_jpeg(
-				buf,
-				upload_id,
-				original_filename,
-				resolved_pipeline
-			);
+			const from_sharp = await try_encode_master_jpeg(buf, upload_id, original_filename, pipeline);
 			if (from_sharp) candidates.push(from_sharp);
 
 			const source_path = opts?.source_absolute_path;
@@ -439,19 +421,14 @@ export async function write_preview_jpeg_for_upload(
 					source_path,
 					upload_id,
 					original_filename,
-					resolved_pipeline
+					pipeline
 				);
 				candidates.push(...from_exiftool);
 			} else {
 				const embedded = await try_exifr_embedded_preview(buf, upload_id, original_filename);
 				if (embedded) {
 					const embed_label = `${original_filename}#exifr_embedded`;
-					let from_embed = await try_encode_master_jpeg(
-						embedded,
-						upload_id,
-						embed_label,
-						resolved_pipeline
-					);
+					let from_embed = await try_encode_master_jpeg(embedded, upload_id, embed_label, pipeline);
 					if (from_embed == null && looks_like_jpeg(embedded)) {
 						from_embed = embedded;
 					}
@@ -461,21 +438,11 @@ export async function write_preview_jpeg_for_upload(
 
 			master_jpeg = await pick_largest_master_jpeg(candidates);
 		} else {
-			master_jpeg = await try_encode_master_jpeg(
-				buf,
-				upload_id,
-				original_filename,
-				resolved_pipeline
-			);
+			master_jpeg = await try_encode_master_jpeg(buf, upload_id, original_filename, pipeline);
 		}
 
 		if (master_jpeg == null) {
-			master_jpeg = await try_encode_master_jpeg(
-				buf,
-				upload_id,
-				original_filename,
-				resolved_pipeline
-			);
+			master_jpeg = await try_encode_master_jpeg(buf, upload_id, original_filename, pipeline);
 		}
 
 		if (master_jpeg == null) {
@@ -531,24 +498,12 @@ export async function write_preview_jpeg_for_upload(
 			return { ok: false, message };
 		}
 
-		await write_thumb_and_full_jpegs(
-			dir,
-			upload_id,
-			master_jpeg,
-			rotation_hints,
-			resolved_pipeline
-		);
+		await write_thumb_and_full_jpegs(dir, upload_id, master_jpeg, rotation_hints, pipeline);
 
 		return {
 			ok: true,
-			thumb_relative_path: preview_thumb_relative_path(
-				upload_id,
-				resolved_pipeline.upload_preview_format
-			),
-			full_relative_path: preview_full_relative_path(
-				upload_id,
-				resolved_pipeline.upload_preview_format
-			)
+			thumb_relative_path: preview_thumb_relative_path(upload_id, pipeline.upload_preview_format),
+			full_relative_path: preview_full_relative_path(upload_id, pipeline.upload_preview_format)
 		};
 	} catch (e) {
 		const message = e instanceof Error ? e.message : String(e);

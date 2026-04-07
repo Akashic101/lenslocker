@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, isNull } from 'drizzle-orm';
+import { count, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	raw_image_upload,
@@ -6,56 +6,46 @@ import {
 	type RawImageUploadRow
 } from '$lib/server/db/raw_image_upload.schema';
 
-export async function count_non_archived_raw_uploads(user_id: string): Promise<number> {
+export async function count_non_archived_raw_uploads(): Promise<number> {
 	const [row] = await db
 		.select({ n: count() })
 		.from(raw_image_upload)
-		.where(and(eq(raw_image_upload.user_id, user_id), isNull(raw_image_upload.archived_at_ms)));
+		.where(isNull(raw_image_upload.archived_at_ms));
 	return Number(row?.n ?? 0);
 }
 
 export async function bulk_patch_raw_uploads_by_ids(
-	user_id: string,
 	upload_ids: string[],
 	patch: Partial<Pick<RawImageUploadRow, 'starred' | 'archived_at_ms'>>
 ): Promise<void> {
-	await db
-		.update(raw_image_upload)
-		.set(patch)
-		.where(and(eq(raw_image_upload.user_id, user_id), inArray(raw_image_upload.id, upload_ids)));
+	await db.update(raw_image_upload).set(patch).where(inArray(raw_image_upload.id, upload_ids));
 }
 
 export async function select_raw_upload_row_by_id(
-	user_id: string,
 	id: string
 ): Promise<RawImageUploadRow | undefined> {
 	const [row] = await db
 		.select()
 		.from(raw_image_upload)
-		.where(and(eq(raw_image_upload.id, id), eq(raw_image_upload.user_id, user_id)))
+		.where(eq(raw_image_upload.id, id))
 		.limit(1);
 	return row;
 }
 
 export async function update_raw_upload_row_by_id(
-	user_id: string,
 	id: string,
 	updates: Partial<RawImageUploadRow>
 ): Promise<void> {
-	await db
-		.update(raw_image_upload)
-		.set(updates)
-		.where(and(eq(raw_image_upload.id, id), eq(raw_image_upload.user_id, user_id)));
+	await db.update(raw_image_upload).set(updates).where(eq(raw_image_upload.id, id));
 }
 
 export async function select_raw_upload_id_by_sha256_hex(
-	user_id: string,
 	sha256_hex: string
 ): Promise<string | undefined> {
 	const [row] = await db
 		.select({ id: raw_image_upload.id })
 		.from(raw_image_upload)
-		.where(and(eq(raw_image_upload.user_id, user_id), eq(raw_image_upload.sha256_hex, sha256_hex)))
+		.where(eq(raw_image_upload.sha256_hex, sha256_hex))
 		.limit(1);
 	return row?.id;
 }
@@ -106,9 +96,7 @@ function dedupe_pairs(
 }
 
 /** Distinct make/model / lens_make/lens_model from uploaded images (EXIF). */
-export async function load_photo_gear_suggestions(
-	user_id: string
-): Promise<photo_gear_suggestions> {
+export async function load_photo_gear_suggestions(): Promise<photo_gear_suggestions> {
 	const rows = await db
 		.select({
 			make: raw_image_upload.make,
@@ -116,8 +104,7 @@ export async function load_photo_gear_suggestions(
 			lens_make: raw_image_upload.lens_make,
 			lens_model: raw_image_upload.lens_model
 		})
-		.from(raw_image_upload)
-		.where(eq(raw_image_upload.user_id, user_id));
+		.from(raw_image_upload);
 
 	return {
 		camera_makes: uniq_sorted(rows.map((r) => r.make)),
