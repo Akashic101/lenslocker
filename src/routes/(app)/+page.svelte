@@ -732,15 +732,15 @@
 				selected_count_label={m.warm_round_bison_bulk_selected_count({
 					count: gallery_selected_count
 				})}
-				hint_text={m.noble_clear_frog_bulk_hint()}
+				hint_text={m.noble_clear_frog_hint()}
 				aria_bulk_region_label={m.dull_solid_gull_aria_bulk_actions()}
-				label_all_on_page={m.noble_clear_frog_bulk_all_on_page()}
-				label_clear_selection={m.noble_clear_frog_bulk_clear_selection()}
-				label_done={m.noble_clear_frog_bulk_done()}
-				label_star={m.noble_clear_frog_bulk_star()}
-				label_unstar={m.noble_clear_frog_bulk_unstar()}
-				label_archive={m.noble_clear_frog_bulk_archive()}
-				label_restore={m.noble_clear_frog_bulk_restore()}
+				label_all_on_page={m.noble_clear_frog_all_on_page()}
+				label_clear_selection={m.noble_clear_frog_clear_selection()}
+				label_done={m.noble_clear_frog_done()}
+				label_star={m.noble_clear_frog_star()}
+				label_unstar={m.noble_clear_frog_unstar()}
+				label_archive={m.noble_clear_frog_archive()}
+				label_restore={m.noble_clear_frog_restore()}
 				label_add_to_album={m.moody_bright_carp_bulk_add_to_album()}
 				on_select_all={select_all_gallery_uploads_on_page}
 				on_clear_selection={() => {

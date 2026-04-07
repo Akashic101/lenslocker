@@ -13,7 +13,10 @@
 	import { upload_preview_pipeline_defaults } from '$lib/config/upload_pipeline_defaults';
 	import { albums_list_depends_key } from '$lib/cache/albums_cache';
 	import { upload_pipeline_settings_depends_key } from '$lib/cache/upload_pipeline_settings_cache';
+	import { general_display_settings_depends_key } from '$lib/cache/general_display_settings_cache';
+	import type { app_time_format } from '$lib/config/display_defaults';
 	import type { upload_preview_format } from '$lib/config/upload_preview_format';
+	import { format_app_datetime_medium_short } from '$lib/datetime/format_app_datetime';
 	import FilePickerButton from '$lib/components/file_picker_button.svelte';
 	import InlineNotice from '$lib/components/inline_notice.svelte';
 	import ThemeToggle from '$lib/components/theme_toggle.svelte';
@@ -70,6 +73,11 @@
 	let backup_delete_busy_filename = $state<string | null>(null);
 	let backup_delete_error = $state<string | null>(null);
 
+	let chosen_time_format = $state<app_time_format>('24h');
+	let display_save_loading = $state(false);
+	let display_save_error = $state<string | null>(null);
+	let display_save_ok = $state(false);
+
 	$effect(() => {
 		const s = data.upload_pipeline_settings;
 		thumb_max_edge_px = s.thumb_max_edge_px;
@@ -78,6 +86,10 @@
 		jpeg_q_full = s.jpeg_q_full;
 		max_upload_mb = Math.round(s.max_upload_bytes / (1024 * 1024));
 		chosen_upload_preview_format = s.upload_preview_format;
+	});
+
+	$effect(() => {
+		chosen_time_format = data.general_display_settings.time_format;
 	});
 
 	$effect(() => {
@@ -167,6 +179,29 @@
 		setLocale(locale);
 	}
 
+	async function save_general_display_settings(): Promise<void> {
+		display_save_loading = true;
+		display_save_error = null;
+		display_save_ok = false;
+		try {
+			const response = await fetch(resolve('/api/settings/display'), {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ time_format: chosen_time_format })
+			});
+			if (!response.ok) {
+				const text = await response.text();
+				throw new Error(text || response.statusText);
+			}
+			display_save_ok = true;
+			await invalidate(general_display_settings_depends_key);
+		} catch (e) {
+			display_save_error = e instanceof Error ? e.message : String(e);
+		} finally {
+			display_save_loading = false;
+		}
+	}
+
 	async function save_upload_pipeline_settings(): Promise<void> {
 		save_loading = true;
 		save_error = null;
@@ -208,14 +243,7 @@
 	}
 
 	function format_settings_backup_when(ms: number): string {
-		try {
-			return new Intl.DateTimeFormat(undefined, {
-				dateStyle: 'medium',
-				timeStyle: 'short'
-			}).format(new Date(ms));
-		} catch {
-			return new Date(ms).toISOString();
-		}
+		return format_app_datetime_medium_short(ms, data.general_display_settings.time_format);
 	}
 
 	async function create_settings_backup_zip(): Promise<void> {
@@ -304,6 +332,7 @@
 			} else {
 				await invalidate(upload_pipeline_settings_depends_key);
 				await invalidate(dashboard_attention_settings_depends_key);
+				await invalidate(general_display_settings_depends_key);
 				await invalidate(albums_list_depends_key);
 				await invalidate(settings_backup_list_depends_key);
 			}
@@ -453,6 +482,48 @@
 								{m.safe_sleek_herring_use_system_appearance()}
 							</button>
 						</div>
+					</div>
+					<div>
+						<h2 class="text-sm font-medium text-gray-900 dark:text-white">
+							{m.wise_calm_bison_heading_time()}
+						</h2>
+						<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+							{m.brief_alert_otter_blurb_time_format()}
+						</p>
+						<label
+							for="settings-time-format"
+							class="mt-3 mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+						>
+							{m.clear_solid_bison_label_time_format()}
+						</label>
+						<select
+							id="settings-time-format"
+							class={app_form_field_class_max_w_md}
+							bind:value={chosen_time_format}
+						>
+							<option value="24h">{m.keen_tidy_wren_time_format_24h()}</option>
+							<option value="12h">{m.jolly_bold_eagle_time_format_12h()}</option>
+						</select>
+						<div class="mt-3 flex flex-wrap items-center gap-3">
+							<button
+								type="button"
+								class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+								disabled={display_save_loading}
+								onclick={() => void save_general_display_settings()}
+							>
+								{display_save_loading
+									? m.fierce_small_goat_busy_saving_display()
+									: m.noble_still_gecko_save_display_settings()}
+							</button>
+							{#if display_save_ok}
+								<span class="text-sm text-green-600 dark:text-green-400"
+									>{m.quiet_metal_moose_note_saved_display()}</span
+								>
+							{/if}
+						</div>
+						{#if display_save_error}
+							<p class="mt-2 text-sm text-red-600 dark:text-red-400">{display_save_error}</p>
+						{/if}
 					</div>
 				</div>
 			</TabItem>

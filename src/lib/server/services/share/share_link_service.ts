@@ -3,6 +3,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import type { gallery_grid_item } from '$lib/gallery/gallery_grid_types';
 import {
 	build_gallery_meta_rows,
+	type gallery_meta_build_options,
 	upload_id_from_transformed_preview_path
 } from '$lib/server/gallery_upload_meta';
 import { db } from '$lib/server/db';
@@ -14,6 +15,7 @@ import {
 	resolve_upload_preview_thumb_relative_path
 } from '$lib/server/raw_upload/write_preview_jpeg';
 import { list_raw_upload_ids_in_album } from '$lib/server/services/album/album_service';
+import { get_general_display_settings } from '$lib/server/services/settings/general_display_settings';
 import { get_upload_preview_pipeline_settings } from '$lib/server/services/settings/upload_pipeline_settings';
 import { load_raw_upload_meta_rows_for_ids } from '$lib/server/services/dashboard/dashboard_service';
 
@@ -192,7 +194,11 @@ export async function load_share_gallery_items(
 	title: string;
 	images: gallery_grid_item[];
 }> {
-	const { upload_preview_format } = await get_upload_preview_pipeline_settings();
+	const [{ upload_preview_format }, general_display_settings] = await Promise.all([
+		get_upload_preview_pipeline_settings(),
+		get_general_display_settings()
+	]);
+	const meta_opts = { time_format: general_display_settings.time_format };
 
 	if (row.kind === 'album' && row.album_id) {
 		const a = await db.select().from(album).where(eq(album.id, row.album_id)).limit(1);
@@ -203,7 +209,12 @@ export async function load_share_gallery_items(
 		);
 		const relative_paths = thumb_paths.filter((p): p is string => p != null);
 		relative_paths.sort((x, y) => x.localeCompare(y));
-		const images = await build_share_grid_items(token, relative_paths, upload_preview_format);
+		const images = await build_share_grid_items(
+			token,
+			relative_paths,
+			upload_preview_format,
+			meta_opts
+		);
 		return { title: name, images };
 	}
 
@@ -221,7 +232,7 @@ export async function load_share_gallery_items(
 		if (thumb == null) {
 			return { title, images: [] };
 		}
-		const images = await build_share_grid_items(token, [thumb], upload_preview_format);
+		const images = await build_share_grid_items(token, [thumb], upload_preview_format, meta_opts);
 		return { title, images };
 	}
 
@@ -231,7 +242,8 @@ export async function load_share_gallery_items(
 async function build_share_grid_items(
 	token: string,
 	relative_thumb_paths: string[],
-	upload_preview_format: import('$lib/config/upload_preview_format').upload_preview_format
+	upload_preview_format: import('$lib/config/upload_preview_format').upload_preview_format,
+	meta_opts: gallery_meta_build_options
 ): Promise<gallery_grid_item[]> {
 	const preview_upload_ids = relative_thumb_paths
 		.map((p) => upload_id_from_transformed_preview_path(p))
@@ -241,7 +253,7 @@ async function build_share_grid_items(
 	if (preview_upload_ids.length > 0) {
 		const rows = await load_raw_upload_meta_rows_for_ids(preview_upload_ids);
 		for (const row of rows) {
-			const caption_rows = build_gallery_meta_rows(row);
+			const caption_rows = build_gallery_meta_rows(row, meta_opts);
 			if (caption_rows.length > 0) meta_by_upload_id.set(row.id, caption_rows);
 		}
 	}

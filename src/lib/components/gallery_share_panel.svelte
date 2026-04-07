@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import type { app_time_format } from '$lib/config/display_defaults';
+	import { format_app_datetime_medium_short } from '$lib/datetime/format_app_datetime';
 	import { Modal } from 'flowbite-svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { app_form_field_class } from '$lib/ui/form_classes';
@@ -36,6 +39,11 @@
 	let deleting_id = $state<string | null>(null);
 	let list_request_generation = 0;
 
+	const share_time_format = $derived(
+		(page.data as { general_display_settings?: { time_format: app_time_format } })
+			.general_display_settings?.time_format ?? '24h'
+	);
+
 	function full_share_url(token: string): string {
 		if (!browser) return '';
 		const href = resolve(`/share/${token}`);
@@ -44,11 +52,11 @@
 
 	function format_expires(row: share_link_row): string {
 		if (row.expires_at_ms == null) return m.next_stout_alpaca_share_no_deadline();
-		return new Date(row.expires_at_ms).toLocaleString();
+		return format_app_datetime_medium_short(row.expires_at_ms, share_time_format);
 	}
 
 	function format_created_at(row: share_link_row): string {
-		return new Date(row.created_at_ms).toLocaleString();
+		return format_app_datetime_medium_short(row.created_at_ms, share_time_format);
 	}
 
 	async function load_existing_links(): Promise<void> {

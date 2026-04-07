@@ -19,6 +19,7 @@ import {
 	type album_summary_row
 } from '$lib/server/services/album/album_service';
 import { get_dashboard_needs_attention_settings } from '$lib/server/services/settings/dashboard_attention_settings';
+import { get_general_display_settings } from '$lib/server/services/settings/general_display_settings';
 import { get_upload_preview_pipeline_settings } from '$lib/server/services/settings/upload_pipeline_settings';
 import {
 	dashboard_images_per_page,
@@ -469,6 +470,7 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 		camera_pair_rows,
 		lens_pair_rows,
 		upload_pipeline_settings,
+		general_display_settings,
 		needs_attention_settings,
 		albums
 	] = await Promise.all([
@@ -479,6 +481,7 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 		load_dashboard_camera_pair_rows(),
 		load_dashboard_lens_pair_rows(),
 		get_upload_preview_pipeline_settings(),
+		get_general_display_settings(),
 		get_dashboard_needs_attention_settings(),
 		list_album_summaries()
 	]);
@@ -653,8 +656,9 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 	if (preview_upload_ids.length > 0) {
 		const rows = await load_raw_upload_meta_rows_for_ids(preview_upload_ids);
 
+		const meta_opts = { time_format: general_display_settings.time_format };
 		for (const row of rows) {
-			const caption_rows = build_gallery_meta_rows(row);
+			const caption_rows = build_gallery_meta_rows(row, meta_opts);
 			if (caption_rows.length > 0) meta_by_upload_id.set(row.id, caption_rows);
 		}
 	}

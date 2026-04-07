@@ -1,3 +1,5 @@
+import type { app_time_format } from '$lib/config/display_defaults';
+
 /** Grid listing: `upload-previews/<uuid>_thumb.{jpg,webp,avif,png}`. */
 const upload_preview_thumb_pattern =
 	/^upload-previews\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_thumb\.(?:jpe?g|webp|avif|png)$/i;
@@ -126,18 +128,31 @@ function format_resolution_line(
 	return `${x} × ${y}${suffix}`.trim();
 }
 
-function format_shot_at_line(iso_datetime: string | null): string | null {
+export type gallery_meta_build_options = {
+	/** When omitted, uses 24-hour clock (same as `time_format: '24h'`). */
+	time_format?: app_time_format;
+};
+
+function format_shot_at_line(
+	iso_datetime: string | null,
+	opts?: gallery_meta_build_options
+): string | null {
 	if (iso_datetime == null || iso_datetime === '') return null;
 	const date = new Date(iso_datetime);
 	if (Number.isNaN(date.getTime())) return iso_datetime;
+	const hour12 = opts?.time_format === '12h';
 	return new Intl.DateTimeFormat(undefined, {
 		dateStyle: 'medium',
-		timeStyle: 'short'
+		timeStyle: 'short',
+		hour12
 	}).format(date);
 }
 
 /** Build caption rows for an uploaded image (DB row). Omits empty fields. */
-export function build_gallery_meta_rows(row: gallery_upload_meta_input): gallery_meta_row[] {
+export function build_gallery_meta_rows(
+	row: gallery_upload_meta_input,
+	opts?: gallery_meta_build_options
+): gallery_meta_row[] {
 	const rows: gallery_meta_row[] = [];
 
 	const camera = [row.make, row.model]
@@ -156,7 +171,7 @@ export function build_gallery_meta_rows(row: gallery_upload_meta_input): gallery
 		rows.push({ key: 'dimensions', text: `${Math.round(w)} × ${Math.round(h)} px` });
 	}
 
-	const shot = format_shot_at_line(row.datetime_original);
+	const shot = format_shot_at_line(row.datetime_original, opts);
 	if (shot != null) rows.push({ key: 'datetime', text: shot });
 
 	const resolution = format_resolution_line(
