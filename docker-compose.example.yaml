@@ -1,8 +1,11 @@
 # LensLocker — same stack as docker-compose.yml with full comments.
 #
+# Host data lives in ./data next to this file (bind mount to /data in the container).
+#
 # Zero-config local run (after clone):
-#   docker compose up -d
-# First run builds the image; after code changes: docker compose up -d --build
+#   docker compose pull && docker compose up -d
+# Pin a version: set LENSLOCKER_IMAGE=akashic/lenslocker:<tag> in .env
+# To build from this repo instead of Hub: add a compose override with `build:` (and drop or override `image`).
 #
 # Compose reads optional .env for overrides (create from .env.example). If you do not create .env,
 # a built-in dev-only BETTER_AUTH_SECRET is used so the stack still starts — replace it before any
@@ -12,9 +15,7 @@
 
 services:
   lenslocker:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: akashic/lenslocker:latest
     restart: unless-stopped
     ports:
       - '3000:3000'
@@ -23,14 +24,10 @@ services:
       RAW_UPLOAD_ROOT: /data/uploads/raw
       TRANSFORMED_MEDIA_ROOT: /data/transformed
       LENSLOCKER_BACKUP_ROOT: /data/backups
-      ORIGIN: ${ORIGIN:-http://localhost:3000}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-lenslocker_dev_only_replace_before_production_min32chars}
+      ORIGIN: "${ORIGIN:-http://localhost:3000}"
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:-lenslocker_dev_only_replace_before_production_min32chars}"
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: '3000'
     volumes:
-      - lenslocker_data:/data
-
-volumes:
-  lenslocker_data:
-    driver: local
+      - ./data:/data

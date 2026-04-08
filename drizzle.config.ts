@@ -1,7 +1,12 @@
 import { defineConfig } from 'drizzle-kit';
 
-/** Fallback when `DATABASE_URL` is unset (e.g. Knip); align with `.env.example`. */
-const database_url = process.env.DATABASE_URL ?? 'file:./local.db';
+const database_url =
+	process.env.DATABASE_URL ??
+	(process.env.NODE_ENV === 'production'
+		? (() => {
+				throw new Error('DATABASE_URL is required in production');
+		  })()
+		: './local.db');
 
 export default defineConfig({
 	schema: './src/lib/server/db/schema.ts',

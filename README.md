@@ -92,7 +92,7 @@ cd lenslocker
 docker compose up -d
 ```
 
-Then open **http://localhost:3000**. The first run builds the image; later, run **`docker compose up -d --build`** when you want to rebuild after code changes. The container **entrypoint** runs **`bun run db:push`** before **`bun run start`**, so the SQLite database on the volume is created/updated automatically.
+Then open **http://localhost:3000**. **`docker compose pull`** if you use a registry image; use **`docker compose up -d --build`** only when building from this repo. The container **entrypoint** runs **`bun run db:push`** before **`bun run start`**, so the SQLite database under **`./data`** is created/updated automatically.
 
 **Production or any shared network:** create a `.env` in the same directory as `docker-compose.yml` (start from [.env.example](.env.example)) and set **`BETTER_AUTH_SECRET`** to a long random string (32+ characters) and **`ORIGIN`** to the URL users use (e.g. `https://photos.example.com`). Compose reads `.env` automatically for variable substitution and overrides the defaults in [docker-compose.yml](docker-compose.yml).
 
@@ -102,14 +102,14 @@ The default **`BETTER_AUTH_SECRET`** baked into `docker-compose.yml` is **only f
 
 Annotated comments live in [docker-compose.example.yaml](docker-compose.example.yaml); [docker-compose.yml](docker-compose.yml) is the same stack.
 
-The app listens on **port 3000**. In-container paths map onto the **`lenslocker_data`** volume:
+The app listens on **port 3000**. The host folder **`./data`** (next to `docker-compose.yml`, e.g. `C:\…\lenslocker\data` on Windows) is bind-mounted to **`/data`** in the container:
 
-| Purpose              | Path inside container |
-| -------------------- | --------------------- |
-| SQLite database      | `/data/lenslocker.db` |
-| Uploaded RAW files   | `/data/uploads/raw`   |
-| Generated previews   | `/data/transformed`   |
-| Settings ZIP backups | `/data/backups`       |
+| Purpose              | Path inside container | On the host (default)        |
+| -------------------- | --------------------- | ---------------------------- |
+| SQLite database      | `/data/lenslocker.db` | `./data/lenslocker.db`       |
+| Uploaded RAW files   | `/data/uploads/raw`   | `./data/uploads/raw`         |
+| Generated previews   | `/data/transformed`   | `./data/transformed`         |
+| Settings ZIP backups | `/data/backups`       | `./data/backups`             |
 
 ---
 
@@ -232,7 +232,7 @@ To survive disk loss or migrate servers, copy:
 2. **Transformed previews** — the directory set by `TRANSFORMED_MEDIA_ROOT` (default `static/transformed/`, including `upload-previews/` for thumbnails and full-screen previews).
 3. **The SQLite file** pointed to by `DATABASE_URL` — without it you lose metadata, albums, users, and paths that tie files together.
 
-In Docker, these correspond to the paths under the `/data` volume listed under [Docker](#docker). Back up the **whole volume** (or bind-mount equivalent) for a full file-level backup.
+In Docker with the default compose file, these live under the **`./data`** folder bind-mounted to `/data` (see [Docker](#docker)). Back up **that whole folder** for a full file-level backup.
 
 **Restore:** restore those three things to the same paths (or update env vars to the new paths) and ensure file permissions match the process user.
 
