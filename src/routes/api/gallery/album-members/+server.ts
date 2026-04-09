@@ -8,7 +8,7 @@ import {
 import type { RequestHandler } from './$types';
 
 const uuid_re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const max_upload_ids_per_request = 200;
+const max_upload_ids_per_request = 1000;
 const max_album_name_len = 200;
 
 export const POST: RequestHandler = async ({ request }) => {
