@@ -187,43 +187,77 @@
 		<div class="min-h-0 flex-1 overflow-y-auto">
 			<SidebarGroup>
 				<li class="mb-2 list-none">
-					<div
-						class="flex min-h-10 w-full items-center gap-2 px-0.5"
-						class:justify-center={nav_rail_collapsed}
-						class:justify-between={!nav_rail_collapsed}
-					>
-						{#if !nav_rail_collapsed}
+					{#if nav_rail_collapsed}
+						<div class="flex w-full flex-col items-center gap-2 px-2">
 							<a
 								href={localizeHref(resolve('/'))}
-								class="min-w-0 flex-1 truncate text-lg font-semibold text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+								class="rounded-md no-underline ring-primary-300 hover:bg-gray-100 focus-visible:ring-2 focus-visible:outline-none dark:hover:bg-gray-700 dark:focus-visible:ring-primary-800"
+								aria-label={m.clever_quiet_eagle_brand_lenslocker()}
 							>
-								{#if dev}
-									<span class="inline-block rotate-180 text-xl font-bold"
-										>{m.clever_quiet_eagle_brand_lenslocker()}</span
-									>
-								{:else}
-									{m.clever_quiet_eagle_brand_lenslocker()}
-								{/if}
+								<img
+									src="/logo/LensLocker-Logo.svg"
+									alt=""
+									class="h-7 w-7 object-contain"
+									width="28"
+									height="28"
+									decoding="async"
+								/>
 							</a>
-						{/if}
-						<button
-							type="button"
-							class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-primary-300 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:ring-primary-800"
-							aria-expanded={!nav_rail_collapsed}
-							aria-controls="app-sidebar"
-							aria-label={nav_rail_collapsed
-								? m.eager_broad_puffin_sidebar_open_hint()
-								: m.moody_tiny_shrimp_sidebar_narrow_hint()}
-							onclick={toggle_sidebar_collapsed}
-						>
-							<ChevronDoubleLeftOutline
-								class="h-5 w-5 transition-transform duration-200 {nav_rail_collapsed
-									? 'rotate-180'
-									: ''}"
-								aria-hidden="true"
-							/>
-						</button>
-					</div>
+							<div class="flex justify-center">
+								<button
+									type="button"
+									class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-primary-300 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:ring-primary-800"
+									aria-expanded={false}
+									aria-controls="app-sidebar"
+									aria-label={m.eager_broad_puffin_sidebar_open_hint()}
+									onclick={toggle_sidebar_collapsed}
+								>
+									<ChevronDoubleLeftOutline
+										class="h-5 w-5 rotate-180 transition-transform duration-200"
+										aria-hidden="true"
+									/>
+								</button>
+							</div>
+						</div>
+					{:else}
+						<div class="flex min-h-10 w-full items-center justify-between gap-2 px-0.5">
+							<a
+								href={localizeHref(resolve('/'))}
+								class="flex min-w-0 flex-1 items-center gap-2 truncate text-lg font-semibold text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+							>
+								<img
+									src="/logo/LensLocker-Logo.svg"
+									alt=""
+									class="h-8 w-8 shrink-0 object-contain"
+									width="32"
+									height="32"
+									decoding="async"
+								/>
+								<span class="min-w-0 truncate">
+									{#if dev}
+										<span class="inline-block rotate-180 text-xl font-bold"
+											>{m.clever_quiet_eagle_brand_lenslocker()}</span
+										>
+									{:else}
+										{m.clever_quiet_eagle_brand_lenslocker()}
+									{/if}
+								</span>
+							</a>
+							<button
+								type="button"
+								class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-primary-300 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:ring-primary-800"
+								aria-expanded={true}
+								aria-controls="app-sidebar"
+								aria-label={m.moody_tiny_shrimp_sidebar_narrow_hint()}
+								onclick={toggle_sidebar_collapsed}
+							>
+								<ChevronDoubleLeftOutline
+									class="h-5 w-5 transition-transform duration-200"
+									aria-hidden="true"
+								/>
+							</button>
+						</div>
+					{/if}
 				</li>
 				{#if nav_rail_collapsed}
 					<SidebarItem

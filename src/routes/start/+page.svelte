@@ -13,7 +13,17 @@
 	class="flex min-h-svh flex-col items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900"
 >
 	<div class="w-full max-w-md">
-		<h1 class="mb-2 text-center text-2xl font-semibold text-gray-900 dark:text-white">
+		<div class="flex justify-center">
+			<img
+				src="/logo/LensLocker-Logo.svg"
+				alt=""
+				class="h-32 w-32 object-contain sm:h-40 sm:w-40"
+				width="160"
+				height="160"
+				decoding="async"
+			/>
+		</div>
+		<h1 class="mb-2 text-center text-4xl font-semibold text-gray-900 dark:text-white">
 			{m.clever_quiet_eagle_brand_lenslocker()}
 		</h1>
 		<p class="mb-8 text-center text-gray-600 dark:text-gray-400">
