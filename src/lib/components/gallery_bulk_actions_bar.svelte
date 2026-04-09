@@ -60,7 +60,7 @@
 </script>
 
 <div
-	class="dark:bg-primary-950/40 mb-4 rounded-lg border border-primary-200 bg-primary-50/90 px-3 py-2.5 dark:border-primary-900"
+	class="sticky top-0 z-30 mb-4 rounded-lg bg-gray-50 px-3 py-2.5 shadow-sm dark:bg-gray-900"
 	role="region"
 	aria-label={aria_bulk_region_label}
 >
