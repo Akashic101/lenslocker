@@ -12,15 +12,6 @@
 	import { needs_attention_label_for_key } from '$lib/gallery/needs_attention_catalog';
 	import GalleryAddToAlbumModal from '$lib/components/gallery_add_to_album_modal.svelte';
 	import GallerySharePanel from '$lib/components/gallery_share_panel.svelte';
-	import {
-		CheckOutline,
-		ColumnOutline,
-		FilterOutline,
-		FilterSolid,
-		FolderOutline,
-		GridOutline,
-		ShareNodesOutline
-	} from 'flowbite-svelte-icons';
 	import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
 	import { m } from '$lib/paraglide/messages.js';
 	import { raw_upload_batch_activity } from '$lib/gallery/raw_upload_batch_activity.svelte';
@@ -29,6 +20,7 @@
 	import GalleryBulkActionsBar from '$lib/components/gallery_bulk_actions_bar.svelte';
 	import GalleryDetailModal from '$lib/components/gallery_detail_modal/gallery_detail_modal.svelte';
 	import { app_form_field_class } from '$lib/ui/form_classes';
+	import { CheckCheck, Folder, Funnel, FunnelX, Grid2x2, LayoutGrid, Share2 } from '@lucide/svelte';
 
 	/* eslint-disable svelte/no-navigation-without-resolve -- localizeHref; /media/transformed/* URLs are not typed routes */
 
@@ -591,7 +583,7 @@
 							album_share_panel_open = true;
 						}}
 					>
-						<ShareNodesOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+						<Share2 class={gallery_header_icon_glyph_class} aria-hidden="true" />
 					</button>
 				{/if}
 				<button
@@ -604,9 +596,9 @@
 					onclick={toggle_gallery_grid_show_meta}
 				>
 					{#if gallery_grid_show_meta}
-						<GridOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+						<Grid2x2 class={gallery_header_icon_glyph_class} aria-hidden="true" />
 					{:else}
-						<ColumnOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+						<LayoutGrid class={gallery_header_icon_glyph_class} aria-hidden="true" />
 					{/if}
 				</button>
 				<button
@@ -626,7 +618,7 @@
 							: m.fierce_tiny_lark_aria_enter_multiselect()}
 					onclick={() => set_gallery_selection_mode(!gallery_selection_mode)}
 				>
-					<CheckOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+					<CheckCheck class={gallery_header_icon_glyph_class} aria-hidden="true" />
 				</button>
 				<button
 					type="button"
@@ -641,9 +633,9 @@
 					onclick={on_filters_toggle_click}
 				>
 					{#if filters_panel_user_open || gallery_exif_star_filter_count > 0}
-						<FilterSolid class={gallery_header_icon_glyph_class} aria-hidden="true" />
+						<FunnelX class={gallery_header_icon_glyph_class} aria-hidden="true" />
 					{:else}
-						<FilterOutline class={gallery_header_icon_glyph_class} aria-hidden="true" />
+						<Funnel class={gallery_header_icon_glyph_class} aria-hidden="true" />
 					{/if}
 					{#if gallery_exif_star_filter_count > 0}
 						<span
@@ -709,7 +701,7 @@
 								)}
 								class="flex items-center gap-3 py-3 text-gray-900 no-underline hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
 							>
-								<FolderOutline
+								<Folder
 									class="h-5 w-5 shrink-0 text-gray-500 dark:text-gray-400"
 									aria-hidden="true"
 								/>
@@ -766,7 +758,7 @@
 					id="gallery-filters-heading"
 					class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
 				>
-					<FilterOutline
+					<Funnel
 						class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
 						aria-hidden="true"
 					/>

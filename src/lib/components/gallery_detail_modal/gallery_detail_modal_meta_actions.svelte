@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { PenOutline } from 'flowbite-svelte-icons';
+	import { Pencil } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	let {
@@ -26,7 +26,7 @@
 			class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
 			onclick={on_begin_edit}
 		>
-			<PenOutline class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+			<Pencil class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
 			{m.tense_caring_pug_bake_edit_metadata()}
 		</button>
 	{:else}

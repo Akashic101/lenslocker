@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { StarSolid } from 'flowbite-svelte-icons';
+	import { Star } from '@lucide/svelte';
 
 	const tile_button_class =
 		'relative block w-full shrink-0 cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none';
@@ -33,7 +33,7 @@
 			class="pointer-events-none absolute top-1 right-1 rounded bg-black/55 p-0.5 text-amber-300"
 			aria-hidden="true"
 		>
-			<StarSolid class="h-3.5 w-3.5" />
+			<Star class="h-3.5 w-3.5" />
 		</span>
 	{/if}
 </button>

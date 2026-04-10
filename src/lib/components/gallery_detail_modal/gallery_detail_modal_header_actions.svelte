@@ -1,15 +1,6 @@
 <script lang="ts">
-	import {
-		ArchiveArrowDownOutline,
-		ChevronDownOutline,
-		ChevronLeftOutline,
-		ChevronRightOutline,
-		DownloadOutline,
-		StarOutline,
-		StarSolid,
-		TrashBinOutline
-	} from 'flowbite-svelte-icons';
 	import { m } from '$lib/paraglide/messages.js';
+	import { ArchiveRestore, ChevronDown, ChevronLeft, ChevronRight, ImageDown, Star, StarOff, Trash2 } from '@lucide/svelte';
 
 	let {
 		prev_disabled,
@@ -62,7 +53,7 @@
 		disabled={prev_disabled}
 		onclick={on_prev}
 	>
-		<ChevronLeftOutline class="h-5 w-5 shrink-0" />
+		<ChevronLeft class="h-5 w-5 shrink-0" />
 	</button>
 	<button
 		type="button"
@@ -71,7 +62,7 @@
 		disabled={next_disabled}
 		onclick={on_next}
 	>
-		<ChevronRightOutline class="h-5 w-5 shrink-0" />
+		<ChevronRight class="h-5 w-5 shrink-0" />
 	</button>
 	{#if show_upload_actions && !read_only_visitor}
 		<button
@@ -84,9 +75,9 @@
 			onclick={on_toggle_star}
 		>
 			{#if detail_starred}
-				<StarSolid class="h-5 w-5 shrink-0" />
+				<StarOff class="h-5 w-5 shrink-0" />
 			{:else}
-				<StarOutline class="h-5 w-5 shrink-0" />
+				<Star class="h-5 w-5 shrink-0" />
 			{/if}
 		</button>
 		<button
@@ -101,9 +92,9 @@
 			onclick={on_toggle_archive}
 		>
 			{#if detail_archived}
-				<ArchiveArrowDownOutline class="h-5 w-5 shrink-0" />
+				<ArchiveRestore class="h-5 w-5 shrink-0" />
 			{:else}
-				<TrashBinOutline class="h-5 w-5 shrink-0" />
+				<Trash2 class="h-5 w-5 shrink-0" />
 			{/if}
 		</button>
 		<details bind:open={download_menu_open} class="relative">
@@ -111,8 +102,8 @@
 				class="flex cursor-pointer list-none items-center justify-center gap-0.5 rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 [&::-webkit-details-marker]:hidden"
 				aria-label={m.happy_keen_crane_download_menu_hint()}
 			>
-				<DownloadOutline class="h-5 w-5 shrink-0" aria-hidden="true" />
-				<ChevronDownOutline class="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
+				<ImageDown class="h-5 w-5 shrink-0" aria-hidden="true" />
+				<ChevronDown class="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
 				<span class="sr-only">{m.tame_sleepy_ibex_download_button_sr()}</span>
 			</summary>
 			<div

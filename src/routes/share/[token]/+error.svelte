@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages.js';
-	import { ClockOutline, LinkBreakOutline } from 'flowbite-svelte-icons';
+	import { ClockAlert, Unlink } from '@lucide/svelte';
 	type share_error_code = 'share_link_expired' | 'share_link_invalid';
 
 	const error_code = $derived.by((): share_error_code | null => {
@@ -34,9 +34,9 @@
 				aria-hidden="true"
 			>
 				{#if is_expired}
-					<ClockOutline class="h-8 w-8" />
+					<ClockAlert class="h-8 w-8" />
 				{:else}
-					<LinkBreakOutline class="h-8 w-8" />
+					<Unlink class="h-8 w-8" />
 				{/if}
 			</div>
 

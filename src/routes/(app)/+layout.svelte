@@ -8,21 +8,9 @@
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import { onMount } from 'svelte';
 	import { Avatar, Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
-	import {
-		ArchiveOutline,
-		BarsFromLeftOutline,
-		CameraPhotoOutline,
-		ChartMixedOutline,
-		CogOutline,
-		ExclamationCircleOutline,
-		FolderOutline,
-		SearchOutline,
-		ChevronDoubleLeftOutline,
-		ChevronDownOutline,
-		UploadOutline
-	} from 'flowbite-svelte-icons';
 	import { raw_upload_batch_activity } from '$lib/gallery/raw_upload_batch_activity.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { Archive, Camera, ChartLine, ChevronDown, ChevronsLeft, CircleAlert, Folder, HardDriveUpload, Menu, Search, Settings } from '@lucide/svelte';
 
 	let { children, data } = $props();
 
@@ -212,7 +200,7 @@
 									aria-label={m.eager_broad_puffin_sidebar_open_hint()}
 									onclick={toggle_sidebar_collapsed}
 								>
-									<ChevronDoubleLeftOutline
+									<ChevronsLeft
 										class="h-5 w-5 rotate-180 transition-transform duration-200"
 										aria-hidden="true"
 									/>
@@ -251,7 +239,7 @@
 								aria-label={m.moody_tiny_shrimp_sidebar_narrow_hint()}
 								onclick={toggle_sidebar_collapsed}
 							>
-								<ChevronDoubleLeftOutline
+								<ChevronsLeft
 									class="h-5 w-5 transition-transform duration-200"
 									aria-hidden="true"
 								/>
@@ -268,7 +256,7 @@
 						title={m.merry_stale_skate_dashboard_collapsed_title()}
 					>
 						{#snippet icon()}
-							<SearchOutline
+							<Search
 								class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 							/>
 						{/snippet}
@@ -285,7 +273,7 @@
 									? 'bg-gray-100 dark:bg-gray-700'
 									: ''}"
 							>
-								<SearchOutline
+								<Search
 									class="h-5 w-5 shrink-0 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 								/>
 								<span class={span_class}>{m.tidy_best_bumblebee_feast_dashboard()}</span>
@@ -305,7 +293,7 @@
 									: m.quiet_cute_bee_show_dashboard_shortcuts()}
 								onclick={() => (dashboard_menu_open = !dashboard_menu_open)}
 							>
-								<ChevronDownOutline
+								<ChevronDown
 									class="h-3 w-3 transition-transform duration-200 {dashboard_menu_open
 										? 'rotate-180'
 										: ''}"
@@ -324,7 +312,7 @@
 									title={m.steep_royal_impala_needs_attention_title()}
 								>
 									{#snippet icon()}
-										<ExclamationCircleOutline
+										<CircleAlert
 											class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 										/>
 									{/snippet}
@@ -337,7 +325,7 @@
 									active={dashboard_archived_active}
 								>
 									{#snippet icon()}
-										<ArchiveOutline
+										<Archive
 											class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 										/>
 									{/snippet}
@@ -350,7 +338,7 @@
 									active={dashboard_albums_active}
 								>
 									{#snippet icon()}
-										<FolderOutline
+										<Folder
 											class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 										/>
 									{/snippet}
@@ -371,7 +359,7 @@
 							: m.quaint_grand_snail_amaze_upload()}
 					>
 						<span class="relative inline-flex shrink-0">
-							<UploadOutline
+							<HardDriveUpload
 								class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 							/>
 							{#if raw_upload_batch_activity.in_progress && nav_rail_collapsed}
@@ -401,7 +389,7 @@
 					title={nav_rail_collapsed ? m.such_tangy_mare_conquer_hardware() : undefined}
 				>
 					{#snippet icon()}
-						<CameraPhotoOutline
+						<Camera
 							class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 						/>
 					{/snippet}
@@ -414,7 +402,7 @@
 					title={nav_rail_collapsed ? m.proud_tough_oryx_dare_statistics() : undefined}
 				>
 					{#snippet icon()}
-						<ChartMixedOutline
+						<ChartLine
 							class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 						/>
 					{/snippet}
@@ -427,7 +415,7 @@
 					title={nav_rail_collapsed ? m.fuzzy_dull_alpaca_achieve_settings() : undefined}
 				>
 					{#snippet icon()}
-						<CogOutline
+						<Settings
 							class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
 						/>
 					{/snippet}
@@ -471,7 +459,7 @@
 				aria-label={m.eager_broad_puffin_sidebar_open_hint()}
 				onclick={() => (mobile_nav_open = true)}
 			>
-				<BarsFromLeftOutline class="h-6 w-6 shrink-0" aria-hidden="true" />
+				<Menu class="h-6 w-6 shrink-0" aria-hidden="true" />
 			</button>
 			<a
 				href={localizeHref(resolve('/'))}

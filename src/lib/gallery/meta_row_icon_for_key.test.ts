@@ -1,43 +1,32 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('flowbite-svelte-icons', () => {
+vi.mock('@lucide/svelte', () => {
 	const make_icon_stub = (icon_id: string) => Object.freeze({ __test_icon_stub: icon_id });
 
 	return {
-		AdjustmentsHorizontalOutline: make_icon_stub('AdjustmentsHorizontalOutline'),
-		AdjustmentsVerticalOutline: make_icon_stub('AdjustmentsVerticalOutline'),
-		CameraPhotoOutline: make_icon_stub('CameraPhotoOutline'),
-		ClockOutline: make_icon_stub('ClockOutline'),
-		EyeOutline: make_icon_stub('EyeOutline'),
-		FolderOutline: make_icon_stub('FolderOutline'),
-		ImageOutline: make_icon_stub('ImageOutline')
+		Camera: make_icon_stub('Camera'),
+		Clock: make_icon_stub('Clock'),
+		Eye: make_icon_stub('Eye'),
+		Folder: make_icon_stub('Folder'),
+		Image: make_icon_stub('Image'),
+		SlidersVertical: make_icon_stub('SlidersVertical')
 	};
 });
-
-import {
-	AdjustmentsHorizontalOutline,
-	AdjustmentsVerticalOutline,
-	CameraPhotoOutline,
-	ClockOutline,
-	EyeOutline,
-	FolderOutline,
-	ImageOutline
-} from 'flowbite-svelte-icons';
 import { meta_row_icon_for_key } from './meta_row_icon_for_key';
+import { Camera, Clock, Eye, Folder, Image, SlidersVertical } from '@lucide/svelte';
 
 describe('meta_row_icon_for_key', () => {
-	it('maps known meta row keys to flowbite icon components', () => {
-		expect(meta_row_icon_for_key('camera')).toBe(CameraPhotoOutline);
-		expect(meta_row_icon_for_key('lens')).toBe(EyeOutline);
-		expect(meta_row_icon_for_key('dimensions')).toBe(ImageOutline);
-		expect(meta_row_icon_for_key('datetime')).toBe(ClockOutline);
-		expect(meta_row_icon_for_key('resolution')).toBe(AdjustmentsHorizontalOutline);
-		expect(meta_row_icon_for_key('file_size')).toBe(FolderOutline);
-		expect(meta_row_icon_for_key('exposure')).toBe(AdjustmentsVerticalOutline);
+	it('maps known meta row keys to lucide icon components', () => {
+		expect(meta_row_icon_for_key('camera')).toBe(Camera);
+		expect(meta_row_icon_for_key('lens')).toBe(Eye);
+		expect(meta_row_icon_for_key('dimensions')).toBe(Image);
+		expect(meta_row_icon_for_key('datetime')).toBe(Clock);
+		expect(meta_row_icon_for_key('file_size')).toBe(Folder);
+		expect(meta_row_icon_for_key('exposure')).toBe(SlidersVertical);
 	});
 
-	it('falls back to ImageOutline for unknown keys', () => {
-		expect(meta_row_icon_for_key('unknown_key')).toBe(ImageOutline);
-		expect(meta_row_icon_for_key('')).toBe(ImageOutline);
+	it('falls back to Image for unknown keys', () => {
+		expect(meta_row_icon_for_key('unknown_key')).toBe(Image);
+		expect(meta_row_icon_for_key('')).toBe(Image);
 	});
 });

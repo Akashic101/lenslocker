@@ -17,13 +17,9 @@
 	import { upload_meta_editable_field_list } from '$lib/gallery/upload_meta_editable_fields';
 	import GallerySharePanel from '$lib/components/gallery_share_panel.svelte';
 	import { Modal } from 'flowbite-svelte';
-	import {
-		ExclamationCircleOutline,
-		MapPinOutline,
-		ShareNodesOutline
-	} from 'flowbite-svelte-icons';
 	import { untrack } from 'svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { CircleAlert, MapPinned, Share2 } from '@lucide/svelte';
 
 	let {
 		images,
@@ -584,7 +580,7 @@
 								share_panel_open = true;
 							}}
 						>
-							<ShareNodesOutline class="h-5 w-5 shrink-0" />
+							<Share2 class="h-5 w-5 shrink-0" />
 						</button>
 					{/if}
 					{#if modal_openstreetmap_href != null}
@@ -596,7 +592,7 @@
 							aria-label={m.vivid_calm_puffin_open_location_osm()}
 							title={m.vivid_calm_puffin_open_location_osm()}
 						>
-							<MapPinOutline class="h-5 w-5 shrink-0" aria-hidden="true" />
+							<MapPinned class="h-5 w-5 shrink-0" aria-hidden="true" />
 						</a>
 					{/if}
 					<GalleryDetailModalHeaderActions
@@ -738,7 +734,7 @@
 											for="meta-edit-{field.key}"
 										>
 											{#if needs_attention_ui && meta_edit_row_for_attention != null && modal_detail_key_is_attention_issue(meta_edit_row_for_attention, field.key, needs_attention_required_keys)}
-												<ExclamationCircleOutline
+												<CircleAlert
 													class="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400"
 													aria-hidden="true"
 												/>

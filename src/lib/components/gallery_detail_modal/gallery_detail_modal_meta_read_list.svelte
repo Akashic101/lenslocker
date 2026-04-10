@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { gallery_modal_detail_view_row } from '$lib/gallery/gallery_modal_detail_view_row';
-	import { ExclamationCircleOutline } from 'flowbite-svelte-icons';
 	import { m } from '$lib/paraglide/messages.js';
+	import { CircleAlert } from '@lucide/svelte';
 
 	let { rows }: { rows: gallery_modal_detail_view_row[] } = $props();
 
@@ -21,7 +21,7 @@
 				title={view_row.key}
 			>
 				{#if view_row.attention_issue}
-					<ExclamationCircleOutline
+					<CircleAlert
 						class="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400"
 						aria-hidden="true"
 					/>

@@ -1,31 +1,21 @@
-import {
-	AdjustmentsHorizontalOutline,
-	AdjustmentsVerticalOutline,
-	CameraPhotoOutline,
-	ClockOutline,
-	EyeOutline,
-	FolderOutline,
-	ImageOutline
-} from 'flowbite-svelte-icons';
+import { Camera, Eye, Image, Clock, SlidersVertical, Folder } from '@lucide/svelte';
 import type { Component } from 'svelte';
 
 export function meta_row_icon_for_key(key: string): Component {
 	switch (key) {
 		case 'camera':
-			return CameraPhotoOutline;
+			return Camera;
 		case 'lens':
-			return EyeOutline;
+			return Eye;
 		case 'dimensions':
-			return ImageOutline;
+			return Image;
 		case 'datetime':
-			return ClockOutline;
-		case 'resolution':
-			return AdjustmentsHorizontalOutline;
+			return Clock;
 		case 'file_size':
-			return FolderOutline;
+			return Folder;
 		case 'exposure':
-			return AdjustmentsVerticalOutline;
+			return SlidersVertical;
 		default:
-			return ImageOutline;
+			return Image;
 	}
 }

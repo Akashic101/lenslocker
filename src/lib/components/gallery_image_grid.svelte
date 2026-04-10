@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { CheckOutline } from 'flowbite-svelte-icons';
 	import type { gallery_grid_item } from '$lib/gallery/gallery_grid_types';
 	import { meta_row_icon_for_key } from '$lib/gallery/meta_row_icon_for_key';
 	import { m } from '$lib/paraglide/messages.js';
 	import GalleryTileImageButton from '$lib/components/gallery_tile_image_button.svelte';
+	import { Check } from '@lucide/svelte';
 
 	const meta_icon_class = 'mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400';
 
@@ -50,7 +50,7 @@
 					aria-hidden="true"
 				>
 					{#if upload_is_selected(item.upload_id)}
-						<CheckOutline class="h-4 w-4 text-white" />
+						<Check class="h-4 w-4 text-white" />
 					{/if}
 				</span>
 			{/if}
