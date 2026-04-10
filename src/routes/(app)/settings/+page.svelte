@@ -678,7 +678,7 @@
 						onclick={() => void save_upload_pipeline_settings()}
 					>
 						{save_loading
-							? m.fierce_small_goat_busy_saving()
+							? m.fierce_small_goat_busy_saving_display()
 							: m.zesty_fresh_ibex_save_upload_settings()}
 					</button>
 				</div>
@@ -767,7 +767,7 @@
 						onclick={() => void save_dashboard_attention_settings()}
 					>
 						{dash_save_loading
-							? m.fierce_small_goat_busy_saving()
+							? m.fierce_small_goat_busy_saving_display()
 							: m.salty_bold_snipe_save_dashboard_criteria()}
 					</button>
 				</div>

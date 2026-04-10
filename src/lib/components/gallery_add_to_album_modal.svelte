@@ -165,7 +165,7 @@
 				disabled={submit_disabled}
 				onclick={() => void on_submit_click()}
 			>
-				{busy ? m.fierce_small_goat_busy_saving() : m.noble_tidy_quail_album_add_submit()}
+				{busy ? m.fierce_small_goat_busy_saving_display() : m.noble_tidy_quail_album_add_submit()}
 			</button>
 		</div>
 	</div>

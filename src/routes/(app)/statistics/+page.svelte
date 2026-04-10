@@ -189,7 +189,9 @@
 				redrawOnParentResize: true
 			},
 			plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '78%' } },
-			series: [{ name: m.funky_quaint_dune_camera_series_caption(), data: s.top_cameras.series }],
+			series: [
+				{ name: m.bold_misty_crow_ring_photos_per_capture_week(), data: s.top_cameras.series }
+			],
 			xaxis: {
 				categories: s.top_cameras.labels,
 				labels: { style: { colors: '#6b7280' } }
@@ -218,7 +220,9 @@
 				redrawOnParentResize: true
 			},
 			plotOptions: { bar: { borderRadius: 4, columnWidth: '72%' } },
-			series: [{ name: m.funky_quaint_dune_camera_series_caption(), data: s.iso_buckets.series }],
+			series: [
+				{ name: m.bold_misty_crow_ring_photos_per_capture_week(), data: s.iso_buckets.series }
+			],
 			xaxis: {
 				categories: s.iso_buckets.labels,
 				labels: { style: { colors: '#6b7280' } }

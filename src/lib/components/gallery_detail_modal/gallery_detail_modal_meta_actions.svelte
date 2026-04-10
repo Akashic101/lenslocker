@@ -44,7 +44,9 @@
 			disabled={meta_save_loading}
 			onclick={on_save}
 		>
-			{meta_save_loading ? m.fierce_small_goat_busy_saving() : m.bold_calm_koala_save_changes()}
+			{meta_save_loading
+				? m.fierce_small_goat_busy_saving_display()
+				: m.bold_calm_koala_save_changes()}
 		</button>
 	{/if}
 </div>
