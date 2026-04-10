@@ -533,7 +533,9 @@
 </script>
 
 <svelte:head>
-	<title>{m.tidy_best_bumblebee_feast_dashboard()}</title>
+	<title
+		>{m.tidy_best_bumblebee_feast_dashboard()} | {m.clever_quiet_eagle_brand_lenslocker()}</title
+	>
 	{#each preload_image_src_list as preload_href (preload_href)}
 		<link rel="preload" as="image" href={preload_href} fetchpriority="high" />
 	{/each}

@@ -17,7 +17,9 @@
 </script>
 
 <svelte:head>
-	<title>{data.title} — {m.vivid_flat_marten_share_sheet_title()}</title>
+	<title
+		>{data.title} — {m.vivid_flat_marten_share_sheet_title()} | {m.clever_quiet_eagle_brand_lenslocker()}</title
+	>
 </svelte:head>
 
 <div class="mx-auto max-w-7xl px-4 py-8">

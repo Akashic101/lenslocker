@@ -124,7 +124,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.such_tangy_mare_conquer_hardware()}</title>
+	<title>{m.such_tangy_mare_conquer_hardware()} | {m.clever_quiet_eagle_brand_lenslocker()}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-4xl">

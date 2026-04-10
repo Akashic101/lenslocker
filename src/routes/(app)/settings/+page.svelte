@@ -416,7 +416,8 @@
 </script>
 
 <svelte:head>
-	<title>{m.fuzzy_dull_alpaca_achieve_settings()}</title>
+	<title>{m.fuzzy_dull_alpaca_achieve_settings()} | {m.clever_quiet_eagle_brand_lenslocker()}</title
+	>
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">

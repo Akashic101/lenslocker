@@ -17,7 +17,9 @@
 </script>
 
 <svelte:head>
-	<title>{m.left_fresh_shrew_share_fail_document_title()}</title>
+	<title
+		>{m.left_fresh_shrew_share_fail_document_title()} | {m.clever_quiet_eagle_brand_lenslocker()}</title
+	>
 </svelte:head>
 
 <div class="flex min-h-[70vh] flex-col items-center justify-center px-4 py-12">

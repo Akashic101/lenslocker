@@ -265,7 +265,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.proud_tough_oryx_dare_statistics()}</title>
+	<title>{m.proud_tough_oryx_dare_statistics()} | {m.clever_quiet_eagle_brand_lenslocker()}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-7xl">

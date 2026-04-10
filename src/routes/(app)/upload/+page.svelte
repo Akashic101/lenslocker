@@ -313,7 +313,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.true_zippy_finch_title_upload_raw()}</title>
+	<title>{m.true_zippy_finch_title_upload_raw()} | {m.clever_quiet_eagle_brand_lenslocker()}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-xl">
