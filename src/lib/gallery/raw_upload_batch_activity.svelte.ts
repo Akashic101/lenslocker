@@ -22,6 +22,7 @@ export const raw_upload_batch_activity = $state({
 });
 
 let active_raw_upload_xhr: XMLHttpRequest | null = null;
+let active_disk_import_abort: AbortController | null = null;
 
 function recompute_overall_percent(): void {
 	const a = raw_upload_batch_activity;
@@ -45,6 +46,8 @@ export function begin_raw_upload_batch(
 	total: number
 ): void {
 	const a = raw_upload_batch_activity;
+	active_raw_upload_xhr = null;
+	active_disk_import_abort = null;
 	a.cancel_requested = false;
 	a.session_finished = false;
 	a.session_cancelled = false;
@@ -83,6 +86,7 @@ export function patch_raw_upload_batch_fields(p: {
 export function end_raw_upload_batch_success(): void {
 	const a = raw_upload_batch_activity;
 	active_raw_upload_xhr = null;
+	active_disk_import_abort = null;
 	a.cancel_requested = false;
 	a.in_progress = false;
 	a.part_upload_pct = 0;
@@ -98,6 +102,7 @@ export function end_raw_upload_batch_success(): void {
 export function end_raw_upload_batch_cancelled(): void {
 	const a = raw_upload_batch_activity;
 	active_raw_upload_xhr = null;
+	active_disk_import_abort = null;
 	a.cancel_requested = false;
 	a.in_progress = false;
 	a.phase = 'idle';
@@ -112,6 +117,11 @@ export function end_raw_upload_batch_cancelled(): void {
 export function request_cancel_raw_upload_batch(): void {
 	raw_upload_batch_activity.cancel_requested = true;
 	active_raw_upload_xhr?.abort();
+	active_disk_import_abort?.abort();
+}
+
+export function set_disk_import_abort_controller(controller: AbortController | null): void {
+	active_disk_import_abort = controller;
 }
 
 export function set_active_raw_upload_xhr(xhr: XMLHttpRequest | null): void {

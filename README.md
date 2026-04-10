@@ -47,6 +47,7 @@ services:
       DATABASE_URL: /data/lenslocker.db
       TRANSFORMED_MEDIA_ROOT: /data/transformed
       RAW_UPLOAD_ROOT: /data/uploads/raw
+      RAW_IMPORT_ROOT: /data/uploads/import
       LENSLOCKER_BACKUP_ROOT: /data/backups
       ORIGIN: ${ORIGIN:-http://localhost:3000}
       # CHANGE THIS before exposing the app to a network — use a random string of 32+ characters.
@@ -73,14 +74,13 @@ Docker Compose reads `.env` automatically and uses it to override the defaults i
 
 The host folder `./data` (next to `docker-compose.yml`) is bind-mounted to `/data` inside the container:
 
-
-| Purpose              | Path inside container | Host path (default)    |
-| -------------------- | --------------------- | ---------------------- |
-| SQLite database      | `/data/lenslocker.db` | `./data/lenslocker.db` |
-| Uploaded RAW files   | `/data/uploads/raw`   | `./data/uploads/raw`   |
-| Generated previews   | `/data/transformed`   | `./data/transformed`   |
-| Settings ZIP backups | `/data/backups`       | `./data/backups`       |
-
+| Purpose                    | Path inside container  | Host path (default)     |
+| -------------------------- | ---------------------- | ----------------------- |
+| SQLite database            | `/data/lenslocker.db`  | `./data/lenslocker.db`  |
+| Uploaded RAW files         | `/data/uploads/raw`    | `./data/uploads/raw`    |
+| Import inbox (disk import) | `/data/uploads/import` | `./data/uploads/import` |
+| Generated previews         | `/data/transformed`    | `./data/transformed`    |
+| Settings ZIP backups       | `/data/backups`        | `./data/backups`        |
 
 ---
 
@@ -91,22 +91,29 @@ Use this setup if you want to run the app directly on the host without Docker.
 ### Local development
 
 1. Clone the repository and install dependencies:
-  ```sh
-   bun install
-  ```
+
+```sh
+ bun install
+```
+
 2. Copy the environment template and fill in the required values:
-  ```sh
-   cp .env.example .env
-  ```
-   At minimum, set `DATABASE_URL` (e.g. `local.db`). For anything exposed beyond localhost, also set `ORIGIN` and `BETTER_AUTH_SECRET` (see [.env.example](.env.example)).
-3. Apply the database schema:
-  ```sh
-   bun run db:push
-  ```
+
+```sh
+ cp .env.example .env
+```
+
+At minimum, set `DATABASE_URL` (e.g. `local.db`). For anything exposed beyond localhost, also set `ORIGIN` and `BETTER_AUTH_SECRET` (see [.env.example](.env.example)). 3. Apply the database schema:
+
+```sh
+ bun run db:push
+```
+
 4. Start the development server:
-  ```sh
-   bun dev
-  ```
+
+```sh
+ bun dev
+```
+
 5. Open the app at the default Vite port: [http://localhost:5173](http://localhost:5173).
 
 ### Production
@@ -114,20 +121,23 @@ Use this setup if you want to run the app directly on the host without Docker.
 This project uses [@sveltejs/adapter-node](https://svelte.dev/docs/kit/adapter-node), which produces a Node-compatible server under `build/`.
 
 1. Build the app:
-  ```sh
-   bun run build
-  ```
+
+```sh
+ bun run build
+```
+
 2. Run `bun run db:push` once before the first start, and again whenever the schema changes.
 3. Start the production server:
-  ```sh
-   bun run start
-  ```
+
+```sh
+ bun run start
+```
 
 Key environment variables to set for production:
 
 - `ORIGIN` — the public URL users will access the app from (required by Better Auth).
 - `BETTER_AUTH_SECRET` — a random string of 32 or more characters.
-- `DATABASE_URL`, `RAW_UPLOAD_ROOT`, `TRANSFORMED_MEDIA_ROOT` — point these at persistent directories on the host. See [Environment variables](#environment-variables).
+- `DATABASE_URL`, `RAW_UPLOAD_ROOT`, `RAW_IMPORT_ROOT`, `TRANSFORMED_MEDIA_ROOT` — point these at persistent directories on the host. See [Environment variables](#environment-variables).
 
 To smoke-check a production build locally before deploying:
 
@@ -141,16 +151,15 @@ bun run preview
 
 See [.env.example](.env.example) for full descriptions. Summary:
 
-
-| Variable                 | Purpose                                                                                                         |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`           | SQLite database file path (required).                                                                           |
-| `ORIGIN`                 | Public site URL; required in production for auth.                                                               |
-| `BETTER_AUTH_SECRET`     | Session/crypto secret. Must be set to a long random string for any deployment beyond localhost.                 |
-| `RAW_UPLOAD_ROOT`        | Absolute path for uploaded RAW files. Default: `<cwd>/data/uploads/raw` (organized into year/month subfolders). |
-| `TRANSFORMED_MEDIA_ROOT` | Absolute path for generated previews (e.g. `upload-previews/…`). Default: `<cwd>/static/transformed`.           |
-| `LENSLOCKER_BACKUP_ROOT` | Directory where **Settings → Backup** ZIP files are written and listed. Default: project directory if unset.    |
-
+| Variable                 | Purpose                                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | SQLite database file path (required).                                                                                                                   |
+| `ORIGIN`                 | Public site URL; required in production for auth.                                                                                                       |
+| `BETTER_AUTH_SECRET`     | Session/crypto secret. Must be set to a long random string for any deployment beyond localhost.                                                         |
+| `RAW_UPLOAD_ROOT`        | Absolute path for uploaded RAW files. Default: `<cwd>/data/uploads/raw` (organized into year/month subfolders).                                         |
+| `RAW_IMPORT_ROOT`        | Inbox for **Import from disk** on `/upload`. Defaults to `<cwd>/data/uploads/import`. Files are moved into `RAW_UPLOAD_ROOT` after a successful import. |
+| `TRANSFORMED_MEDIA_ROOT` | Absolute path for generated previews (e.g. `upload-previews/…`). Default: `<cwd>/static/transformed`.                                                   |
+| `LENSLOCKER_BACKUP_ROOT` | Directory where **Settings → Backup** ZIP files are written and listed. Default: project directory if unset.                                            |
 
 After changing Better Auth configuration in code, regenerate the auth schema and push the updated schema to the database:
 
@@ -161,7 +170,6 @@ bun run auth:schema && bun run db:push
 ---
 
 ## Working on the codebase
-
 
 | Command                 | Use                                                                                                                   |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -176,7 +184,6 @@ bun run auth:schema && bun run db:push
 | `bun run test:unit`     | Vitest in watch mode (all projects).                                                                                  |
 | `bun run db:push`       | Apply Drizzle schema to SQLite (dev/prod).                                                                            |
 | `bun run db:studio`     | Open Drizzle Studio (inspect DB).                                                                                     |
-
 
 Other libraries in daily use include **TypeScript**, **Tailwind CSS**, **Paraglide** (inlang), **Flowbite**, and **Lucide** icons via `@lucide/svelte`. The sections below cover the three pieces that hold the app together: the UI framework, the database layer, and authentication.
 
@@ -234,11 +241,12 @@ LensLocker uses [Paraglide JS](https://inlang.com/m/gerre34r/library-inlang-para
 
 1. Add or edit keys in `messages/en.json` (the source of truth for new strings).
 2. Mirror the keys in `messages/de.json` (and any other active locales), or use machine translation as a starting point:
-  ```sh
-   bun run translate
-  ```
-   This runs `inlang machine translate` for the `project.inlang` project. No Google API key is required, though providing one gives more control and better reliability.
-3. Run `bun run check` to confirm Paraglide codegen and types are still aligned.
+
+```sh
+ bun run translate
+```
+
+This runs `inlang machine translate` for the `project.inlang` project. No Google API key is required, though providing one gives more control and better reliability. 3. Run `bun run check` to confirm Paraglide codegen and types are still aligned.
 
 **To add a new language:** add the locale to `project.inlang/settings.json`, create `messages/<locale>.json`, then run the dev server or build so Paraglide regenerates. Wire the locale into any language-selection UI (e.g. settings) if it is not already handled automatically.
 

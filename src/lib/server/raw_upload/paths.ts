@@ -8,6 +8,16 @@ export function get_raw_upload_root(): string {
 	return path.resolve(process.cwd(), 'data', 'uploads', 'raw');
 }
 
+/**
+ * Inbox for **Import from disk**: place files here (or a host bind mount); they are moved into
+ * {@link get_raw_upload_root} after indexing. Override with RAW_IMPORT_ROOT in Docker.
+ */
+export function get_raw_import_root(): string {
+	const override = env.RAW_IMPORT_ROOT?.trim();
+	if (override) return path.resolve(override);
+	return path.resolve(process.cwd(), 'data', 'uploads', 'import');
+}
+
 type raw_upload_exif_date_fields = {
 	datetime_original?: string | null;
 	datetime_digitized?: string | null;

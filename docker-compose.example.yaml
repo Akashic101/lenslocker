@@ -22,6 +22,7 @@ services:
     environment:
       DATABASE_URL: /data/lenslocker.db
       RAW_UPLOAD_ROOT: /data/uploads/raw
+      RAW_IMPORT_ROOT: /data/uploads/import
       TRANSFORMED_MEDIA_ROOT: /data/transformed
       LENSLOCKER_BACKUP_ROOT: /data/backups
       ORIGIN: '${ORIGIN:-http://localhost:3000}'

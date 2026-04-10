@@ -172,6 +172,49 @@ describe('raw_upload_batch_activity', () => {
 		expect(abort_spy).toHaveBeenCalledTimes(1);
 	});
 
+	it('set_disk_import_abort_controller registers controller aborted by request_cancel_raw_upload_batch', async () => {
+		const m = await import_batch_module();
+		const controller = new AbortController();
+		const abort_spy = vi.spyOn(controller, 'abort');
+
+		m.set_disk_import_abort_controller(controller);
+		m.request_cancel_raw_upload_batch();
+
+		expect(m.raw_upload_batch_activity.cancel_requested).toBe(true);
+		expect(abort_spy).toHaveBeenCalledTimes(1);
+	});
+
+	it('set_disk_import_abort_controller(null) clears so request_cancel does not abort a previous controller', async () => {
+		const m = await import_batch_module();
+		const stale = new AbortController();
+		const stale_abort_spy = vi.spyOn(stale, 'abort');
+
+		m.set_disk_import_abort_controller(stale);
+		m.set_disk_import_abort_controller(null);
+
+		const xhr_abort_spy = vi.fn();
+		m.set_active_raw_upload_xhr({ abort: xhr_abort_spy } as unknown as XMLHttpRequest);
+		m.request_cancel_raw_upload_batch();
+
+		expect(stale_abort_spy).not.toHaveBeenCalled();
+		expect(xhr_abort_spy).toHaveBeenCalledTimes(1);
+	});
+
+	it('request_cancel_raw_upload_batch aborts both xhr and disk import controller when both active', async () => {
+		const m = await import_batch_module();
+		const xhr_abort_spy = vi.fn();
+		m.set_active_raw_upload_xhr({ abort: xhr_abort_spy } as unknown as XMLHttpRequest);
+
+		const controller = new AbortController();
+		const disk_abort_spy = vi.spyOn(controller, 'abort');
+		m.set_disk_import_abort_controller(controller);
+
+		m.request_cancel_raw_upload_batch();
+
+		expect(xhr_abort_spy).toHaveBeenCalledTimes(1);
+		expect(disk_abort_spy).toHaveBeenCalledTimes(1);
+	});
+
 	it('end_raw_upload_batch_success marks session finished and sets percent to 100', async () => {
 		const m = await import_batch_module();
 		m.begin_raw_upload_batch([], 2);

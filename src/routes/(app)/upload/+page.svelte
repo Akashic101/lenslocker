@@ -17,7 +17,8 @@
 		patch_raw_upload_batch_fields,
 		raw_upload_batch_activity,
 		request_cancel_raw_upload_batch,
-		set_active_raw_upload_xhr
+		set_active_raw_upload_xhr,
+		set_disk_import_abort_controller
 	} from '$lib/gallery/raw_upload_batch_activity.svelte';
 	import InlineNotice from '$lib/components/inline_notice.svelte';
 	import RawUploadBatchProgressPanel from '$lib/components/raw_upload_batch_progress_panel.svelte';
@@ -32,6 +33,7 @@
 
 	const file_accept = [...raw_upload_extensions].join(',');
 	const upload_api_url = resolve('/api/upload/raw');
+	const disk_import_api_url = resolve('/api/upload/raw/import-disk');
 
 	let file_input_el: HTMLInputElement | undefined = $state();
 
@@ -310,6 +312,134 @@
 	);
 
 	const form_locked = $derived(raw_upload_batch_activity.in_progress);
+
+	async function start_disk_import(): Promise<void> {
+		batch_last_error = null;
+		if (raw_upload_batch_activity.in_progress) {
+			batch_last_error = m.muddy_warm_otter_upload_batch_still_running();
+			return;
+		}
+
+		let paths: string[];
+		try {
+			const list_response = await fetch(disk_import_api_url);
+			const list_json = (await list_response.json().catch(() => ({}))) as {
+				ok?: unknown;
+				paths?: unknown;
+			};
+			if (
+				!list_response.ok ||
+				list_json.ok !== true ||
+				!Array.isArray(list_json.paths) ||
+				!list_json.paths.every((p) => typeof p === 'string')
+			) {
+				batch_last_error = m.sour_merry_fly_disk_import_list_failed();
+				return;
+			}
+			paths = list_json.paths as string[];
+		} catch {
+			batch_last_error = m.large_proud_gull_fail_network_error();
+			return;
+		}
+
+		if (paths.length === 0) {
+			batch_last_error = m.mild_suave_gecko_disk_import_none();
+			return;
+		}
+
+		begin_raw_upload_batch([], paths.length);
+		let batch_had_new_upload = false;
+
+		for (let i = 0; i < paths.length; i++) {
+			if (raw_upload_batch_activity.cancel_requested) {
+				end_raw_upload_batch_cancelled();
+				return;
+			}
+
+			const relative_path = paths[i];
+			patch_raw_upload_batch_fields({
+				current_index: i + 1,
+				current_name: relative_path,
+				phase: 'processing',
+				part_upload_pct: 0
+			});
+
+			const abort_controller = new AbortController();
+			set_disk_import_abort_controller(abort_controller);
+
+			try {
+				const import_response = await fetch(disk_import_api_url, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ relative_path }),
+					signal: abort_controller.signal
+				});
+				const import_json = (await import_response.json().catch(() => ({}))) as Record<
+					string,
+					unknown
+				>;
+
+				if (import_response.ok && import_json.ok === true) {
+					const is_duplicate = import_json.duplicate === true;
+					const preview_ok = import_json.preview_ok !== false;
+					const next_lines = [
+						...raw_upload_batch_activity.log_lines,
+						{
+							name: relative_path,
+							ok: true,
+							message: is_duplicate
+								? m.soft_quiet_snail_mark_already_in_library()
+								: preview_ok
+									? undefined
+									: String(import_json.preview_message ?? m.blue_still_finch_fail_jpeg_preview())
+						}
+					];
+					patch_raw_upload_batch_fields({ log_lines: next_lines });
+					if (!is_duplicate) {
+						batch_had_new_upload = true;
+						void invalidate(transformed_media_depends_key);
+						void invalidate(gallery_active_upload_count_depends_key);
+					}
+				} else {
+					const msg =
+						typeof import_json.message === 'string'
+							? import_json.message
+							: m.icy_mellow_carp_fail_request_status({ status: String(import_response.status) });
+					patch_raw_upload_batch_fields({
+						log_lines: [
+							...raw_upload_batch_activity.log_lines,
+							{ name: relative_path, ok: false, message: msg }
+						]
+					});
+				}
+			} catch (e) {
+				if (e instanceof DOMException && e.name === 'AbortError') {
+					end_raw_upload_batch_cancelled();
+					return;
+				}
+				patch_raw_upload_batch_fields({
+					log_lines: [
+						...raw_upload_batch_activity.log_lines,
+						{
+							name: relative_path,
+							ok: false,
+							message: e instanceof Error ? e.message : String(e)
+						}
+					]
+				});
+			} finally {
+				set_disk_import_abort_controller(null);
+			}
+
+			patch_raw_upload_batch_fields({ done: i + 1 });
+		}
+
+		end_raw_upload_batch_success();
+		if (batch_had_new_upload) {
+			await invalidate(transformed_media_depends_key);
+			await invalidate(gallery_active_upload_count_depends_key);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -323,6 +453,22 @@
 	<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
 		{m.vivid_merry_quail_say_upload_raw_intro()}
 	</p>
+
+	<div
+		class="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-800/50"
+	>
+		<p class="text-sm text-gray-700 dark:text-gray-300">
+			{m.plain_bright_shark_disk_import_help()}
+		</p>
+		<button
+			type="button"
+			disabled={form_locked}
+			onclick={() => void start_disk_import()}
+			class="mt-3 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-700"
+		>
+			{m.swift_neat_loris_disk_import_button()}
+		</button>
+	</div>
 
 	{#if data.just_uploaded}
 		<InlineNotice
