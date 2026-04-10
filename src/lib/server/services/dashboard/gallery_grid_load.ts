@@ -66,7 +66,7 @@ function parse_gallery_sort(sp: URLSearchParams): gallery_sort_key {
 }
 
 type gallery_path_sort_meta = {
-	shot: string | null;
+	shot_sort_key: string | null;
 	iso: number | null;
 	size: number;
 	uploaded_at_ms: number;
@@ -94,6 +94,7 @@ async function load_gallery_path_sort_meta(
 			.select({
 				id: raw_image_upload.id,
 				shot_cal: sql<string | null>`(${shot_cal_sql})`,
+				datetime_original: raw_image_upload.datetime_original,
 				iso_speed: raw_image_upload.iso_speed,
 				byte_size: raw_image_upload.byte_size,
 				uploaded_at_ms: raw_image_upload.uploaded_at_ms
@@ -102,13 +103,11 @@ async function load_gallery_path_sort_meta(
 			.where(inArray(raw_image_upload.id, chunk));
 
 		for (const r of rows) {
-			const shot_raw = r.shot_cal;
-			const shot =
-				shot_raw == null || String(shot_raw).trim() === '' ? null : String(shot_raw).trim();
+			const shot_sort_key = normalize_shot_for_sort(r.datetime_original, r.shot_cal);
 			const iso =
 				r.iso_speed == null || !Number.isFinite(Number(r.iso_speed)) ? null : Number(r.iso_speed);
 			map.set(r.id, {
-				shot,
+				shot_sort_key,
 				iso,
 				size: r.byte_size,
 				uploaded_at_ms: r.uploaded_at_ms
@@ -118,14 +117,31 @@ async function load_gallery_path_sort_meta(
 	return map;
 }
 
-function normalize_shot_for_sort(shot: string | null): string | null {
-	if (shot == null || shot === '') return null;
-	return shot;
+function normalize_shot_for_sort(
+	datetime_original_raw: string | null,
+	shot_calendar_raw: string | null
+): string | null {
+	const datetime_original = datetime_original_raw?.trim() ?? '';
+	if (datetime_original !== '') {
+		const exif_match = datetime_original.match(
+			/^(\d{4})[:-](\d{2})[:-](\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/
+		);
+		if (exif_match) {
+			const [, y, mo, d, h, mi, s] = exif_match;
+			const hh = h ?? '00';
+			const mm = mi ?? '00';
+			const ss = s ?? '00';
+			return `${y}-${mo}-${d} ${hh}:${mm}:${ss}`;
+		}
+	}
+	const shot_calendar = shot_calendar_raw?.trim() ?? '';
+	if (shot_calendar === '') return null;
+	return `${shot_calendar} 00:00:00`;
 }
 
 function cmp_shot_date(a: string | null, b: string | null, desc: boolean): number {
-	const a_n = normalize_shot_for_sort(a) == null;
-	const b_n = normalize_shot_for_sort(b) == null;
+	const a_n = a == null;
+	const b_n = b == null;
 	if (a_n && b_n) return 0;
 	if (a_n) return 1;
 	if (b_n) return -1;
@@ -168,10 +184,10 @@ function compare_gallery_paths(
 	let c: number;
 	switch (sort) {
 		case 'date_desc':
-			c = cmp_shot_date(ma.shot, mb.shot, true);
+			c = cmp_shot_date(ma.shot_sort_key, mb.shot_sort_key, true);
 			break;
 		case 'date_asc':
-			c = cmp_shot_date(ma.shot, mb.shot, false);
+			c = cmp_shot_date(ma.shot_sort_key, mb.shot_sort_key, false);
 			break;
 		case 'iso_desc':
 			c = cmp_iso(ma.iso, mb.iso, true);
