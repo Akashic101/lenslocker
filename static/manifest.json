@@ -1,0 +1,65 @@
+{
+  "id": "/",
+  "name": "LensLocker",
+  "short_name": "LensLocker",
+  "description": "Self-hosted RAW photo metadata manager with gallery, albums, hardware tracking, backups, and EXIF-driven insights.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "browser"
+  ],
+  "orientation": "any",
+  "background_color": "#0b0f19",
+  "theme_color": "#eb4f27",
+  "categories": [
+    "photography",
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/logo/LensLocker-Logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo/LensLocker-Logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Upload RAW",
+      "short_name": "Upload",
+      "description": "Upload RAW files to LensLocker",
+      "url": "/upload"
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open gallery dashboard",
+      "url": "/"
+    },
+    {
+      "name": "Statistics",
+      "short_name": "Stats",
+      "description": "View metadata and upload statistics",
+      "url": "/statistics"
+    },
+    {
+      "name": "Settings",
+      "short_name": "Settings",
+      "description": "Configure upload pipeline, backups, and preferences",
+      "url": "/settings"
+    }
+  ],
+  "prefer_related_applications": false
+}
