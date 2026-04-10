@@ -13,9 +13,10 @@ export const GET: RequestHandler = async ({ params }) => {
 	}
 	try {
 		const buf = await read_settings_backup_file(filename);
+		const is_zip = filename.toLowerCase().endsWith('.zip');
 		return new Response(new Uint8Array(buf), {
 			headers: {
-				'Content-Type': 'application/zip',
+				'Content-Type': is_zip ? 'application/zip' : 'application/octet-stream',
 				'Content-Disposition': `attachment; filename="${filename}"`,
 				'Content-Length': String(buf.length)
 			}

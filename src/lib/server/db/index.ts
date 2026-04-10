@@ -18,6 +18,12 @@ function resolve_database_path(url: string): string {
 
 let sqlite_client = new Database(env.DATABASE_URL);
 export let db = drizzle(sqlite_client, { schema });
+const on_sqlite_rebind_listeners = new Set<() => void>();
+
+export function register_on_sqlite_rebind(listener: () => void): () => void {
+	on_sqlite_rebind_listeners.add(listener);
+	return () => on_sqlite_rebind_listeners.delete(listener);
+}
 
 /** Serialized SQLite file (magic `SQLite format 3`) for backup zips. Not for in-memory DBs. */
 export function capture_sqlite_database_for_backup_zip(): Buffer {
@@ -61,4 +67,11 @@ export function replace_sqlite_database_from_backup_buffer(file_buffer: Buffer):
 	}
 	sqlite_client = new Database(env.DATABASE_URL);
 	db = drizzle(sqlite_client, { schema });
+	for (const listener of on_sqlite_rebind_listeners) {
+		try {
+			listener();
+		} catch {
+			/* keep db replacement resilient */
+		}
+	}
 }

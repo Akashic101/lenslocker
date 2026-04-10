@@ -18,9 +18,14 @@ import { app_setting } from '$lib/server/db/app_setting.schema';
 import { hardware_item, type HardwareItemInsert } from '$lib/server/db/hardware.schema';
 import { hardware_allowed_category_set } from '$lib/server/services/hardware/hardware_service';
 import { ensure_settings_backup_root } from '$lib/server/settings_backup_storage';
+import {
+	decrypt_llbak_buffer_to_zip,
+	encrypt_zip_buffer_to_llbak,
+	looks_like_llbak_buffer
+} from '$lib/server/services/settings/settings_backup_crypto';
 
 const backup_sequence_key = 'lenslocker_backup_sequence';
-const backup_filename_re = /^LensLocker-backup-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d+\.zip$/;
+const backup_filename_re = /^LensLocker-backup-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d+\.(?:zip|llbak)$/;
 const backup_zip_database_filename = 'database.sqlite';
 const backup_row_uuid_re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const supported_backup_schema_versions = new Set([1, 2, 3, 4]);
@@ -35,6 +40,11 @@ type settings_backup_list_entry = {
 export function is_valid_settings_backup_filename(name: string): boolean {
 	if (name.includes('..') || path.isAbsolute(name)) return false;
 	return backup_filename_re.test(name);
+}
+
+function looks_like_zip_buffer(buf: Buffer): boolean {
+	if (buf.length < 4) return false;
+	return buf[0] === 0x50 && buf[1] === 0x4b;
 }
 
 /** Reads next sequence, persists sequence+1, returns the number used for this backup file. */
@@ -107,14 +117,15 @@ export async function list_settings_backups(): Promise<settings_backup_list_entr
 	return out;
 }
 
-export async function create_settings_backup_zip(): Promise<{
+export async function create_settings_backup_zip(password?: string | null): Promise<{
 	filename: string;
 	size_bytes: number;
 }> {
 	const root = await ensure_settings_backup_root();
 	const seq = take_next_backup_sequence();
 	const stamp = format_backup_date_stamp(new Date());
-	const filename = `LensLocker-backup-${stamp}-${seq}.zip`;
+	const use_encryption = typeof password === 'string' && password !== '';
+	const filename = `LensLocker-backup-${stamp}-${seq}.${use_encryption ? 'llbak' : 'zip'}`;
 
 	const db_snapshot = capture_sqlite_database_for_backup_zip();
 	const settings_rows = await db.select().from(app_setting);
@@ -154,7 +165,10 @@ export async function create_settings_backup_zip(): Promise<{
 	zip.file('album_raw_upload.json', JSON.stringify(album_member_rows, null, 2));
 	zip.file('share_links.json', JSON.stringify(share_link_rows, null, 2));
 
-	const buf = Buffer.from(await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' }));
+	const zip_buf = Buffer.from(
+		await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' })
+	);
+	const buf = use_encryption ? await encrypt_zip_buffer_to_llbak(zip_buf, password) : zip_buf;
 	await fs.writeFile(path.join(root, filename), buf);
 	return { filename, size_bytes: buf.length };
 }
@@ -464,9 +478,24 @@ type settings_backup_import_result = {
 	restored_full_database: boolean;
 };
 
+async function decode_settings_backup_input_to_zip_buffer(
+	buf: Buffer,
+	password?: string | null
+): Promise<Buffer> {
+	if (looks_like_zip_buffer(buf)) return buf;
+	if (!looks_like_llbak_buffer(buf)) {
+		throw new Error('Unsupported backup format. Expected .zip or .llbak');
+	}
+	if (typeof password !== 'string' || password === '') {
+		throw new Error('This backup is password-protected. Enter the backup password.');
+	}
+	return decrypt_llbak_buffer_to_zip(buf, password);
+}
+
 /** Replaces all `app_setting` and `hardware_item` rows with contents of a LensLocker backup zip. */
 export async function import_settings_backup_from_zip_buffer(
-	buf: Buffer
+	buf: Buffer,
+	password?: string | null
 ): Promise<settings_backup_import_result> {
 	if (buf.length === 0) {
 		throw new Error('Empty file');
@@ -474,7 +503,11 @@ export async function import_settings_backup_from_zip_buffer(
 	if (buf.length > max_settings_backup_import_bytes) {
 		throw new Error(`Backup file is too large (max ${max_settings_backup_import_bytes} bytes)`);
 	}
-	const zip = await JSZip.loadAsync(buf);
+	const zip_buf = await decode_settings_backup_input_to_zip_buffer(buf, password);
+	if (zip_buf.length > max_settings_backup_import_bytes) {
+		throw new Error(`Backup file is too large (max ${max_settings_backup_import_bytes} bytes)`);
+	}
+	const zip = await JSZip.loadAsync(zip_buf);
 
 	const manifest_entry = find_zip_file(zip, 'manifest.json');
 	if (!manifest_entry) {

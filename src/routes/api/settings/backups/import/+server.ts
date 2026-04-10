@@ -12,12 +12,17 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!(file instanceof File)) {
 		return json({ message: 'Missing file field.' }, { status: 400 });
 	}
+	const password_raw = form.get('password');
+	let password: string | null = null;
+	if (typeof password_raw === 'string') {
+		password = password_raw;
+	}
 	if (file.size === 0) {
 		return json({ message: 'Empty file.' }, { status: 400 });
 	}
 	try {
 		const buf = Buffer.from(await file.arrayBuffer());
-		const result = await import_settings_backup_from_zip_buffer(buf);
+		const result = await import_settings_backup_from_zip_buffer(buf, password);
 		return json(result);
 	} catch (e) {
 		const message = e instanceof Error ? e.message : String(e);

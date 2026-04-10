@@ -64,11 +64,13 @@
 	let backup_create_loading = $state(false);
 	let backup_create_error = $state<string | null>(null);
 	let backup_create_ok = $state(false);
+	let backup_export_password = $state('');
 
 	let backup_import_input_el = $state<HTMLInputElement | null>(null);
 	let backup_import_loading = $state(false);
 	let backup_import_error = $state<string | null>(null);
 	let backup_import_ok = $state<string | null>(null);
+	let backup_import_password = $state('');
 
 	let backup_delete_busy_filename = $state<string | null>(null);
 	let backup_delete_error = $state<string | null>(null);
@@ -251,7 +253,13 @@
 		backup_create_error = null;
 		backup_create_ok = false;
 		try {
-			const response = await fetch(resolve('/api/settings/backups'), { method: 'POST' });
+			const response = await fetch(resolve('/api/settings/backups'), {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					password: backup_export_password === '' ? null : backup_export_password
+				})
+			});
 			if (!response.ok) {
 				const text = await response.text();
 				throw new Error(text || response.statusText);
@@ -280,6 +288,7 @@
 		try {
 			const form = new FormData();
 			form.append('file', file);
+			if (backup_import_password !== '') form.append('password', backup_import_password);
 			const response = await fetch(resolve('/api/settings/backups/import'), {
 				method: 'POST',
 				body: form
@@ -799,14 +808,49 @@
 						</button>
 						<FilePickerButton
 							input_id="settings-backup-import-input"
-							accept=".zip,application/zip"
+							accept=".zip,.llbak,application/zip,application/octet-stream"
 							busy={backup_import_loading}
 							busy_label={m.bold_pretty_finch_busy_importing()}
-							idle_label={m.nest_empty_quail_import_backup_zip()}
+							idle_label={m.fresh_sharp_puma_import_backup_file()}
 							on_change={on_settings_backup_import_change}
 							bind:input_el={backup_import_input_el}
 						/>
 					</div>
+					<div class="grid gap-4 md:grid-cols-2">
+						<div>
+							<label
+								for="settings-backup-export-password"
+								class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+							>
+								{m.brisk_round_tern_backup_export_password_label()}
+							</label>
+							<input
+								id="settings-backup-export-password"
+								type="password"
+								autocomplete="new-password"
+								class={app_form_field_class_max_w_md}
+								bind:value={backup_export_password}
+							/>
+						</div>
+						<div>
+							<label
+								for="settings-backup-import-password"
+								class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+							>
+								{m.green_tidy_mink_backup_import_password_label()}
+							</label>
+							<input
+								id="settings-backup-import-password"
+								type="password"
+								autocomplete="new-password"
+								class={app_form_field_class_max_w_md}
+								bind:value={backup_import_password}
+							/>
+						</div>
+					</div>
+					<p class="text-xs text-gray-500 dark:text-gray-400">
+						{m.dull_upper_eel_backup_password_optional_note()}
+					</p>
 					{#if backup_create_error}
 						<InlineNotice variant="error" density="compact" message={backup_create_error} />
 					{/if}
