@@ -1,6 +1,15 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
-	import { ArchiveRestore, ChevronDown, ChevronLeft, ChevronRight, ImageDown, Star, StarOff, Trash2 } from '@lucide/svelte';
+	import {
+		ArchiveRestore,
+		ChevronDown,
+		ChevronLeft,
+		ChevronRight,
+		ImageDown,
+		Star,
+		StarOff,
+		Trash2
+	} from '@lucide/svelte';
 
 	let {
 		prev_disabled,

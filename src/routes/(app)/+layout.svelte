@@ -10,7 +10,19 @@
 	import { Avatar, Sidebar, SidebarGroup, SidebarItem } from 'flowbite-svelte';
 	import { raw_upload_batch_activity } from '$lib/gallery/raw_upload_batch_activity.svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import { Archive, Camera, ChartLine, ChevronDown, ChevronsLeft, CircleAlert, Folder, HardDriveUpload, Menu, Search, Settings } from '@lucide/svelte';
+	import {
+		Archive,
+		Camera,
+		ChartLine,
+		ChevronDown,
+		ChevronsLeft,
+		CircleAlert,
+		Folder,
+		HardDriveUpload,
+		Menu,
+		Search,
+		Settings
+	} from '@lucide/svelte';
 
 	let { children, data } = $props();
 

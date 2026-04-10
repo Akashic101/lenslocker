@@ -758,10 +758,7 @@
 					id="gallery-filters-heading"
 					class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
 				>
-					<Funnel
-						class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
-						aria-hidden="true"
-					/>
+					<Funnel class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
 					{m.noble_steady_puffin_filters_heading()}
 				</h2>
 				<form method="GET" action={localizeHref('/')} class="mt-4 space-y-4">

@@ -1,6 +1,15 @@
 <script lang="ts">
 	import { SpeedDial, SpeedDialButton, SpeedDialTrigger } from 'flowbite-svelte';
-	import { Images, Eraser, Star, StarOff, Trash2, FolderOpen, Trash, EllipsisVertical } from '@lucide/svelte/icons';
+	import {
+		Images,
+		Eraser,
+		Star,
+		StarOff,
+		Trash2,
+		FolderOpen,
+		Trash,
+		EllipsisVertical
+	} from '@lucide/svelte/icons';
 	let {
 		bulk_action_error,
 		bulk_action_loading,
@@ -46,24 +55,27 @@
 		on_archive_change: (archive: boolean) => void;
 		on_add_to_album: () => void;
 	} = $props();
-
 </script>
 
 <div class="z-30" role="region" aria-label={aria_bulk_region_label}>
 	{#if bulk_action_error}
 		<p
-			class="fixed bottom-24 right-6 z-40 max-w-xs rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 shadow-sm dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+			class="fixed right-6 bottom-24 z-40 max-w-xs rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 shadow-sm dark:border-red-800 dark:bg-red-950 dark:text-red-300"
 			role="alert"
 		>
 			{bulk_action_error}
 		</p>
 	{/if}
 	<span class="sr-only">{hint_text}</span>
-	<SpeedDialTrigger class="fixed bottom-6 right-6 z-30" name={selected_count_label}>
+	<SpeedDialTrigger class="fixed right-6 bottom-6 z-30" name={selected_count_label}>
 		<EllipsisVertical class="h-5 w-5" aria-hidden="true" />
 	</SpeedDialTrigger>
-	<SpeedDial class="fixed bottom-6 right-6 z-30">
-		<SpeedDialButton name={label_all_on_page} disabled={bulk_action_loading} onclick={on_select_all}>
+	<SpeedDial class="fixed right-6 bottom-6 z-30">
+		<SpeedDialButton
+			name={label_all_on_page}
+			disabled={bulk_action_loading}
+			onclick={on_select_all}
+		>
 			<Images class="h-4 w-4 text-amber-500" aria-hidden="true" />
 		</SpeedDialButton>
 		<SpeedDialButton
@@ -102,10 +114,7 @@
 				disabled={bulk_action_loading || gallery_selected_count === 0}
 				onclick={() => on_archive_change(false)}
 			>
-				<Trash
-					class="h-4 w-4 text-emerald-600 dark:text-emerald-400"
-					aria-hidden="true"
-				/>
+				<Trash class="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
 			</SpeedDialButton>
 		{/if}
 		<SpeedDialButton
