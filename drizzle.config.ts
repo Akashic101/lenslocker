@@ -5,7 +5,7 @@ const database_url =
 	(process.env.NODE_ENV === 'production'
 		? (() => {
 				throw new Error('DATABASE_URL is required in production');
-		  })()
+			})()
 		: './local.db');
 
 export default defineConfig({

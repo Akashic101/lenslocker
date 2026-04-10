@@ -108,12 +108,12 @@ Annotated comments live in [docker-compose.example.yaml](docker-compose.example.
 
 The app listens on **port 3000**. The host folder **`./data`** (next to `docker-compose.yml`, e.g. `C:\…\lenslocker\data` on Windows) is bind-mounted to **`/data`** in the container:
 
-| Purpose              | Path inside container | On the host (default)        |
-| -------------------- | --------------------- | ---------------------------- |
-| SQLite database      | `/data/lenslocker.db` | `./data/lenslocker.db`       |
-| Uploaded RAW files   | `/data/uploads/raw`   | `./data/uploads/raw`         |
-| Generated previews   | `/data/transformed`   | `./data/transformed`         |
-| Settings ZIP backups | `/data/backups`       | `./data/backups`             |
+| Purpose              | Path inside container | On the host (default)  |
+| -------------------- | --------------------- | ---------------------- |
+| SQLite database      | `/data/lenslocker.db` | `./data/lenslocker.db` |
+| Uploaded RAW files   | `/data/uploads/raw`   | `./data/uploads/raw`   |
+| Generated previews   | `/data/transformed`   | `./data/transformed`   |
+| Settings ZIP backups | `/data/backups`       | `./data/backups`       |
 
 ---
 
