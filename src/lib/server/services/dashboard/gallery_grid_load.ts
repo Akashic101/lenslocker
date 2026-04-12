@@ -254,7 +254,8 @@ function build_gallery_filter_query(sp: URLSearchParams): string {
 		'date_to',
 		'iso_min',
 		'iso_max',
-		'starred_only'
+		'starred_only',
+		'not_in_album'
 	] as const;
 	const out = new URLSearchParams();
 	for (const k of keys) {
@@ -279,6 +280,7 @@ function build_gallery_dashboard_return(params: {
 	exif_filters_active: boolean;
 	gallery_focus: dashboard_gallery_focus_mode | null;
 	starred_only: boolean;
+	not_in_album: boolean;
 	camera_make: string;
 	camera_model: string;
 	lens_make: string;
@@ -307,6 +309,7 @@ function build_gallery_dashboard_return(params: {
 		exif_filters_active,
 		gallery_focus,
 		starred_only,
+		not_in_album,
 		camera_make,
 		camera_model,
 		lens_make,
@@ -363,6 +366,7 @@ function build_gallery_dashboard_return(params: {
 			exif_filters_active,
 			gallery_focus,
 			starred_only,
+			not_in_album,
 			camera_make,
 			camera_model,
 			lens_make,
@@ -404,6 +408,7 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 	const iso_max_raw = trim_param(url.searchParams, 'iso_max');
 	const starred_only = url.searchParams.get('starred_only') === '1';
 	const gallery_focus = parse_gallery_focus(url.searchParams);
+	const not_in_album = url.searchParams.get('not_in_album') === '1' && gallery_focus !== 'album';
 	const album_id_raw = trim_param(url.searchParams, 'album_id');
 	const album_id_for_row =
 		gallery_focus === 'album' && album_id_raw !== '' && is_album_id_format(album_id_raw)
@@ -426,7 +431,8 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 		iso_max_raw !== '';
 
 	const gallery_focus_active = gallery_focus != null && gallery_focus !== 'albums';
-	const gallery_filters_active = exif_filters_active || starred_only || gallery_focus_active;
+	const gallery_filters_active =
+		exif_filters_active || starred_only || gallery_focus_active || not_in_album;
 
 	const gallery_sort = parse_gallery_sort(url.searchParams);
 	const shot_date = sql_shot_calendar_date();
@@ -458,6 +464,7 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 			exif_filters_active,
 			gallery_focus,
 			starred_only,
+			not_in_album,
 			camera_make,
 			camera_model,
 			lens_make,
@@ -619,6 +626,13 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 
 		if (starred_only) parts.push(eq(raw_image_upload.starred, 1));
 
+		if (not_in_album) {
+			parts.push(sql`NOT EXISTS (
+				SELECT 1 FROM album_raw_upload AS aru
+				WHERE aru.raw_upload_id = ${raw_image_upload.id}
+			)`);
+		}
+
 		const before_exif = parts.length;
 		if (exif_filters_active) {
 			if (camera_make !== '') parts.push(eq(raw_image_upload.make, camera_make));
@@ -717,6 +731,7 @@ export async function load_gallery_dashboard(url: URL, offset: number, limit: nu
 		exif_filters_active,
 		gallery_focus,
 		starred_only,
+		not_in_album,
 		camera_make,
 		camera_model,
 		lens_make,

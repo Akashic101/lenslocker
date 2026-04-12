@@ -154,6 +154,7 @@
 	let filter_iso_min = $state('');
 	let filter_iso_max = $state('');
 	let filter_starred_only = $state(false);
+	let filter_not_in_album = $state(false);
 
 	$effect(() => {
 		filter_camera_make = data.gallery_filters.camera_make;
@@ -165,6 +166,7 @@
 		filter_iso_min = data.gallery_filters.iso_min;
 		filter_iso_max = data.gallery_filters.iso_max;
 		filter_starred_only = data.gallery_filters.starred_only;
+		filter_not_in_album = data.gallery_filters.not_in_album;
 	});
 
 	const gallery_camera_makes = $derived.by(() => {
@@ -890,6 +892,20 @@
 							/>
 							{m.gaudy_nimble_ladybug_spin_starred_only()}
 						</label>
+						{#if data.gallery_filters.gallery_focus !== 'album'}
+							<label
+								class="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200"
+							>
+								<input
+									type="checkbox"
+									name="not_in_album"
+									value="1"
+									class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
+									bind:checked={filter_not_in_album}
+								/>
+								{m.quiet_alert_martin_filter_not_in_album()}
+							</label>
+						{/if}
 					</div>
 					<div class="flex flex-wrap items-end gap-3">
 						<div class="w-full max-w-xs min-w-32 sm:w-auto">
@@ -951,7 +967,7 @@
 			<p
 				class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500 dark:border-gray-600 dark:text-gray-400"
 			>
-				{#if data.gallery_filters.starred_only || data.gallery_filters.exif_filters_active}
+				{#if data.gallery_filters.starred_only || data.gallery_filters.exif_filters_active || data.gallery_filters.not_in_album}
 					{m.east_icy_iguana_arise_no_photos_match_these_filters()}
 				{:else if data.gallery_filters.gallery_focus === 'needs_attention'}
 					{m.inclusive_pretty_hornet_quiz_no_photos_need_attention()}
