@@ -1,4 +1,5 @@
 # LensLocker
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Akashic101/lenslocker)
 
 LensLocker is a self-hosted web app for **organizing camera RAW files and their metadata** — it is not a general-purpose photo library for JPEG/PNG consumer snapshots. Uploads are restricted to **RAW and similar sensor formats** (plus DNG/TIFF where supported), along with generated **preview images** for the grid and detail views. You get a searchable gallery, albums, hardware (cameras/lenses) tracking, an optional "needs attention" dashboard, and statistics derived from EXIF metadata.
 
